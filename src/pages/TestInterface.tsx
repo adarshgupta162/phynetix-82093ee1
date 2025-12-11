@@ -1,118 +1,104 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Clock, 
   Flag, 
   ChevronLeft, 
   ChevronRight, 
-  BookmarkPlus,
   AlertCircle,
   CheckCircle2,
   XCircle,
   Menu,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface Question {
-  id: number;
-  text: string;
-  options: string[];
-  correctAnswer: number;
+  id: string;
+  order: number;
+  question_text: string;
+  options: string[] | null;
+  difficulty: string;
+  marks: number;
+  negative_marks: number;
+  question_type: string;
   subject: string;
   chapter: string;
-  difficulty: "easy" | "medium" | "hard";
 }
-
-const sampleQuestions: Question[] = [
-  {
-    id: 1,
-    text: "A ball is thrown vertically upward with a velocity of 20 m/s from the top of a building 50m high. What is the maximum height reached by the ball from the ground?",
-    options: [
-      "70.4 m",
-      "60.2 m",
-      "80.0 m",
-      "55.8 m"
-    ],
-    correctAnswer: 0,
-    subject: "Physics",
-    chapter: "Kinematics",
-    difficulty: "medium"
-  },
-  {
-    id: 2,
-    text: "The hybridization of carbon in graphite is:",
-    options: [
-      "sp",
-      "sp²",
-      "sp³",
-      "sp³d"
-    ],
-    correctAnswer: 1,
-    subject: "Chemistry",
-    chapter: "Chemical Bonding",
-    difficulty: "easy"
-  },
-  {
-    id: 3,
-    text: "If f(x) = x³ - 3x² + 2x, then f'(1) equals:",
-    options: [
-      "0",
-      "-1",
-      "1",
-      "2"
-    ],
-    correctAnswer: 1,
-    subject: "Mathematics",
-    chapter: "Calculus",
-    difficulty: "medium"
-  },
-  {
-    id: 4,
-    text: "The acceleration due to gravity at a height h from the surface of Earth is g/4. The value of h is:",
-    options: [
-      "R",
-      "R/2",
-      "2R",
-      "R/4"
-    ],
-    correctAnswer: 0,
-    subject: "Physics",
-    chapter: "Gravitation",
-    difficulty: "hard"
-  },
-  {
-    id: 5,
-    text: "Which of the following compounds shows optical isomerism?",
-    options: [
-      "CH₃CHO",
-      "CH₃CHOHCOOH",
-      "CH₃COOH",
-      "HCOOH"
-    ],
-    correctAnswer: 1,
-    subject: "Chemistry",
-    chapter: "Stereochemistry",
-    difficulty: "medium"
-  },
-];
 
 export default function TestInterface() {
   const { testId } = useParams();
   const navigate = useNavigate();
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [testName, setTestName] = useState("Loading...");
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [markedForReview, setMarkedForReview] = useState<Set<number>>(new Set());
-  const [timeLeft, setTimeLeft] = useState(45 * 60); // 45 minutes
+  const [timeLeft, setTimeLeft] = useState(0);
   const [showPalette, setShowPalette] = useState(false);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (testId) {
+      initializeTest();
+    }
+  }, [testId]);
+
+  const initializeTest = async () => {
+    try {
+      // Start the test attempt
+      const { data: startData, error: startError } = await supabase.functions.invoke("start-test", {
+        body: { test_id: testId },
+      });
+
+      if (startError || startData?.error) {
+        throw new Error(startData?.error || startError?.message || "Failed to start test");
+      }
+
+      setAttemptId(startData.attempt_id);
+      setTestName(startData.test_name);
+      setTimeLeft(startData.duration_minutes * 60);
+
+      // Get questions
+      const { data: questionsData, error: questionsError } = await supabase.functions.invoke("get-test-questions", {
+        body: { test_id: testId },
+      });
+
+      if (questionsError || questionsData?.error) {
+        throw new Error(questionsData?.error || questionsError?.message || "Failed to load questions");
+      }
+
+      if (!questionsData.questions || questionsData.questions.length === 0) {
+        throw new Error("No questions found for this test");
+      }
+
+      setQuestions(questionsData.questions);
+      setLoading(false);
+    } catch (error: any) {
+      console.error("Failed to initialize test:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start test. Please try again.",
+        variant: "destructive",
+      });
+      navigate("/tests");
+    }
+  };
+
+  useEffect(() => {
+    if (timeLeft <= 0 || loading) return;
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 0) {
+        if (prev <= 1) {
           clearInterval(timer);
           handleSubmit();
           return 0;
@@ -122,7 +108,7 @@ export default function TestInterface() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [loading, timeLeft]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -131,7 +117,10 @@ export default function TestInterface() {
   };
 
   const handleAnswer = (optionIndex: number) => {
-    setAnswers({ ...answers, [currentQuestion]: optionIndex });
+    const question = questions[currentQuestion];
+    if (question) {
+      setAnswers({ ...answers, [question.id]: String(optionIndex) });
+    }
   };
 
   const toggleMarkForReview = () => {
@@ -144,26 +133,69 @@ export default function TestInterface() {
     setMarkedForReview(newMarked);
   };
 
-  const handleSubmit = () => {
-    navigate(`/test/${testId}/analysis`, { 
-      state: { 
-        answers, 
-        questions: sampleQuestions,
-        timeTaken: 45 * 60 - timeLeft 
-      } 
-    });
-  };
+  const handleSubmit = useCallback(async () => {
+    if (!attemptId || submitting) return;
+
+    setSubmitting(true);
+    try {
+      const totalTime = questions.length > 0 ? (questions[0] as any).duration_minutes * 60 - timeLeft : 0;
+      
+      const { data, error } = await supabase.functions.invoke("submit-test", {
+        body: {
+          attempt_id: attemptId,
+          answers,
+          time_taken_seconds: Math.max(1, timeLeft > 0 ? (timeLeft > 0 ? questions.length * 60 - timeLeft : 1) : 1),
+        },
+      });
+
+      if (error || data?.error) {
+        throw new Error(data?.error || error?.message || "Failed to submit test");
+      }
+
+      navigate(`/test/${testId}/analysis`, {
+        state: {
+          results: data,
+          testName,
+        },
+      });
+    } catch (error: any) {
+      console.error("Failed to submit test:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit test. Please try again.",
+        variant: "destructive",
+      });
+      setSubmitting(false);
+    }
+  }, [attemptId, answers, timeLeft, testId, testName, navigate, submitting, questions]);
 
   const getQuestionStatus = (index: number) => {
+    const question = questions[index];
     if (index === currentQuestion) return "current";
     if (markedForReview.has(index)) return "marked";
-    if (answers[index] !== undefined) return "answered";
+    if (question && answers[question.id] !== undefined) return "answered";
     return "unanswered";
   };
 
-  const question = sampleQuestions[currentQuestion];
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading test...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const question = questions[currentQuestion];
   const answeredCount = Object.keys(answers).length;
   const markedCount = markedForReview.size;
+  const options = Array.isArray(question?.options) 
+    ? question.options 
+    : typeof question?.options === 'object' && question?.options !== null
+      ? Object.values(question.options as Record<string, string>)
+      : [];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -177,7 +209,7 @@ export default function TestInterface() {
             >
               {showPalette ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <h1 className="text-lg font-semibold font-display hidden sm:block">JEE Main Mock Test 5</h1>
+            <h1 className="text-lg font-semibold font-display hidden sm:block">{testName}</h1>
           </div>
 
           <div className="flex items-center gap-4">
@@ -190,8 +222,8 @@ export default function TestInterface() {
               {formatTime(timeLeft)}
             </div>
 
-            <Button variant="gradient" onClick={() => setShowSubmitModal(true)}>
-              Submit Test
+            <Button variant="gradient" onClick={() => setShowSubmitModal(true)} disabled={submitting}>
+              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Test"}
             </Button>
           </div>
         </div>
@@ -232,7 +264,7 @@ export default function TestInterface() {
 
               {/* Question Grid */}
               <div className="grid grid-cols-5 gap-2">
-                {sampleQuestions.map((_, index) => (
+                {questions.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => {
@@ -257,20 +289,23 @@ export default function TestInterface() {
           <div className="max-w-4xl mx-auto">
             {/* Question Header */}
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <span className="px-3 py-1 rounded-lg bg-primary/10 text-primary text-sm font-medium">
-                  Question {currentQuestion + 1} of {sampleQuestions.length}
+                  Question {currentQuestion + 1} of {questions.length}
                 </span>
                 <span className="px-3 py-1 rounded-lg bg-secondary text-muted-foreground text-sm">
-                  {question.subject}
+                  {question?.subject}
                 </span>
                 <span className={cn(
-                  "px-3 py-1 rounded-lg text-sm",
-                  question.difficulty === "easy" && "bg-success/10 text-success",
-                  question.difficulty === "medium" && "bg-warning/10 text-warning",
-                  question.difficulty === "hard" && "bg-destructive/10 text-destructive"
+                  "px-3 py-1 rounded-lg text-sm capitalize",
+                  question?.difficulty === "easy" && "bg-success/10 text-success",
+                  question?.difficulty === "medium" && "bg-warning/10 text-warning",
+                  question?.difficulty === "hard" && "bg-destructive/10 text-destructive"
                 )}>
-                  {question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}
+                  {question?.difficulty}
+                </span>
+                <span className="px-3 py-1 rounded-lg bg-secondary text-muted-foreground text-sm">
+                  +{question?.marks} / -{question?.negative_marks}
                 </span>
               </div>
               <Button
@@ -279,7 +314,7 @@ export default function TestInterface() {
                 onClick={toggleMarkForReview}
               >
                 <Flag className="w-4 h-4" />
-                {markedForReview.has(currentQuestion) ? "Marked" : "Mark for Review"}
+                {markedForReview.has(currentQuestion) ? "Marked" : "Mark"}
               </Button>
             </div>
 
@@ -291,28 +326,28 @@ export default function TestInterface() {
               transition={{ duration: 0.3 }}
               className="glass-card p-6 mb-6"
             >
-              <p className="text-lg leading-relaxed mb-8">{question.text}</p>
+              <p className="text-lg leading-relaxed mb-8">{question?.question_text}</p>
 
               {/* Options */}
               <div className="space-y-3">
-                {question.options.map((option, index) => (
+                {options.map((option, index) => (
                   <button
                     key={index}
                     onClick={() => handleAnswer(index)}
                     className={cn(
                       "question-option w-full text-left flex items-center gap-4",
-                      answers[currentQuestion] === index && "selected"
+                      question && answers[question.id] === String(index) && "selected"
                     )}
                   >
                     <span className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center font-medium text-sm",
-                      answers[currentQuestion] === index 
+                      "w-8 h-8 rounded-lg flex items-center justify-center font-medium text-sm shrink-0",
+                      question && answers[question.id] === String(index)
                         ? "bg-primary text-primary-foreground" 
                         : "bg-secondary"
                     )}>
                       {String.fromCharCode(65 + index)}
                     </span>
-                    <span>{option}</span>
+                    <span>{String(option)}</span>
                   </button>
                 ))}
               </div>
@@ -331,8 +366,8 @@ export default function TestInterface() {
 
               <Button
                 variant="gradient"
-                onClick={() => setCurrentQuestion((prev) => Math.min(sampleQuestions.length - 1, prev + 1))}
-                disabled={currentQuestion === sampleQuestions.length - 1}
+                onClick={() => setCurrentQuestion((prev) => Math.min(questions.length - 1, prev + 1))}
+                disabled={currentQuestion === questions.length - 1}
               >
                 Next
                 <ChevronRight className="w-5 h-5" />
@@ -374,7 +409,7 @@ export default function TestInterface() {
                     <XCircle className="w-5 h-5" />
                     Not Answered
                   </span>
-                  <span className="font-bold">{sampleQuestions.length - answeredCount}</span>
+                  <span className="font-bold">{questions.length - answeredCount}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 rounded-lg bg-warning/10">
                   <span className="flex items-center gap-2 text-warning">
@@ -389,8 +424,8 @@ export default function TestInterface() {
                 <Button variant="glass" className="flex-1" onClick={() => setShowSubmitModal(false)}>
                   Continue Test
                 </Button>
-                <Button variant="gradient" className="flex-1" onClick={handleSubmit}>
-                  Submit Now
+                <Button variant="gradient" className="flex-1" onClick={handleSubmit} disabled={submitting}>
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Now"}
                 </Button>
               </div>
             </motion.div>

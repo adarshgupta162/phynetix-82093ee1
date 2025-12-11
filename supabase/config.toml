@@ -1,1 +1,10 @@
 project_id = "ydqyvirmwanyllihhkml"
+
+[functions.start-test]
+verify_jwt = true
+
+[functions.get-test-questions]
+verify_jwt = true
+
+[functions.submit-test]
+verify_jwt = true

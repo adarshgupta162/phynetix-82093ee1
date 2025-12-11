@@ -1,120 +1,129 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   Search, 
   Filter, 
   Clock, 
   BookOpen, 
-  ChevronRight,
   Zap,
-  GraduationCap,
-  Atom,
-  Calculator,
-  Leaf,
   Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { supabase } from "@/integrations/supabase/client";
 
-const subjects = [
-  { id: "physics", name: "Physics", icon: Atom, color: "#3b82f6", tests: 45, chapters: 12 },
-  { id: "chemistry", name: "Chemistry", icon: Leaf, color: "#22c55e", tests: 38, chapters: 10 },
-  { id: "mathematics", name: "Mathematics", icon: Calculator, color: "#f59e0b", tests: 52, chapters: 15 },
-  { id: "biology", name: "Biology", icon: GraduationCap, color: "#8b5cf6", tests: 41, chapters: 14 },
-];
+interface Course {
+  id: string;
+  name: string;
+  color: string | null;
+  icon: string | null;
+}
 
-const tests = [
-  {
-    id: "1",
-    name: "JEE Main Mock Test 6",
-    type: "Full Length",
-    subject: "All Subjects",
-    questions: 90,
-    duration: 180,
-    difficulty: "Medium",
-    attempts: 1234,
-    rating: 4.8,
-    isNew: true
-  },
-  {
-    id: "2",
-    name: "Physics - Wave Optics",
-    type: "Chapter Test",
-    subject: "Physics",
-    questions: 25,
-    duration: 45,
-    difficulty: "Hard",
-    attempts: 567,
-    rating: 4.5,
-    isNew: false
-  },
-  {
-    id: "3",
-    name: "Organic Chemistry - GOC",
-    type: "Chapter Test",
-    subject: "Chemistry",
-    questions: 30,
-    duration: 50,
-    difficulty: "Medium",
-    attempts: 892,
-    rating: 4.7,
-    isNew: true
-  },
-  {
-    id: "4",
-    name: "Calculus - Integration",
-    type: "Chapter Test",
-    subject: "Mathematics",
-    questions: 20,
-    duration: 40,
-    difficulty: "Hard",
-    attempts: 432,
-    rating: 4.6,
-    isNew: false
-  },
-  {
-    id: "5",
-    name: "NEET Mock Test 4",
-    type: "Full Length",
-    subject: "All Subjects",
-    questions: 200,
-    duration: 200,
-    difficulty: "Medium",
-    attempts: 2341,
-    rating: 4.9,
-    isNew: false
-  },
-  {
-    id: "6",
-    name: "Thermodynamics Mastery",
-    type: "Topic Test",
-    subject: "Physics",
-    questions: 15,
-    duration: 25,
-    difficulty: "Easy",
-    attempts: 789,
-    rating: 4.4,
-    isNew: true
-  },
-];
+interface Test {
+  id: string;
+  name: string;
+  description: string | null;
+  duration_minutes: number;
+  test_type: string;
+  question_count: number;
+  attempt_count: number;
+}
 
 const difficultyColors: Record<string, string> = {
-  Easy: "text-success bg-success/10",
-  Medium: "text-warning bg-warning/10",
-  Hard: "text-destructive bg-destructive/10",
+  easy: "text-success bg-success/10",
+  medium: "text-warning bg-warning/10",
+  hard: "text-destructive bg-destructive/10",
 };
 
 export default function TestLibrary() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    // Fetch courses
+    const { data: coursesData } = await supabase
+      .from("courses")
+      .select("id, name, color, icon");
+    if (coursesData) setCourses(coursesData);
+
+    // Fetch published tests with question count
+    const { data: testsData } = await supabase
+      .from("tests")
+      .select(`
+        id,
+        name,
+        description,
+        duration_minutes,
+        test_type,
+        test_questions(count)
+      `)
+      .eq("is_published", true);
+
+    if (testsData) {
+      // Get attempt counts
+      const testsWithCounts = await Promise.all(
+        testsData.map(async (test) => {
+          const { count } = await supabase
+            .from("test_attempts")
+            .select("*", { count: "exact", head: true })
+            .eq("test_id", test.id);
+
+          return {
+            id: test.id,
+            name: test.name,
+            description: test.description,
+            duration_minutes: test.duration_minutes,
+            test_type: test.test_type,
+            question_count: (test.test_questions as { count: number }[])?.[0]?.count || 0,
+            attempt_count: count || 0,
+          };
+        })
+      );
+      setTests(testsWithCounts);
+    }
+
+    setLoading(false);
+  };
 
   const filteredTests = tests.filter((test) => {
     const matchesSearch = test.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSubject = !selectedSubject || test.subject === selectedSubject || test.subject === "All Subjects";
-    return matchesSearch && matchesSubject;
+    return matchesSearch;
   });
+
+  const getTestTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      chapter: "Chapter Test",
+      full_length: "Full Length",
+      topic: "Topic Test",
+      mock: "Mock Test",
+    };
+    return labels[type] || type;
+  };
+
+  const getDifficulty = (questionCount: number) => {
+    if (questionCount <= 20) return "easy";
+    if (questionCount <= 50) return "medium";
+    return "hard";
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -130,31 +139,33 @@ export default function TestLibrary() {
         </div>
 
         {/* Subject Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {subjects.map((subject, index) => (
-            <motion.button
-              key={subject.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-              onClick={() => setSelectedSubject(selectedSubject === subject.name ? null : subject.name)}
-              className={`stat-card text-left transition-all ${
-                selectedSubject === subject.name ? "ring-2 ring-primary" : ""
-              }`}
-            >
-              <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                style={{ backgroundColor: `${subject.color}20` }}
+        {courses.length > 0 && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {courses.map((course, index) => (
+              <motion.button
+                key={course.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+                onClick={() => setSelectedSubject(selectedSubject === course.id ? null : course.id)}
+                className={`stat-card text-left transition-all ${
+                  selectedSubject === course.id ? "ring-2 ring-primary" : ""
+                }`}
               >
-                <subject.icon className="w-6 h-6" style={{ color: subject.color }} />
-              </div>
-              <h3 className="font-semibold font-display mb-1">{subject.name}</h3>
-              <p className="text-sm text-muted-foreground">
-                {subject.tests} tests • {subject.chapters} chapters
-              </p>
-            </motion.button>
-          ))}
-        </div>
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
+                  style={{ backgroundColor: `${course.color || "#8b5cf6"}20` }}
+                >
+                  <BookOpen className="w-6 h-6" style={{ color: course.color || "#8b5cf6" }} />
+                </div>
+                <h3 className="font-semibold font-display mb-1">{course.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {tests.length} tests available
+                </p>
+              </motion.button>
+            ))}
+          </div>
+        )}
 
         {/* Search and Filter */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -174,66 +185,80 @@ export default function TestLibrary() {
         </div>
 
         {/* Test Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTests.map((test, index) => (
-            <motion.div
-              key={test.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
-              className="glass-card p-6 group hover:border-primary/40 transition-all"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
-                    {test.type}
-                  </span>
-                  {test.isNew && (
-                    <span className="px-2 py-1 rounded-md bg-success/10 text-success text-xs font-medium">
-                      New
-                    </span>
+        {filteredTests.length === 0 ? (
+          <div className="text-center py-12">
+            <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">No Tests Available</h3>
+            <p className="text-muted-foreground">
+              {searchQuery ? "No tests match your search." : "No published tests yet. Check back soon!"}
+            </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTests.map((test, index) => {
+              const difficulty = getDifficulty(test.question_count);
+              return (
+                <motion.div
+                  key={test.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  className="glass-card p-6 group hover:border-primary/40 transition-all"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
+                        {getTestTypeLabel(test.test_type)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 text-warning">
+                      <Star className="w-4 h-4 fill-warning" />
+                      <span className="text-sm font-medium">4.5</span>
+                    </div>
+                  </div>
+
+                  <h3 className="text-lg font-semibold font-display mb-2 group-hover:text-primary transition-colors">
+                    {test.name}
+                  </h3>
+
+                  {test.description && (
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                      {test.description}
+                    </p>
                   )}
-                </div>
-                <div className="flex items-center gap-1 text-warning">
-                  <Star className="w-4 h-4 fill-warning" />
-                  <span className="text-sm font-medium">{test.rating}</span>
-                </div>
-              </div>
 
-              <h3 className="text-lg font-semibold font-display mb-2 group-hover:text-primary transition-colors">
-                {test.name}
-              </h3>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                    <span className="flex items-center gap-1">
+                      <BookOpen className="w-4 h-4" />
+                      {test.question_count} Q
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {test.duration_minutes} min
+                    </span>
+                  </div>
 
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                <span className="flex items-center gap-1">
-                  <BookOpen className="w-4 h-4" />
-                  {test.questions} Q
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  {test.duration} min
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded-md text-xs font-medium ${difficultyColors[test.difficulty]}`}>
-                    {test.difficulty}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {test.attempts.toLocaleString()} attempts
-                  </span>
-                </div>
-                <Link to={`/test/${test.id}`}>
-                  <Button variant="glass" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                    <Zap className="w-4 h-4" />
-                    Start
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 rounded-md text-xs font-medium capitalize ${difficultyColors[difficulty]}`}>
+                        {difficulty}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {test.attempt_count.toLocaleString()} attempts
+                      </span>
+                    </div>
+                    <Link to={`/test/${test.id}`}>
+                      <Button variant="glass" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                        <Zap className="w-4 h-4" />
+                        Start
+                      </Button>
+                    </Link>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
