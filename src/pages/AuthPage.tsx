@@ -30,13 +30,22 @@ export default function AuthPage() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, isAdmin, isLoading: authLoading } = useAuth();
 
+  // Redirect based on role when user is already authenticated
   useEffect(() => {
-    if (user) {
-      navigate("/dashboard");
+    if (!authLoading && user) {
+      // Wait a moment for admin status to be determined
+      const timer = setTimeout(() => {
+        if (isAdmin) {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [user, navigate]);
+  }, [user, isAdmin, authLoading, navigate]);
 
   const validateForm = () => {
     try {
@@ -90,10 +99,11 @@ export default function AuthPage() {
             title: "Account created!",
             description: "Welcome to QuizMaster!",
           });
+          // New users are students by default, go to dashboard
           navigate("/dashboard");
         }
       } else {
-        const { error } = await signIn(email, password);
+        const { error, isAdmin: userIsAdmin } = await signIn(email, password);
         if (error) {
           toast({
             title: "Login failed",
@@ -103,9 +113,10 @@ export default function AuthPage() {
         } else {
           toast({
             title: "Welcome back!",
-            description: "You've been successfully logged in.",
+            description: userIsAdmin ? "Redirecting to admin dashboard..." : "You've been successfully logged in.",
           });
-          navigate("/dashboard");
+          // Smart redirect based on role
+          navigate(userIsAdmin ? "/admin" : "/dashboard");
         }
       }
     } finally {

@@ -117,6 +117,9 @@ export type Database = {
           marks: number | null
           negative_marks: number | null
           options: Json | null
+          partial_marking: boolean | null
+          pdf_page_number: number | null
+          question_number: number | null
           question_text: string
           question_type: string
           updated_at: string
@@ -131,6 +134,9 @@ export type Database = {
           marks?: number | null
           negative_marks?: number | null
           options?: Json | null
+          partial_marking?: boolean | null
+          pdf_page_number?: number | null
+          question_number?: number | null
           question_text: string
           question_type?: string
           updated_at?: string
@@ -145,6 +151,9 @@ export type Database = {
           marks?: number | null
           negative_marks?: number | null
           options?: Json | null
+          partial_marking?: boolean | null
+          pdf_page_number?: number | null
+          question_number?: number | null
           question_text?: string
           question_type?: string
           updated_at?: string
@@ -163,7 +172,11 @@ export type Database = {
         Row: {
           answers: Json | null
           completed_at: string | null
+          fullscreen_exit_count: number | null
           id: string
+          percentile: number | null
+          rank: number | null
+          roll_number: string | null
           score: number | null
           started_at: string
           test_id: string
@@ -174,7 +187,11 @@ export type Database = {
         Insert: {
           answers?: Json | null
           completed_at?: string | null
+          fullscreen_exit_count?: number | null
           id?: string
+          percentile?: number | null
+          rank?: number | null
+          roll_number?: string | null
           score?: number | null
           started_at?: string
           test_id: string
@@ -185,7 +202,11 @@ export type Database = {
         Update: {
           answers?: Json | null
           completed_at?: string | null
+          fullscreen_exit_count?: number | null
           id?: string
+          percentile?: number | null
+          rank?: number | null
+          roll_number?: string | null
           score?: number | null
           started_at?: string
           test_id?: string
@@ -245,9 +266,12 @@ export type Database = {
           created_by: string | null
           description: string | null
           duration_minutes: number
+          exam_type: string | null
           id: string
+          instructions_json: Json | null
           is_published: boolean | null
           name: string
+          pdf_url: string | null
           test_type: string
           updated_at: string
         }
@@ -256,9 +280,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           duration_minutes?: number
+          exam_type?: string | null
           id?: string
+          instructions_json?: Json | null
           is_published?: boolean | null
           name: string
+          pdf_url?: string | null
           test_type?: string
           updated_at?: string
         }
@@ -267,9 +294,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           duration_minutes?: number
+          exam_type?: string | null
           id?: string
+          instructions_json?: Json | null
           is_published?: boolean | null
           name?: string
+          pdf_url?: string | null
           test_type?: string
           updated_at?: string
         }
@@ -279,16 +309,19 @@ export type Database = {
         Row: {
           id: string
           role: Database["public"]["Enums"]["app_role"]
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
