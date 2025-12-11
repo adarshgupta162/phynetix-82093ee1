@@ -34,7 +34,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard");
+      navigate("/admindashboard");
     }
   }, [user, navigate]);
 
