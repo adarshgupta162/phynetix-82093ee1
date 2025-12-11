@@ -9,6 +9,7 @@ import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import TestLibrary from "./pages/TestLibrary";
 import TestInterface from "./pages/TestInterface";
+import PDFTestInterface from "./pages/PDFTestInterface";
 import TestAnalysis from "./pages/TestAnalysis";
 import ProfilePage from "./pages/ProfilePage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tests" element={<TestLibrary />} />
             <Route path="/test/:testId" element={<TestInterface />} />
+            <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
             <Route path="/test/:testId/analysis" element={<TestAnalysis />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/attempts" element={<Dashboard />} />
