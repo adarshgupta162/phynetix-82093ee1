@@ -17,6 +17,7 @@ import {
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
@@ -133,6 +134,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {!collapsed && <span className="font-medium">Student View</span>}
           </button>
 
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-center py-2">
+            <ThemeToggle />
+          </div>
           {/* Collapse Button */}
           <button
             onClick={() => setCollapsed(!collapsed)}
