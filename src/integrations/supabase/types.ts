@@ -133,6 +133,192 @@ export type Database = {
         }
         Relationships: []
       }
+      qb_attempts: {
+        Row: {
+          answer: Json
+          attempted_at: string
+          id: string
+          is_correct: boolean
+          marks_obtained: number
+          question_id: string
+          user_id: string
+        }
+        Insert: {
+          answer: Json
+          attempted_at?: string
+          id?: string
+          is_correct: boolean
+          marks_obtained: number
+          question_id: string
+          user_id: string
+        }
+        Update: {
+          answer?: Json
+          attempted_at?: string
+          id?: string
+          is_correct?: boolean
+          marks_obtained?: number
+          question_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_attempts_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "qb_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qb_bookmarks: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_bookmarks_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "qb_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qb_chapters: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          order_index: number
+          title: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          title: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          order_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_chapters_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "qb_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qb_courses: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          slug: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          slug: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          slug?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      qb_questions: {
+        Row: {
+          chapter_id: string
+          correct: Json
+          course_id: string
+          created_at: string
+          difficulty: string
+          id: string
+          marks: Json
+          options: Json | null
+          pdf_coords: Json | null
+          pdf_page: number | null
+          qno: number
+          text_source: string
+          type: string
+        }
+        Insert: {
+          chapter_id: string
+          correct: Json
+          course_id: string
+          created_at?: string
+          difficulty: string
+          id?: string
+          marks?: Json
+          options?: Json | null
+          pdf_coords?: Json | null
+          pdf_page?: number | null
+          qno: number
+          text_source?: string
+          type: string
+        }
+        Update: {
+          chapter_id?: string
+          correct?: Json
+          course_id?: string
+          created_at?: string
+          difficulty?: string
+          id?: string
+          marks?: Json
+          options?: Json | null
+          pdf_coords?: Json | null
+          pdf_page?: number | null
+          qno?: number
+          text_source?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qb_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "qb_chapters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qb_questions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "qb_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           chapter_id: string

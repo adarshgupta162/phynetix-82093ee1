@@ -17,9 +17,9 @@ import MyAttempts from "./pages/MyAttempts";
 import Analytics from "./pages/Analytics";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
+import QuestionBankPage from "./pages/QuestionBankPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminCourses from "./pages/admin/AdminCourses";
-import AdminQuestions from "./pages/admin/AdminQuestions";
+import AdminQuestionBank from "./pages/admin/AdminQuestionBank";
 import AdminTests from "./pages/admin/AdminTests";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminSettings from "./pages/admin/AdminSettings";
@@ -46,6 +46,7 @@ const App = () => (
             <Route path="/signup" element={<AuthPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tests" element={<TestLibrary />} />
+            <Route path="/question-bank" element={<QuestionBankPage />} />
             <Route path="/test/:testId" element={<TestInterface />} />
             <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
             <Route path="/test/:testId/analysis" element={<DetailedAnalysis />} />
@@ -55,8 +56,7 @@ const App = () => (
             <Route path="/settings" element={<SettingsPage />} />
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/courses" element={<AdminCourses />} />
-            <Route path="/admin/questions" element={<AdminQuestions />} />
+            <Route path="/admin/question-bank" element={<AdminQuestionBank />} />
             <Route path="/admin/tests" element={<AdminTests />} />
             <Route path="/admin/test-creator" element={<TestCreator />} />
             <Route path="/admin/test-editor/:testId" element={<TestEditor />} />

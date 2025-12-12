@@ -22,8 +22,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
   { icon: FileText, label: "PDF Tests", path: "/admin/pdf-tests" },
-  { icon: BookOpen, label: "Courses", path: "/admin/courses" },
-  { icon: FileQuestion, label: "Questions", path: "/admin/questions" },
+  { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
   { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
   { icon: Users, label: "Users", path: "/admin/users" },
   { icon: Settings, label: "Settings", path: "/admin/settings" },
