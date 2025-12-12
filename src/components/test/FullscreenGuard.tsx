@@ -8,16 +8,18 @@ interface FullscreenGuardProps {
   maxExits?: number;
   onMaxExitsReached: () => void;
   onExitCountChange?: (count: number) => void;
+  initialExitCount?: number;
 }
 
 export default function FullscreenGuard({
   children,
   maxExits = 7,
   onMaxExitsReached,
-  onExitCountChange
+  onExitCountChange,
+  initialExitCount = 0
 }: FullscreenGuardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [exitCount, setExitCount] = useState(0);
+  const [exitCount, setExitCount] = useState(initialExitCount);
   const [showWarning, setShowWarning] = useState(false);
 
   const enterFullscreen = useCallback(async () => {

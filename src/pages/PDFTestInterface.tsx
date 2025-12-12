@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +9,7 @@ import OMRPanel from '@/components/test/OMRPanel';
 import FullscreenGuard from '@/components/test/FullscreenGuard';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { FileText, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, AlertTriangle, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 
 interface Question {
   id: string;
@@ -30,6 +30,14 @@ interface TestData {
   instructions_json: any;
 }
 
+interface ExistingAttempt {
+  id: string;
+  started_at: string;
+  answers: Record<string, any> | null;
+  roll_number: string | null;
+  fullscreen_exit_count: number | null;
+}
+
 export default function PDFTestInterface() {
   const { testId } = useParams();
   const navigate = useNavigate();
@@ -37,13 +45,14 @@ export default function PDFTestInterface() {
   const { toast } = useToast();
 
   // States
-  const [phase, setPhase] = useState<'loading' | 'instructions' | 'test' | 'submitting'>('loading');
+  const [phase, setPhase] = useState<'loading' | 'instructions' | 'resume' | 'test' | 'submitting'>('loading');
   const [testData, setTestData] = useState<TestData | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [rollNumber, setRollNumber] = useState('');
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfLoaded, setPdfLoaded] = useState(false);
+  const [existingAttempt, setExistingAttempt] = useState<ExistingAttempt | null>(null);
 
   // Test state
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -55,6 +64,9 @@ export default function PDFTestInterface() {
   // Instructions state
   const [agreedToInstructions, setAgreedToInstructions] = useState(false);
   const [instructions, setInstructions] = useState<string[]>([]);
+
+  // Auto-save interval ref
+  const [lastSaveTime, setLastSaveTime] = useState(Date.now());
 
   // Generate roll number
   const generateRollNumber = useCallback(() => {
@@ -86,7 +98,52 @@ export default function PDFTestInterface() {
         }
 
         setTestData(test);
-        setTimeLeft(test.duration_minutes * 60);
+
+        // Check for existing incomplete attempt
+        const { data: existingAttemptData } = await supabase
+          .from('test_attempts')
+          .select('id, started_at, answers, roll_number, fullscreen_exit_count, completed_at')
+          .eq('test_id', testId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existingAttemptData) {
+          if (existingAttemptData.completed_at) {
+            // Already completed - redirect to analysis
+            toast({ title: 'Test already completed', description: 'Redirecting to results...' });
+            navigate(`/test/${testId}/analysis?attemptId=${existingAttemptData.id}`);
+            return;
+          }
+
+          // Check if time has expired
+          const startTime = new Date(existingAttemptData.started_at).getTime();
+          const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+          const remainingTime = (test.duration_minutes * 60) - elapsedSeconds;
+
+          if (remainingTime <= 0) {
+            // Time expired - auto submit
+            toast({ title: 'Time expired', description: 'Submitting your test...' });
+            setAttemptId(existingAttemptData.id);
+            const savedAnswers = (existingAttemptData.answers as Record<string, any>) || {};
+            setAnswers(savedAnswers);
+            await autoSubmitExpiredTest(existingAttemptData.id, savedAnswers, test.duration_minutes * 60);
+            return;
+          }
+
+          // Show resume option
+          setExistingAttempt({
+            id: existingAttemptData.id,
+            started_at: existingAttemptData.started_at,
+            answers: (existingAttemptData.answers as Record<string, any>) || null,
+            roll_number: existingAttemptData.roll_number,
+            fullscreen_exit_count: existingAttemptData.fullscreen_exit_count,
+          });
+          setTimeLeft(remainingTime);
+          setPhase('resume');
+        } else {
+          setTimeLeft(test.duration_minutes * 60);
+          setPhase('instructions');
+        }
 
         // Fetch questions from test_section_questions (PDF Tests)
         const { data: sectionQuestions, error: sectionQuestionsError } = await supabase
@@ -174,8 +231,6 @@ export default function PDFTestInterface() {
 
         // Generate roll number
         setRollNumber(generateRollNumber());
-
-        setPhase('instructions');
       } catch (err) {
         console.error('Error initializing test:', err);
         toast({ title: 'Error loading test', variant: 'destructive' });
@@ -184,6 +239,29 @@ export default function PDFTestInterface() {
 
     initializeTest();
   }, [testId, user, navigate, toast, generateRollNumber]);
+
+  // Auto-submit expired test
+  const autoSubmitExpiredTest = async (attemptId: string, savedAnswers: Record<string, any>, totalSeconds: number) => {
+    try {
+      setPhase('submitting');
+      
+      const { data, error } = await supabase.functions.invoke('submit-test', {
+        body: {
+          attempt_id: attemptId,
+          answers: savedAnswers,
+          time_taken_seconds: totalSeconds
+        }
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Test auto-submitted', description: 'Time expired' });
+      navigate(`/test/${testId}/analysis?attemptId=${attemptId}`);
+    } catch (err: any) {
+      console.error('Error auto-submitting:', err);
+      toast({ title: 'Error submitting test', variant: 'destructive' });
+    }
+  };
 
   // Generate instructions based on exam type
   const generateInstructions = (examType: string) => {
@@ -194,6 +272,8 @@ export default function PDFTestInterface() {
       'The test will auto-submit when the timer reaches zero.',
       'Do not exit fullscreen mode during the test.',
       'Maximum 7 fullscreen exits allowed. 8th exit will auto-submit the test.',
+      'Your answers are auto-saved every 10 seconds.',
+      'If you leave the test, you can resume from where you left off.',
     ];
 
     if (examType === 'jee_advanced') {
@@ -212,6 +292,17 @@ export default function PDFTestInterface() {
         'Numerical Questions: +4 marks for correct, 0 for incorrect.',
       ];
     }
+  };
+
+  // Resume test
+  const resumeTest = async () => {
+    if (!existingAttempt) return;
+
+    setAttemptId(existingAttempt.id);
+    setAnswers(existingAttempt.answers || {});
+    setRollNumber(existingAttempt.roll_number || generateRollNumber());
+    setFullscreenExitCount(existingAttempt.fullscreen_exit_count || 0);
+    setPhase('test');
   };
 
   // Start test
@@ -239,6 +330,28 @@ export default function PDFTestInterface() {
       toast({ title: 'Error starting test', description: err.message, variant: 'destructive' });
     }
   };
+
+  // Auto-save answers
+  useEffect(() => {
+    if (phase !== 'test' || !attemptId) return;
+
+    const saveInterval = setInterval(async () => {
+      const timeTaken = testData ? (testData.duration_minutes * 60) - timeLeft : 0;
+      
+      await supabase
+        .from('test_attempts')
+        .update({ 
+          answers,
+          time_taken_seconds: timeTaken,
+        })
+        .eq('id', attemptId);
+      
+      setLastSaveTime(Date.now());
+      console.log('Auto-saved answers at', new Date().toLocaleTimeString());
+    }, 10000); // Save every 10 seconds
+
+    return () => clearInterval(saveInterval);
+  }, [phase, attemptId, answers, timeLeft, testData]);
 
   // Timer
   useEffect(() => {
@@ -330,11 +443,6 @@ export default function PDFTestInterface() {
     }
   }, [attemptId]);
 
-  // Navigate to question's PDF page
-  useEffect(() => {
-    // This would be handled by PDFViewer if needed
-  }, [currentQuestion, questions]);
-
   // Student name from profile
   const [studentName, setStudentName] = useState('');
   useEffect(() => {
@@ -350,6 +458,13 @@ export default function PDFTestInterface() {
     fetchProfile();
   }, [user]);
 
+  // Format remaining time for resume screen
+  const formatTimeForDisplay = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  };
+
   // Loading phase
   if (phase === 'loading') {
     return (
@@ -357,6 +472,66 @@ export default function PDFTestInterface() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading test...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Resume phase
+  if (phase === 'resume' && existingAttempt) {
+    return (
+      <div className="min-h-screen bg-background p-4 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card p-8"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                <Play className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold font-display">Resume Test</h1>
+                <p className="text-muted-foreground">{testData?.name}</p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-[hsl(45,93%,47%)]/10 border border-[hsl(45,93%,47%)]/30 mb-6">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-[hsl(45,93%,47%)] flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-[hsl(45,93%,47%)]">Test in Progress</p>
+                  <p className="text-sm text-muted-foreground">
+                    You have an ongoing test attempt. Resume to continue where you left off.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="p-4 rounded-lg bg-secondary/50 text-center">
+                <p className="text-2xl font-bold text-primary">{formatTimeForDisplay(timeLeft)}</p>
+                <p className="text-sm text-muted-foreground">Time Remaining</p>
+              </div>
+              <div className="p-4 rounded-lg bg-secondary/50 text-center">
+                <p className="text-2xl font-bold text-primary">
+                  {Object.keys(existingAttempt.answers || {}).length}
+                </p>
+                <p className="text-sm text-muted-foreground">Questions Answered</p>
+              </div>
+            </div>
+
+            <Button
+              variant="gradient"
+              size="lg"
+              className="w-full"
+              onClick={resumeTest}
+            >
+              <Play className="w-5 h-5 mr-2" />
+              Resume Test
+            </Button>
+          </motion.div>
         </div>
       </div>
     );
@@ -474,6 +649,7 @@ export default function PDFTestInterface() {
       maxExits={7}
       onMaxExitsReached={handleMaxExitsReached}
       onExitCountChange={handleExitCountChange}
+      initialExitCount={fullscreenExitCount}
     >
       <div className="min-h-screen bg-background flex">
         {/* Left side - PDF Viewer (70%) */}
