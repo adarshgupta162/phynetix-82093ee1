@@ -17,6 +17,8 @@ import AdminCourses from "./pages/admin/AdminCourses";
 import AdminQuestions from "./pages/admin/AdminQuestions";
 import AdminTests from "./pages/admin/AdminTests";
 import AdminUsers from "./pages/admin/AdminUsers";
+import TestCreator from "./pages/admin/TestCreator";
+import TestEditor from "./pages/admin/TestEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +49,8 @@ const App = () => (
             <Route path="/admin/courses" element={<AdminCourses />} />
             <Route path="/admin/questions" element={<AdminQuestions />} />
             <Route path="/admin/tests" element={<AdminTests />} />
+            <Route path="/admin/test-creator" element={<TestCreator />} />
+            <Route path="/admin/test-editor/:testId" element={<TestEditor />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/settings" element={<AdminDashboard />} />
             <Route path="*" element={<NotFound />} />

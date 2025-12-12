@@ -269,7 +269,7 @@ export default function AdminTests() {
               Create and manage tests with PDF support
             </p>
           </div>
-          <Button variant="gradient" onClick={() => setShowModal(true)}>
+          <Button variant="gradient" onClick={() => window.location.href = '/admin/test-creator'}>
             <Plus className="w-5 h-5" />
             Create Test
           </Button>

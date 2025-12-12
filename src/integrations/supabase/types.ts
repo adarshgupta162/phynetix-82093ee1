@@ -260,6 +260,136 @@ export type Database = {
           },
         ]
       }
+      test_section_questions: {
+        Row: {
+          correct_answer: Json
+          created_at: string
+          id: string
+          marks: number | null
+          negative_marks: number | null
+          options: Json | null
+          order_index: number | null
+          pdf_page: number | null
+          question_number: number
+          question_text: string | null
+          section_id: string
+          test_id: string
+          updated_at: string
+        }
+        Insert: {
+          correct_answer: Json
+          created_at?: string
+          id?: string
+          marks?: number | null
+          negative_marks?: number | null
+          options?: Json | null
+          order_index?: number | null
+          pdf_page?: number | null
+          question_number: number
+          question_text?: string | null
+          section_id: string
+          test_id: string
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: Json
+          created_at?: string
+          id?: string
+          marks?: number | null
+          negative_marks?: number | null
+          options?: Json | null
+          order_index?: number | null
+          pdf_page?: number | null
+          question_number?: number
+          question_text?: string | null
+          section_id?: string
+          test_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_section_questions_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "test_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_section_questions_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_sections: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          order_index: number | null
+          section_type: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          order_index?: number | null
+          section_type?: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          order_index?: number | null
+          section_type?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_sections_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "test_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_subjects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          order_index: number | null
+          test_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          order_index?: number | null
+          test_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          order_index?: number | null
+          test_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_subjects_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tests: {
         Row: {
           created_at: string
