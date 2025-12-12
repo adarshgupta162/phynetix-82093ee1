@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -184,6 +185,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               <ChevronLeft className="w-5 h-5" />
             )}
           </button>
+
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-center py-2">
+            <ThemeToggle />
+          </div>
 
           {/* Logout */}
           <button
