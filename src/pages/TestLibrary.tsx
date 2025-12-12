@@ -69,13 +69,23 @@ export default function TestLibrary() {
       .eq("is_published", true);
 
     if (testsData) {
-      // Get attempt counts
+      // Get attempt counts and proper question counts
       const testsWithCounts = await Promise.all(
         testsData.map(async (test) => {
-          const { count } = await supabase
+          const { count: attemptCount } = await supabase
             .from("test_attempts")
             .select("*", { count: "exact", head: true })
             .eq("test_id", test.id);
+
+          // For PDF tests, get question count from test_section_questions
+          let questionCount = (test.test_questions as { count: number }[])?.[0]?.count || 0;
+          if (test.test_type === 'pdf') {
+            const { count: pdfQuestionCount } = await supabase
+              .from("test_section_questions")
+              .select("*", { count: "exact", head: true })
+              .eq("test_id", test.id);
+            questionCount = pdfQuestionCount || 0;
+          }
 
           return {
             id: test.id,
@@ -83,8 +93,8 @@ export default function TestLibrary() {
             description: test.description,
             duration_minutes: test.duration_minutes,
             test_type: test.test_type,
-            question_count: (test.test_questions as { count: number }[])?.[0]?.count || 0,
-            attempt_count: count || 0,
+            question_count: questionCount,
+            attempt_count: attemptCount || 0,
           };
         })
       );
@@ -247,7 +257,7 @@ export default function TestLibrary() {
                         {test.attempt_count.toLocaleString()} attempts
                       </span>
                     </div>
-                    <Link to={`/test/${test.id}`}>
+                    <Link to={test.test_type === 'pdf' ? `/pdf-test/${test.id}` : `/test/${test.id}`}>
                       <Button variant="glass" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         <Zap className="w-4 h-4" />
                         Start
