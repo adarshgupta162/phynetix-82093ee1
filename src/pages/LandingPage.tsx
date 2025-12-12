@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import { useRef, useEffect, useState } from "react";
 import { 
   BookOpen, 
   Trophy, 
@@ -14,9 +15,18 @@ import {
   Shield,
   GraduationCap,
   Atom,
-  FlaskConical
+  FlaskConical,
+  ChevronDown,
+  Users,
+  Award
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const features = [
   {
@@ -78,6 +88,76 @@ const examTypes = [
   }
 ];
 
+const stats = [
+  { value: 5000, suffix: "+", label: "Students", icon: Users },
+  { value: 500, suffix: "+", label: "Tests Available", icon: FileText },
+  { value: 10000, suffix: "+", label: "Questions", icon: BookOpen },
+  { value: 95, suffix: "%", label: "Satisfaction", icon: Award }
+];
+
+const faqs = [
+  {
+    question: "What exams does PhyNetix support?",
+    answer: "PhyNetix currently supports JEE Mains, JEE Advanced, and NEET exam patterns. Our tests are designed to match the exact format, timing, and marking scheme of these competitive exams."
+  },
+  {
+    question: "How does the PDF-based test work?",
+    answer: "Our unique interface displays the question paper as a PDF on the left side, just like in the actual exam. On the right, you get an OMR-style panel to mark your answers. This gives you the most realistic practice experience."
+  },
+  {
+    question: "Can I resume a test if I leave midway?",
+    answer: "Yes! Your progress is automatically saved every 10 seconds. If you need to leave, you can resume the test later from where you left off. The timer continues on the server, so manage your time wisely."
+  },
+  {
+    question: "How is the ranking calculated?",
+    answer: "Rankings are calculated based on your score and the time taken to complete the test. Students with higher scores rank above, and for tied scores, faster completion time determines the higher rank."
+  },
+  {
+    question: "What happens if I exit fullscreen during a test?",
+    answer: "For secure tests, exiting fullscreen triggers a warning. You have a limited number of exits allowed (typically 7). Exceeding this limit will auto-submit your test to maintain exam integrity."
+  },
+  {
+    question: "Can I see my mistakes after the test?",
+    answer: "Absolutely! After submission, you get a detailed analysis showing each question, your answer, the correct answer, and your marks. The PDF is displayed alongside so you can review everything in context."
+  }
+];
+
+// Animated Counter Component
+function AnimatedCounter({ value, suffix = "", duration = 2 }: { value: number; suffix?: string; duration?: number }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    let startTime: number;
+    let animationFrame: number;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
+      
+      // Easing function for smooth animation
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      setCount(Math.floor(easeOutQuart * value));
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [isInView, value, duration]);
+
+  return (
+    <span ref={ref}>
+      {count.toLocaleString()}{suffix}
+    </span>
+  );
+}
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background overflow-hidden">
@@ -101,7 +181,7 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8">
             <a href="#exams" className="text-muted-foreground hover:text-foreground transition-colors">Exams</a>
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#preview" className="text-muted-foreground hover:text-foreground transition-colors">Preview</a>
+            <a href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -184,6 +264,30 @@ export default function LandingPage() {
                 Secure Test Environment
               </span>
             </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Animated Stats Section */}
+      <section className="relative z-10 py-12 border-t border-border/50">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+            {stats.map((stat, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="glass-card p-6 text-center group hover:scale-105 transition-transform duration-300"
+              >
+                <stat.icon className="w-8 h-8 text-primary mx-auto mb-3 group-hover:scale-110 transition-transform" />
+                <div className="text-3xl md:text-4xl font-bold font-display gradient-text mb-1">
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                </div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -402,6 +506,45 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section id="faq" className="relative z-10 py-16 border-t border-border/50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              Frequently Asked <span className="gradient-text">Questions</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Everything you need to know about PhyNetix.
+            </p>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="max-w-3xl mx-auto"
+          >
+            <Accordion type="single" collapsible className="space-y-4">
+              {faqs.map((faq, index) => (
+                <AccordionItem 
+                  key={index} 
+                  value={`item-${index}`}
+                  className="glass-card border border-border/50 rounded-xl px-6 data-[state=open]:bg-muted/30"
+                >
+                  <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground pb-5">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </motion.div>
         </div>
       </section>
 
