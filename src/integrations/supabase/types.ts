@@ -295,6 +295,7 @@ export type Database = {
           correct_answer: Json
           created_at: string
           id: string
+          is_bonus: boolean | null
           marks: number | null
           negative_marks: number | null
           options: Json | null
@@ -310,6 +311,7 @@ export type Database = {
           correct_answer: Json
           created_at?: string
           id?: string
+          is_bonus?: boolean | null
           marks?: number | null
           negative_marks?: number | null
           options?: Json | null
@@ -325,6 +327,7 @@ export type Database = {
           correct_answer?: Json
           created_at?: string
           id?: string
+          is_bonus?: boolean | null
           marks?: number | null
           negative_marks?: number | null
           options?: Json | null

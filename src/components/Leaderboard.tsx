@@ -42,8 +42,7 @@ export default function Leaderboard({ testId, currentUserId }: LeaderboardProps)
       .eq("test_id", testId)
       .not("completed_at", "is", null)
       .order("score", { ascending: false })
-      .order("time_taken_seconds", { ascending: true })
-      .limit(50);
+      .order("time_taken_seconds", { ascending: true });
 
     if (attempts && attempts.length > 0) {
       // Fetch profiles for all users
