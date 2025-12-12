@@ -5,75 +5,47 @@ import {
   Trophy, 
   Target, 
   Zap, 
-  Users, 
   BarChart3,
   ArrowRight,
-  Star,
-  CheckCircle2,
   Brain,
-  Sparkles
+  Sparkles,
+  FileText,
+  Clock,
+  Shield
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const features = [
   {
-    icon: BookOpen,
-    title: "10,000+ Questions",
-    description: "Comprehensive question bank covering all subjects and chapters"
+    icon: FileText,
+    title: "PDF-Based Tests",
+    description: "Real exam experience with PDF question papers and OMR-style answering"
   },
   {
     icon: Target,
-    title: "Smart Analytics",
-    description: "Detailed performance analysis with subject-wise breakdown"
+    title: "JEE & NEET Pattern",
+    description: "Tests designed exactly like JEE Mains, JEE Advanced & NEET exams"
   },
   {
     icon: Brain,
-    title: "AI-Powered Learning",
-    description: "Personalized recommendations to improve faster"
+    title: "AI Analysis",
+    description: "Get personalized insights and improvement suggestions"
   },
   {
     icon: Trophy,
-    title: "Rank Predictor",
-    description: "Get percentile predictions based on your performance"
+    title: "Live Rankings",
+    description: "Compare your performance with peers through leaderboards"
   },
   {
-    icon: Zap,
-    title: "Instant Results",
-    description: "Real-time test evaluation with detailed solutions"
+    icon: Clock,
+    title: "Timed Practice",
+    description: "Simulate real exam conditions with countdown timers"
   },
   {
     icon: BarChart3,
-    title: "Progress Tracking",
-    description: "Track your journey with beautiful visualizations"
+    title: "Detailed Analytics",
+    description: "Track your progress with subject-wise performance breakdown"
   }
-];
-
-const testimonials = [
-  {
-    name: "Priya Sharma",
-    role: "JEE Advanced 2024 - AIR 342",
-    content: "PhyNetix's analytics helped me identify my weak areas. The AI suggestions were incredibly accurate!",
-    avatar: "PS"
-  },
-  {
-    name: "Rahul Verma",
-    role: "NEET 2024 - 685/720",
-    content: "The question quality and test interface are unmatched. Felt like the real exam!",
-    avatar: "RV"
-  },
-  {
-    name: "Ananya Singh",
-    role: "JEE Main 2024 - 99.8%ile",
-    content: "Started using PhyNetix 6 months before my exam. Best decision ever!",
-    avatar: "AS"
-  }
-];
-
-const stats = [
-  { value: "50K+", label: "Students" },
-  { value: "10K+", label: "Questions" },
-  { value: "500+", label: "Tests" },
-  { value: "95%", label: "Success Rate" }
 ];
 
 export default function LandingPage() {
@@ -98,16 +70,15 @@ export default function LandingPage() {
           
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
-            <a href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#about" className="text-muted-foreground hover:text-foreground transition-colors">About</a>
           </nav>
 
-          <div className="flex items-center gap-4">
-            <Link to="/login">
+          <div className="flex items-center gap-3">
+            <Link to="/auth">
               <Button variant="ghost">Login</Button>
             </Link>
-            <Link to="/signup">
-              <Button variant="gradient">Get Started</Button>
+            <Link to="/auth">
+              <Button variant="gradient">Sign Up</Button>
             </Link>
           </div>
         </div>
@@ -124,7 +95,7 @@ export default function LandingPage() {
             >
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
                 <Sparkles className="w-4 h-4" />
-                AI-Powered Learning Platform
+                JEE & NEET Test Platform
               </span>
             </motion.div>
 
@@ -134,8 +105,8 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.1 }}
               className="text-4xl md:text-6xl lg:text-7xl font-bold font-display mb-6 leading-tight"
             >
-              Master Your Exams with{" "}
-              <span className="gradient-text">Smart Practice</span>
+              Practice Tests That{" "}
+              <span className="gradient-text">Feel Real</span>
             </motion.h1>
 
             <motion.p
@@ -144,8 +115,8 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
             >
-              Experience the future of test preparation with AI-driven insights, 
-              detailed analytics, and a question bank designed by experts.
+              Experience authentic exam conditions with PDF-based tests, 
+              OMR-style answering, and detailed performance analytics.
             </motion.p>
 
             <motion.div
@@ -154,34 +125,33 @@ export default function LandingPage() {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
-              <Link to="/signup">
+              <Link to="/auth">
                 <Button variant="gradient" size="xl" className="w-full sm:w-auto">
-                  Start Free Trial
+                  Get Started
                   <ArrowRight className="w-5 h-5" />
-                </Button>
-              </Link>
-              <Link to="/tests">
-                <Button variant="glass" size="xl" className="w-full sm:w-auto">
-                  Explore Tests
                 </Button>
               </Link>
             </motion.div>
 
-            {/* Stats */}
+            {/* Quick Info */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16"
+              className="flex flex-wrap items-center justify-center gap-6 mt-12 text-sm text-muted-foreground"
             >
-              {stats.map((stat, index) => (
-                <div key={index} className="glass-card p-6 text-center">
-                  <div className="text-3xl md:text-4xl font-bold font-display gradient-text mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-muted-foreground">{stat.label}</div>
-                </div>
-              ))}
+              <span className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-primary" />
+                JEE Mains Pattern
+              </span>
+              <span className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-primary" />
+                JEE Advanced Pattern
+              </span>
+              <span className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                Secure Test Environment
+              </span>
             </motion.div>
           </div>
         </div>
@@ -192,10 +162,10 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
-              Everything You Need to <span className="gradient-text">Succeed</span>
+              Why Choose <span className="gradient-text">PhyNetix</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Our platform combines cutting-edge technology with expert content to give you the best preparation experience.
+              Built specifically for JEE and NEET aspirants who want authentic exam practice.
             </p>
           </div>
 
@@ -220,79 +190,31 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="relative z-10 py-20 border-t border-border/50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
-              Loved by <span className="gradient-text">Toppers</span>
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Join thousands of successful students who achieved their dreams with PhyNetix.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="glass-card p-6"
-              >
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-warning text-warning" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-6">"{testimonial.content}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-sm font-semibold">
-                    {testimonial.avatar}
-                  </div>
-                  <div>
-                    <div className="font-semibold">{testimonial.name}</div>
-                    <div className="text-sm text-muted-foreground">{testimonial.role}</div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="relative z-10 py-20 border-t border-border/50">
+      {/* About Section */}
+      <section id="about" className="relative z-10 py-20 border-t border-border/50">
         <div className="container mx-auto px-4">
           <div className="glass-card p-8 md:p-12 text-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-primary opacity-5" />
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
-                Ready to Start Your Journey?
+                Start Your Preparation Today
               </h2>
               <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-                Join PhyNetix today and get access to thousands of questions, 
-                personalized analytics, and AI-powered recommendations.
+                Join PhyNetix and experience test preparation the way it should be — 
+                realistic, insightful, and focused on your success.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link to="/signup">
+                <Link to="/auth">
                   <Button variant="gradient" size="xl">
-                    Get Started for Free
+                    Create Account
                     <ArrowRight className="w-5 h-5" />
                   </Button>
                 </Link>
-              </div>
-              <div className="flex items-center justify-center gap-6 mt-6 text-sm text-muted-foreground">
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-success" />
-                  No credit card required
-                </span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-success" />
-                  14-day free trial
-                </span>
+                <Link to="/auth">
+                  <Button variant="glass" size="xl">
+                    Login
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
@@ -308,11 +230,6 @@ export default function LandingPage() {
                 <Sparkles className="w-4 h-4 text-primary-foreground" />
               </div>
               <span className="font-bold font-display">PhyNetix</span>
-            </div>
-            <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-              <a href="#" className="hover:text-foreground transition-colors">Contact</a>
             </div>
             <div className="text-sm text-muted-foreground">
               © 2024 PhyNetix. All rights reserved.
