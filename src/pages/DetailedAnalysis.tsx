@@ -379,9 +379,9 @@ export default function DetailedAnalysis() {
           </motion.div>
         </div>
       ) : (
-        <div className="flex-1 flex overflow-hidden">
-          {/* PDF Viewer (Left) */}
-          <div className="w-[65%] h-full border-r border-border">
+        <div className="flex-1 flex min-h-0">
+          {/* PDF Viewer (Left) - has its own scroll */}
+          <div className="w-[65%] h-full overflow-hidden border-r border-border">
             {pdfUrl ? (
               <ScrollPDFViewer
                 pdfUrl={pdfUrl}
@@ -394,7 +394,7 @@ export default function DetailedAnalysis() {
             )}
           </div>
 
-          {/* Analysis Panel (Right) */}
+          {/* Analysis Panel (Right) - has its own scroll */}
           <div className="w-[35%] h-full flex flex-col overflow-hidden bg-card/30">
             {/* Question Palette */}
             <div className="p-4 border-b border-border">

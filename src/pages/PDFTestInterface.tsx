@@ -722,9 +722,9 @@ export default function PDFTestInterface() {
         viewedQuestions={viewedQuestions}
       />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* PDF Viewer (Left - 70%) */}
-        <div className="flex-1 h-full" style={{ width: '70%' }}>
+      <div className="flex-1 flex min-h-0">
+        {/* PDF Viewer (Left - 70%) - has its own scroll */}
+        <div className="h-full overflow-hidden" style={{ width: '70%' }}>
           {pdfUrl ? (
             <ScrollPDFViewer
               pdfUrl={pdfUrl}
@@ -740,8 +740,8 @@ export default function PDFTestInterface() {
           )}
         </div>
 
-        {/* OMR Panel (Right - 30%) */}
-        <div className="h-full border-l border-border" style={{ width: '30%' }}>
+        {/* OMR Panel (Right - 30%) - has its own scroll */}
+        <div className="h-full overflow-hidden border-l border-border" style={{ width: '30%' }}>
           <EnhancedOMRPanel
             questions={questions}
             filteredQuestionIds={filteredQuestionIds}
