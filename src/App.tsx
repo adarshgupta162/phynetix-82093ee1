@@ -19,6 +19,9 @@ import AdminTests from "./pages/admin/AdminTests";
 import AdminUsers from "./pages/admin/AdminUsers";
 import TestCreator from "./pages/admin/TestCreator";
 import TestEditor from "./pages/admin/TestEditor";
+import PDFTestList from "./pages/admin/PDFTestList";
+import PDFTestCreate from "./pages/admin/PDFTestCreate";
+import PDFTestEditor from "./pages/admin/PDFTestEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +54,9 @@ const App = () => (
             <Route path="/admin/tests" element={<AdminTests />} />
             <Route path="/admin/test-creator" element={<TestCreator />} />
             <Route path="/admin/test-editor/:testId" element={<TestEditor />} />
+            <Route path="/admin/pdf-tests" element={<PDFTestList />} />
+            <Route path="/admin/pdf-tests/create" element={<PDFTestCreate />} />
+            <Route path="/admin/pdf-tests/:testId/edit" element={<PDFTestEditor />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/settings" element={<AdminDashboard />} />
             <Route path="*" element={<NotFound />} />

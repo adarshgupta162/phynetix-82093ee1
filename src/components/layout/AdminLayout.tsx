@@ -11,7 +11,8 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Shield
+  Shield,
+  FileText
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
+  { icon: FileText, label: "PDF Tests", path: "/admin/pdf-tests" },
   { icon: BookOpen, label: "Courses", path: "/admin/courses" },
   { icon: FileQuestion, label: "Questions", path: "/admin/questions" },
   { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
