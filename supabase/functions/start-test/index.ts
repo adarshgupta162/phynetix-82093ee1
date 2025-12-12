@@ -35,6 +35,19 @@ serve(async (req) => {
 
     console.log(`Starting test ${test_id} for user ${user.id}`);
 
+    // Check if user has already attempted this test
+    const { data: existingAttempt, error: existingError } = await supabaseClient
+      .from("test_attempts")
+      .select("id, completed_at")
+      .eq("test_id", test_id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingAttempt) {
+      console.log(`User ${user.id} already attempted test ${test_id}`);
+      throw new Error("You have already attempted this test. Each test can only be attempted once.");
+    }
+
     const { data: test, error: testError } = await supabaseClient
       .from("tests")
       .select("id, name, duration_minutes, is_published")
