@@ -107,14 +107,23 @@ export default function PDFTestInterface() {
           .order('question_number');
 
         if (!sectionQuestionsError && sectionQuestions && sectionQuestions.length > 0) {
-          const qs = sectionQuestions.map((q: any) => ({
-            id: q.id,
-            question_number: q.question_number,
-            question_type: q.test_sections?.section_type || 'single_choice',
-            marks: q.marks || 4,
-            negative_marks: q.negative_marks || 1,
-            pdf_page_number: q.pdf_page || 1
-          }));
+          const qs = sectionQuestions.map((q: any) => {
+            // Normalize section_type to match OMRPanel expected types
+            const sectionType = q.test_sections?.section_type || 'single_choice';
+            let questionType = 'single';
+            if (sectionType === 'single_choice') questionType = 'single';
+            else if (sectionType === 'multiple_choice') questionType = 'multi';
+            else if (sectionType === 'integer') questionType = 'integer';
+            
+            return {
+              id: q.id,
+              question_number: q.question_number,
+              question_type: questionType,
+              marks: q.marks || 4,
+              negative_marks: q.negative_marks || 1,
+              pdf_page_number: q.pdf_page || 1
+            };
+          });
           setQuestions(qs);
         } else {
           // Fallback to test_questions table for non-PDF tests
