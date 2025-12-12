@@ -49,6 +49,7 @@ const App = () => (
             <Route path="/test/:testId" element={<TestInterface />} />
             <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
             <Route path="/test/:testId/analysis" element={<QuestionWiseAnalysis />} />
+            <Route path="/test/:testId/detailed-analysis" element={<DetailedAnalysis />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/attempts" element={<MyAttempts />} />
             <Route path="/analytics" element={<Analytics />} />

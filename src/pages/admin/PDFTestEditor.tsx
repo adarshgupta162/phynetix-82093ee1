@@ -61,6 +61,7 @@ interface Question {
   marks: number;
   negative_marks: number;
   order_index: number;
+  is_bonus: boolean;
 }
 
 interface TestData {
@@ -326,7 +327,7 @@ export default function PDFTestEditor() {
         ...sub,
         sections: sub.sections.map(sec => 
           sec.id === sectionId 
-            ? { ...sec, questions: [...sec.questions, { ...data, correct_answer: data.correct_answer, options: data.options }] }
+            ? { ...sec, questions: [...sec.questions, { ...data, correct_answer: data.correct_answer, options: data.options, is_bonus: false }] }
             : sec
         )
       })));
@@ -862,19 +863,22 @@ function QuestionCard({
   const [localMarks, setLocalMarks] = useState(question.marks);
   const [localNegative, setLocalNegative] = useState(question.negative_marks);
   const [localPdfPage, setLocalPdfPage] = useState(question.pdf_page);
+  const [localIsBonus, setLocalIsBonus] = useState(question.is_bonus || false);
 
   useEffect(() => {
     setLocalAnswer(question.correct_answer);
     setLocalMarks(question.marks);
     setLocalNegative(question.negative_marks);
     setLocalPdfPage(question.pdf_page);
+    setLocalIsBonus(question.is_bonus || false);
   }, [question]);
 
   const getUpdates = () => ({
     correct_answer: localAnswer, 
     marks: localMarks, 
     negative_marks: localNegative,
-    pdf_page: localPdfPage
+    pdf_page: localPdfPage,
+    is_bonus: localIsBonus
   });
 
   if (!isEditing) {
@@ -884,14 +888,25 @@ function QuestionCard({
 
     return (
       <div 
-        className="flex items-center gap-3 p-3 rounded-lg bg-background/50 hover:bg-background/80 cursor-pointer group"
+        className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer group ${
+          question.is_bonus 
+            ? "bg-[hsl(45,93%,47%)]/10 border border-[hsl(45,93%,47%)]/30" 
+            : "bg-background/50 hover:bg-background/80"
+        }`}
         onClick={onEdit}
       >
-        <span className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center text-sm font-bold text-primary">
+        <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
+          question.is_bonus ? "bg-[hsl(45,93%,47%)]/20 text-[hsl(45,93%,47%)]" : "bg-primary/20 text-primary"
+        }`}>
           {question.question_number}
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
+            {question.is_bonus && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-[hsl(45,93%,47%)]/20 text-[hsl(45,93%,47%)] font-medium">
+                BONUS
+              </span>
+            )}
             {question.pdf_page > 1 && (
               <span className="text-sm">Page {question.pdf_page}</span>
             )}
@@ -1034,6 +1049,20 @@ function QuestionCard({
             onChange={(e) => setLocalNegative(parseInt(e.target.value) || 0)}
           />
         </div>
+      </div>
+
+      {/* Bonus Question Toggle */}
+      <div className="flex items-center justify-between p-3 rounded-lg bg-[hsl(45,93%,47%)]/10 border border-[hsl(45,93%,47%)]/30">
+        <div className="space-y-0.5">
+          <Label className="text-[hsl(45,93%,47%)]">Bonus Question</Label>
+          <p className="text-xs text-muted-foreground">
+            Everyone gets full marks regardless of answer
+          </p>
+        </div>
+        <Switch
+          checked={localIsBonus}
+          onCheckedChange={setLocalIsBonus}
+        />
       </div>
     </div>
   );

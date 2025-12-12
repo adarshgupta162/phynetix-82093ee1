@@ -33,7 +33,7 @@ serve(async (req) => {
 
     if (testError) throw testError;
 
-    // Get all questions for this test
+    // Get all questions for this test (including is_bonus)
     const { data: questions, error: questionsError } = await supabase
       .from("test_section_questions")
       .select(`
@@ -41,6 +41,7 @@ serve(async (req) => {
         correct_answer,
         marks,
         negative_marks,
+        is_bonus,
         section:test_sections(section_type)
       `)
       .eq("test_id", test_id);
@@ -69,26 +70,45 @@ serve(async (req) => {
       let correct = 0;
       let incorrect = 0;
 
-      for (const [questionId, userAnswer] of Object.entries(answers)) {
-        const question = questionMap.get(questionId);
-        if (!question) continue;
-
+      // Process all questions (including unanswered ones)
+      for (const [questionId, question] of questionMap) {
         const marks = question.marks || 4;
         const negativeMarks = question.negative_marks || 1;
         const correctAnswer = question.correct_answer;
         const sectionType = (question.section as any)?.section_type || "single_choice";
+        const isBonus = question.is_bonus || false;
+        const userAnswer = answers[questionId];
 
         totalMarks += marks;
 
+        // Bonus question - everyone gets full marks
+        if (isBonus) {
+          score += marks;
+          correct++;
+          continue;
+        }
+
         // Skip if no answer
-        if (!userAnswer || (Array.isArray(userAnswer) && userAnswer.length === 0)) {
+        if (!userAnswer || (Array.isArray(userAnswer) && userAnswer.length === 0) || userAnswer === '') {
           continue;
         }
 
         let isCorrect = false;
 
         if (sectionType === "integer") {
-          isCorrect = String(userAnswer) === String(correctAnswer);
+          const correctNum = parseFloat(String(correctAnswer));
+          const userNum = parseFloat(String(userAnswer));
+          isCorrect = !isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01;
+          
+          if (isCorrect) {
+            score += marks;
+            correct++;
+          } else {
+            // JEE Mains integer has negative marking
+            score -= negativeMarks;
+            incorrect++;
+          }
+          continue;
         } else if (sectionType === "multiple_choice") {
           const userAnswers = Array.isArray(userAnswer) ? [...userAnswer].sort() : [userAnswer];
           const correctAnswers = Array.isArray(correctAnswer) ? [...correctAnswer].sort() : [correctAnswer];
@@ -96,7 +116,6 @@ serve(async (req) => {
           if (test?.exam_type === "jee_advanced") {
             // Partial marking for JEE Advanced
             const correctSet = new Set(correctAnswers);
-            const userSet = new Set(userAnswers);
             const correctCount = userAnswers.filter(a => correctSet.has(a)).length;
             const wrongCount = userAnswers.filter(a => !correctSet.has(a)).length;
             
@@ -124,13 +143,6 @@ serve(async (req) => {
         } else {
           score -= negativeMarks;
           incorrect++;
-        }
-      }
-
-      // Add marks for unanswered questions
-      for (const [qId, q] of questionMap) {
-        if (!answers[qId]) {
-          totalMarks += q.marks || 4;
         }
       }
 

@@ -52,13 +52,11 @@ serve(async (req) => {
       throw new Error("Test attempt not found");
     }
 
-    // Check if already completed
     if (attempt.completed_at) {
       console.log("Attempt already completed");
       throw new Error("Test already submitted");
     }
 
-    // Get test info to determine type
     const { data: test } = await supabaseAdmin
       .from("tests")
       .select("test_type, exam_type")
@@ -73,7 +71,6 @@ serve(async (req) => {
     const questionResults: Record<string, any> = {};
     const subjectScores: Record<string, { correct: number; incorrect: number; skipped: number; total: number }> = {};
 
-    // Check if PDF test (use test_section_questions)
     if (test?.test_type === 'pdf') {
       console.log("Grading PDF test");
       
@@ -85,6 +82,7 @@ serve(async (req) => {
           correct_answer,
           marks,
           negative_marks,
+          is_bonus,
           section_id,
           test_sections!inner (
             section_type,
@@ -108,6 +106,7 @@ serve(async (req) => {
         const correctAnswer = q.correct_answer;
         const marks = q.marks ?? 4;
         const negativeMarks = q.negative_marks ?? 1;
+        const isBonus = q.is_bonus ?? false;
         const userAnswer = answers?.[questionId];
         const section = q.test_sections as any;
         const sectionType = section?.section_type || 'single_choice';
@@ -123,13 +122,34 @@ serve(async (req) => {
         let isCorrect = false;
         let marksObtained = 0;
 
+        // Bonus question - everyone gets full marks
+        if (isBonus) {
+          correct++;
+          score += marks;
+          marksObtained = marks;
+          isCorrect = true;
+          subjectScores[subject].correct++;
+          
+          questionResults[questionId] = {
+            question_number: q.question_number,
+            correct_answer: correctAnswer,
+            user_answer: userAnswer ?? null,
+            is_correct: true,
+            is_bonus: true,
+            marks_obtained: marks,
+            marks: marks,
+            negative_marks: negativeMarks,
+            subject,
+            section_type: sectionType,
+          };
+          continue;
+        }
+
         if (userAnswer === undefined || userAnswer === null || userAnswer === '') {
           skipped++;
           subjectScores[subject].skipped++;
         } else {
-          // Handle different question types
           if (sectionType === 'multiple_choice') {
-            // Multiple choice: compare arrays
             const correctArr = Array.isArray(correctAnswer) ? correctAnswer.sort() : [correctAnswer];
             const userArr = Array.isArray(userAnswer) ? userAnswer.sort() : [userAnswer];
             
@@ -140,7 +160,6 @@ serve(async (req) => {
               isCorrect = true;
               subjectScores[subject].correct++;
             } else {
-              // Partial marking for JEE Advanced
               if (test?.exam_type === 'jee_advanced') {
                 const correctSet = new Set(correctArr);
                 const userSet = new Set(userArr);
@@ -148,7 +167,6 @@ serve(async (req) => {
                 const wrongCount = [...userArr].filter(a => !correctSet.has(a)).length;
                 
                 if (wrongCount === 0 && correctCount > 0) {
-                  // Partial marks
                   marksObtained = Math.floor((correctCount / correctArr.length) * marks);
                   score += marksObtained;
                   if (correctCount === correctArr.length) {
@@ -158,7 +176,7 @@ serve(async (req) => {
                   }
                 } else {
                   incorrect++;
-                  score -= 2; // JEE Advanced penalty
+                  score -= 2;
                   marksObtained = -2;
                   subjectScores[subject].incorrect++;
                 }
@@ -168,7 +186,6 @@ serve(async (req) => {
               }
             }
           } else if (sectionType === 'integer') {
-            // Integer: compare as numbers
             const correctNum = parseFloat(String(correctAnswer));
             const userNum = parseFloat(String(userAnswer));
             
@@ -180,10 +197,12 @@ serve(async (req) => {
               subjectScores[subject].correct++;
             } else {
               incorrect++;
+              // JEE Mains integer now has -1 negative marking
+              score -= negativeMarks;
+              marksObtained = -negativeMarks;
               subjectScores[subject].incorrect++;
             }
           } else {
-            // Single choice
             if (String(userAnswer) === String(correctAnswer)) {
               correct++;
               score += marks;
@@ -204,6 +223,7 @@ serve(async (req) => {
           correct_answer: correctAnswer,
           user_answer: userAnswer ?? null,
           is_correct: isCorrect,
+          is_bonus: false,
           marks_obtained: marksObtained,
           marks: marks,
           negative_marks: negativeMarks,
@@ -212,7 +232,6 @@ serve(async (req) => {
         };
       }
     } else {
-      // Regular test (use test_questions)
       console.log("Grading regular test");
       
       const { data: testQuestions, error: questionsError } = await supabaseAdmin
@@ -276,7 +295,6 @@ serve(async (req) => {
       }
     }
 
-    // Calculate rank among all attempts for this test
     const { data: allAttempts } = await supabaseAdmin
       .from("test_attempts")
       .select("id, score")
@@ -288,7 +306,6 @@ serve(async (req) => {
     let percentile = 100;
     
     if (allAttempts && allAttempts.length > 0) {
-      // Find rank (including current attempt which we're about to save)
       const scoresWithCurrent = [...allAttempts.map(a => a.score ?? 0), score].sort((a, b) => b - a);
       rank = scoresWithCurrent.indexOf(score) + 1;
       
@@ -296,7 +313,6 @@ serve(async (req) => {
       percentile = Math.round((scoresBelow / scoresWithCurrent.length) * 100 * 10) / 10;
     }
 
-    // Update attempt with results
     const { error: updateError } = await supabaseClient
       .from("test_attempts")
       .update({
@@ -315,7 +331,6 @@ serve(async (req) => {
       throw new Error("Failed to save results");
     }
 
-    // Recalculate ranks for all attempts
     if (allAttempts && allAttempts.length > 0) {
       const updatedAttempts = [...allAttempts, { id: attempt_id, score }]
         .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
