@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.submit-test]
 verify_jwt = true
+
+[functions.recalculate-scores]
+verify_jwt = true
