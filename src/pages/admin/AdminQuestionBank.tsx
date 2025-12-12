@@ -70,12 +70,14 @@ interface Question {
   qno: number;
   type: "mcq_single" | "mcq_multi" | "integer" | "numeric";
   options: string[] | null;
+  options_text: string[] | null;
   correct: string | string[] | number;
   difficulty: "easy" | "medium" | "hard";
   marks: { positive: number; negative: number };
   text_source: "pdf" | "inline";
   pdf_page: number | null;
   pdf_coords: object | null;
+  question_text: string | null;
   created_at: string;
 }
 
@@ -115,9 +117,11 @@ export default function AdminQuestionBank() {
     type: "mcq_single" as Question["type"],
     difficulty: "medium" as Question["difficulty"],
     options: ["", "", "", ""],
+    options_text: ["", "", "", ""],
     correct: "" as string | string[],
     marks: { positive: 4, negative: 1 },
     pdf_page: "",
+    question_text: "",
   });
 
   useEffect(() => {
@@ -182,10 +186,12 @@ export default function AdminQuestionBank() {
         type: q.type as Question["type"],
         difficulty: q.difficulty as Question["difficulty"],
         options: q.options as string[] | null,
+        options_text: (q as any).options_text as string[] | null,
         correct: q.correct as string | string[] | number,
         marks: q.marks as { positive: number; negative: number },
         text_source: q.text_source as "pdf" | "inline",
         pdf_coords: q.pdf_coords as object | null,
+        question_text: (q as any).question_text as string | null,
       })));
     }
   };
@@ -297,9 +303,11 @@ export default function AdminQuestionBank() {
       type: questionForm.type,
       difficulty: questionForm.difficulty,
       options: questionForm.type.startsWith("mcq") ? questionForm.options.filter((o) => o) : null,
+      options_text: questionForm.type.startsWith("mcq") ? questionForm.options_text.filter((o) => o) : null,
       correct: correctValue,
       marks: questionForm.marks,
       pdf_page: questionForm.pdf_page ? parseInt(questionForm.pdf_page) : null,
+      question_text: questionForm.question_text || null,
     };
 
     if (editingQuestion) {
@@ -333,9 +341,11 @@ export default function AdminQuestionBank() {
       type: "mcq_single",
       difficulty: "medium",
       options: ["", "", "", ""],
+      options_text: ["", "", "", ""],
       correct: "",
       marks: { positive: 4, negative: 1 },
       pdf_page: "",
+      question_text: "",
     });
   };
 
@@ -396,11 +406,13 @@ export default function AdminQuestionBank() {
       type: question.type,
       difficulty: question.difficulty,
       options: question.options || ["", "", "", ""],
+      options_text: question.options_text || ["", "", "", ""],
       correct: Array.isArray(question.correct)
         ? question.correct
         : String(question.correct),
       marks: question.marks,
       pdf_page: question.pdf_page ? String(question.pdf_page) : "",
+      question_text: question.question_text || "",
     });
     setQuestionDialog(true);
   };
@@ -664,6 +676,12 @@ export default function AdminQuestionBank() {
                         </Button>
                       </div>
                     </div>
+                    {/* Question text preview */}
+                    {question.question_text && (
+                      <p className="mt-2 text-xs text-foreground line-clamp-2">
+                        {question.question_text}
+                      </p>
+                    )}
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                       <span>+{question.marks.positive}/-{question.marks.negative}</span>
                       {question.pdf_page && <span>Page {question.pdf_page}</span>}
@@ -762,6 +780,17 @@ export default function AdminQuestionBank() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            {/* Question Text */}
+            <div>
+              <Label>Question Text</Label>
+              <Textarea
+                value={questionForm.question_text}
+                onChange={(e) => setQuestionForm({ ...questionForm, question_text: e.target.value })}
+                placeholder="Enter the question text..."
+                rows={3}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Type</Label>
@@ -804,21 +833,24 @@ export default function AdminQuestionBank() {
 
             {questionForm.type.startsWith("mcq") && (
               <div>
-                <Label>Options</Label>
+                <Label>Options (with text)</Label>
                 <div className="space-y-2 mt-2">
-                  {questionForm.options.map((opt, idx) => (
+                  {questionForm.options_text.map((opt, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <span className="w-6 h-6 flex items-center justify-center rounded-full bg-secondary text-xs font-bold">
+                      <span className="w-6 h-6 flex items-center justify-center rounded-full bg-secondary text-xs font-bold shrink-0">
                         {String.fromCharCode(65 + idx)}
                       </span>
                       <Input
                         value={opt}
                         onChange={(e) => {
-                          const newOpts = [...questionForm.options];
+                          const newOpts = [...questionForm.options_text];
                           newOpts[idx] = e.target.value;
-                          setQuestionForm({ ...questionForm, options: newOpts });
+                          // Also update options to keep sync
+                          const newOptions = [...questionForm.options];
+                          newOptions[idx] = String.fromCharCode(65 + idx);
+                          setQuestionForm({ ...questionForm, options_text: newOpts, options: newOptions });
                         }}
-                        placeholder={`Option ${String.fromCharCode(65 + idx)}`}
+                        placeholder={`Option ${String.fromCharCode(65 + idx)} text`}
                       />
                     </div>
                   ))}

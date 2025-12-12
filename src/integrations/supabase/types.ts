@@ -266,9 +266,11 @@ export type Database = {
           id: string
           marks: Json
           options: Json | null
+          options_text: Json | null
           pdf_coords: Json | null
           pdf_page: number | null
           qno: number
+          question_text: string | null
           text_source: string
           type: string
         }
@@ -281,9 +283,11 @@ export type Database = {
           id?: string
           marks?: Json
           options?: Json | null
+          options_text?: Json | null
           pdf_coords?: Json | null
           pdf_page?: number | null
           qno: number
+          question_text?: string | null
           text_source?: string
           type: string
         }
@@ -296,9 +300,11 @@ export type Database = {
           id?: string
           marks?: Json
           options?: Json | null
+          options_text?: Json | null
           pdf_coords?: Json | null
           pdf_page?: number | null
           qno?: number
+          question_text?: string | null
           text_source?: string
           type?: string
         }

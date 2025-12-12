@@ -55,10 +55,12 @@ interface Question {
   qno: number;
   type: "mcq_single" | "mcq_multi" | "integer" | "numeric";
   options: string[] | null;
+  options_text: string[] | null;
   correct: string | string[] | number;
   difficulty: "easy" | "medium" | "hard";
   marks: { positive: number; negative: number };
   pdf_page: number | null;
+  question_text: string | null;
 }
 
 interface Bookmark {
@@ -154,8 +156,10 @@ export default function QuestionBankPage() {
         type: q.type as Question["type"],
         difficulty: q.difficulty as Question["difficulty"],
         options: q.options as string[] | null,
+        options_text: (q as any).options_text as string[] | null,
         correct: q.correct as string | string[] | number,
         marks: q.marks as { positive: number; negative: number },
+        question_text: (q as any).question_text as string | null,
       })));
     }
   };
@@ -441,6 +445,12 @@ export default function QuestionBankPage() {
                           </Button>
                         </div>
                       </div>
+                      {/* Question text preview */}
+                      {question.question_text && (
+                        <p className="mt-2 text-sm text-foreground line-clamp-2">
+                          {question.question_text}
+                        </p>
+                      )}
                       <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                         <span>+{question.marks.positive}/-{question.marks.negative} marks</span>
                         {question.pdf_page && <span>Page {question.pdf_page}</span>}
@@ -456,7 +466,7 @@ export default function QuestionBankPage() {
 
       {/* Attempt Dialog */}
       <Dialog open={!!attemptDialog} onOpenChange={() => setAttemptDialog(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
               Question {attemptDialog?.qno} - {attemptDialog?.difficulty}
@@ -465,47 +475,74 @@ export default function QuestionBankPage() {
 
           {!showResult ? (
             <div className="space-y-4">
-              <p className="text-muted-foreground">
-                Select your answer for this{" "}
-                {attemptDialog?.type.replace("_", " ")} question.
-              </p>
+              {/* Display Question Text */}
+              {attemptDialog?.question_text && (
+                <div className="p-4 rounded-lg bg-secondary/50 border border-border">
+                  <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+                    {attemptDialog.question_text}
+                  </p>
+                </div>
+              )}
+
+              {!attemptDialog?.question_text && (
+                <p className="text-muted-foreground">
+                  Select your answer for this{" "}
+                  {attemptDialog?.type.replace("_", " ")} question.
+                </p>
+              )}
 
               {attemptDialog?.type === "mcq_single" && (
-                <div className="grid grid-cols-2 gap-3">
-                  {["A", "B", "C", "D"].map((opt) => (
-                    <Button
-                      key={opt}
-                      variant={userAnswer === opt ? "default" : "outline"}
-                      className="h-12 text-lg"
-                      onClick={() => setUserAnswer(opt)}
-                    >
-                      {opt}
-                    </Button>
-                  ))}
+                <div className="space-y-2">
+                  {(attemptDialog.options_text && attemptDialog.options_text.length > 0
+                    ? attemptDialog.options_text
+                    : ["A", "B", "C", "D"]
+                  ).map((optText, idx) => {
+                    const optKey = String.fromCharCode(65 + idx);
+                    return (
+                      <Button
+                        key={optKey}
+                        variant={userAnswer === optKey ? "default" : "outline"}
+                        className="w-full justify-start h-auto py-3 px-4 text-left"
+                        onClick={() => setUserAnswer(optKey)}
+                      >
+                        <span className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center mr-3 shrink-0 font-bold">
+                          {optKey}
+                        </span>
+                        <span className="text-sm">{optText || optKey}</span>
+                      </Button>
+                    );
+                  })}
                 </div>
               )}
 
               {attemptDialog?.type === "mcq_multi" && (
-                <div className="grid grid-cols-2 gap-3">
-                  {["A", "B", "C", "D"].map((opt) => {
+                <div className="space-y-2">
+                  {(attemptDialog.options_text && attemptDialog.options_text.length > 0
+                    ? attemptDialog.options_text
+                    : ["A", "B", "C", "D"]
+                  ).map((optText, idx) => {
+                    const optKey = String.fromCharCode(65 + idx);
                     const selected = Array.isArray(userAnswer)
-                      ? userAnswer.includes(opt)
+                      ? userAnswer.includes(optKey)
                       : false;
                     return (
                       <Button
-                        key={opt}
+                        key={optKey}
                         variant={selected ? "default" : "outline"}
-                        className="h-12 text-lg"
+                        className="w-full justify-start h-auto py-3 px-4 text-left"
                         onClick={() => {
                           const current = Array.isArray(userAnswer) ? userAnswer : [];
                           setUserAnswer(
                             selected
-                              ? current.filter((c) => c !== opt)
-                              : [...current, opt]
+                              ? current.filter((c) => c !== optKey)
+                              : [...current, optKey]
                           );
                         }}
                       >
-                        {opt}
+                        <span className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center mr-3 shrink-0 font-bold">
+                          {optKey}
+                        </span>
+                        <span className="text-sm">{optText || optKey}</span>
                       </Button>
                     );
                   })}
