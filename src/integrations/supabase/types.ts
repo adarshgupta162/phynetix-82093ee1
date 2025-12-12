@@ -85,6 +85,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          roll_number: string | null
           target_exam: string | null
           updated_at: string
         }
@@ -93,6 +94,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          roll_number?: string | null
           target_exam?: string | null
           updated_at?: string
         }
@@ -101,6 +103,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          roll_number?: string | null
           target_exam?: string | null
           updated_at?: string
         }
