@@ -1,29 +1,41 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   Save, 
   Eye, 
-  Upload, 
   Plus, 
   ChevronDown, 
   ChevronRight,
   Trash2,
-  GripVertical,
   Check,
   X,
   FileText,
-  ArrowLeft
+  ArrowLeft,
+  Settings,
+  Calculator,
+  Clock,
+  Shield,
+  Upload,
+  Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import AdminLayout from "@/components/layout/AdminLayout";
 import PDFPreviewPanel from "@/components/admin/PDFPreviewPanel";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
 
 interface Subject {
   id: string;
@@ -58,13 +70,16 @@ interface TestData {
   duration_minutes: number;
   is_published: boolean;
   pdf_url: string | null;
+  fullscreen_enabled: boolean;
+  answer_key_uploaded: boolean;
+  scheduled_at: string | null;
 }
 
 const MARKING_SCHEMES = {
   jee_mains: {
     single_choice: { marks: 4, negative: 1 },
     multiple_choice: { marks: 4, negative: 0 },
-    integer: { marks: 4, negative: 0 }
+    integer: { marks: 4, negative: 1 } // Updated to -1
   },
   jee_advanced: {
     single_choice: { marks: 3, negative: 1 },
@@ -87,6 +102,12 @@ export default function PDFTestEditor() {
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
   const [currentPdfPage, setCurrentPdfPage] = useState(1);
   const [totalPdfPages, setTotalPdfPages] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Settings
+  const [fullscreenEnabled, setFullscreenEnabled] = useState(true);
+  const [answerKeyUploaded, setAnswerKeyUploaded] = useState(true);
+  const [scheduledAt, setScheduledAt] = useState<string>("");
 
   // New subject/section dialogs
   const [showAddSubject, setShowAddSubject] = useState(false);
@@ -100,7 +121,6 @@ export default function PDFTestEditor() {
 
   const loadTestData = async () => {
     try {
-      // Fetch test
       const { data: testData, error: testError } = await supabase
         .from("tests")
         .select("*")
@@ -108,9 +128,17 @@ export default function PDFTestEditor() {
         .single();
 
       if (testError) throw testError;
-      setTest(testData);
+      
+      setTest({
+        ...testData,
+        fullscreen_enabled: testData.fullscreen_enabled ?? true,
+        answer_key_uploaded: testData.answer_key_uploaded ?? true,
+        scheduled_at: testData.scheduled_at
+      });
+      setFullscreenEnabled(testData.fullscreen_enabled ?? true);
+      setAnswerKeyUploaded(testData.answer_key_uploaded ?? true);
+      setScheduledAt(testData.scheduled_at || "");
 
-      // Get PDF URL
       if (testData.pdf_url) {
         const { data: urlData } = await supabase.storage
           .from("test-pdfs")
@@ -118,7 +146,6 @@ export default function PDFTestEditor() {
         if (urlData?.signedUrl) setPdfUrl(urlData.signedUrl);
       }
 
-      // Fetch subjects with sections and questions
       const { data: subjectsData, error: subjectsError } = await supabase
         .from("test_subjects")
         .select("*")
@@ -127,7 +154,6 @@ export default function PDFTestEditor() {
 
       if (subjectsError) throw subjectsError;
 
-      // Fetch sections for each subject
       const subjectsWithData = await Promise.all(
         (subjectsData || []).map(async (subject) => {
           const { data: sections } = await supabase
@@ -161,7 +187,6 @@ export default function PDFTestEditor() {
 
       setSubjects(subjectsWithData);
 
-      // Auto-expand first subject
       if (subjectsWithData.length > 0) {
         setExpandedSubjects(new Set([subjectsWithData[0].id]));
         if (subjectsWithData[0].sections?.length > 0) {
@@ -172,6 +197,35 @@ export default function PDFTestEditor() {
       toast({ title: "Error loading test", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    if (!test) return;
+
+    try {
+      const { error } = await supabase
+        .from("tests")
+        .update({
+          fullscreen_enabled: fullscreenEnabled,
+          answer_key_uploaded: answerKeyUploaded,
+          scheduled_at: scheduledAt || null
+        })
+        .eq("id", test.id);
+
+      if (error) throw error;
+
+      setTest({
+        ...test,
+        fullscreen_enabled: fullscreenEnabled,
+        answer_key_uploaded: answerKeyUploaded,
+        scheduled_at: scheduledAt || null
+      });
+
+      toast({ title: "Settings saved" });
+      setShowSettings(false);
+    } catch (err: any) {
+      toast({ title: "Error saving settings", description: err.message, variant: "destructive" });
     }
   };
 
@@ -239,7 +293,6 @@ export default function PDFTestEditor() {
     const section = subjects.flatMap(s => s.sections).find(sec => sec.id === sectionId);
     if (!section) return;
 
-    // Calculate global question number
     let globalQNum = 1;
     subjects.forEach(sub => {
       sub.sections.forEach(sec => {
@@ -257,7 +310,7 @@ export default function PDFTestEditor() {
           test_id: testId,
           section_id: sectionId,
           question_number: globalQNum,
-          pdf_page: currentPdfPage,
+          pdf_page: 1, // Default to 1, not current page
           correct_answer: section.section_type === "multiple_choice" ? [] : "",
           options: section.section_type !== "integer" ? { A: "", B: "", C: "", D: "" } : null,
           marks: typeScheme.marks,
@@ -304,6 +357,24 @@ export default function PDFTestEditor() {
       })));
     } catch (err: any) {
       toast({ title: "Error saving", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const saveAndNextQuestion = async (questionId: string, updates: Partial<Question>, sectionId: string) => {
+    await updateQuestion(questionId, updates);
+    setEditingQuestion(null);
+
+    // Find next question or add new one
+    const section = subjects.flatMap(s => s.sections).find(sec => sec.id === sectionId);
+    if (section) {
+      const currentIndex = section.questions.findIndex(q => q.id === questionId);
+      if (currentIndex < section.questions.length - 1) {
+        // Go to next question
+        setEditingQuestion(section.questions[currentIndex + 1].id);
+      } else {
+        // Add new question
+        await addQuestion(sectionId);
+      }
     }
   };
 
@@ -371,21 +442,39 @@ export default function PDFTestEditor() {
   const togglePublish = async () => {
     if (!test) return;
 
-    // Validation
-    const allQuestions = subjects.flatMap(s => s.sections.flatMap(sec => sec.questions));
-    const invalidQuestions = allQuestions.filter(q => {
-      const hasCorrectAnswer = q.correct_answer && 
-        (Array.isArray(q.correct_answer) ? q.correct_answer.length > 0 : q.correct_answer !== "");
-      return !hasCorrectAnswer || !q.pdf_page;
-    });
-
-    if (!test.is_published && invalidQuestions.length > 0) {
-      toast({ 
-        title: "Cannot publish", 
-        description: `${invalidQuestions.length} questions missing correct answer or PDF page mapping`, 
-        variant: "destructive" 
+    // On publish, remove questions without correct answers
+    if (!test.is_published) {
+      const allQuestions = subjects.flatMap(s => s.sections.flatMap(sec => sec.questions));
+      const invalidQuestions = allQuestions.filter(q => {
+        const hasCorrectAnswer = q.correct_answer && 
+          (Array.isArray(q.correct_answer) ? q.correct_answer.length > 0 : q.correct_answer !== "");
+        return !hasCorrectAnswer;
       });
-      return;
+
+      if (invalidQuestions.length > 0) {
+        // Delete invalid questions
+        for (const q of invalidQuestions) {
+          await supabase.from("test_section_questions").delete().eq("id", q.id);
+        }
+        
+        // Update local state
+        setSubjects(subjects.map(sub => ({
+          ...sub,
+          sections: sub.sections.map(sec => ({
+            ...sec,
+            questions: sec.questions.filter(q => {
+              const hasCorrectAnswer = q.correct_answer && 
+                (Array.isArray(q.correct_answer) ? q.correct_answer.length > 0 : q.correct_answer !== "");
+              return hasCorrectAnswer;
+            })
+          }))
+        })));
+
+        toast({ 
+          title: "Removed incomplete questions", 
+          description: `${invalidQuestions.length} questions without answers were removed`
+        });
+      }
     }
 
     try {
@@ -398,6 +487,19 @@ export default function PDFTestEditor() {
 
       setTest({ ...test, is_published: !test.is_published });
       toast({ title: test.is_published ? "Test unpublished" : "Test published!" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const recalculateScores = async () => {
+    try {
+      const { error } = await supabase.functions.invoke('recalculate-scores', {
+        body: { test_id: testId }
+      });
+
+      if (error) throw error;
+      toast({ title: "Scores recalculated successfully" });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -437,6 +539,78 @@ export default function PDFTestEditor() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Dialog open={showSettings} onOpenChange={setShowSettings}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Settings
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Test Settings</DialogTitle>
+                    <DialogDescription>Configure test behavior and scheduling</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="flex items-center gap-2">
+                          <Shield className="w-4 h-4" />
+                          Fullscreen Mode
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Require students to stay in fullscreen
+                        </p>
+                      </div>
+                      <Switch
+                        checked={fullscreenEnabled}
+                        onCheckedChange={setFullscreenEnabled}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="flex items-center gap-2">
+                          <Upload className="w-4 h-4" />
+                          Answer Key Ready
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Uncheck to allow tests before answers are set
+                        </p>
+                      </div>
+                      <Switch
+                        checked={answerKeyUploaded}
+                        onCheckedChange={setAnswerKeyUploaded}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        Schedule Test (Optional)
+                      </Label>
+                      <Input
+                        type="datetime-local"
+                        value={scheduledAt}
+                        onChange={(e) => setScheduledAt(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Test will be available only after this time
+                      </p>
+                    </div>
+
+                    <Button onClick={saveSettings} className="w-full">
+                      Save Settings
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" size="sm" onClick={recalculateScores}>
+                <Calculator className="w-4 h-4 mr-2" />
+                Recalculate
+              </Button>
+
               <span className={`px-3 py-1 text-sm rounded-full ${
                 test?.is_published 
                   ? "bg-[hsl(142,76%,36%)]/20 text-[hsl(142,76%,36%)]" 
@@ -465,9 +639,7 @@ export default function PDFTestEditor() {
 
           {/* Editor Panel (35%) */}
           <div className="w-[35%] h-full flex flex-col bg-card/30">
-            {/* Subjects & Sections */}
             <div className="flex-1 overflow-auto p-4">
-              {/* Add Subject Button */}
               {showAddSubject ? (
                 <div className="mb-4 p-4 rounded-lg bg-secondary/50">
                   <Label className="mb-2 block">Subject Name</Label>
@@ -500,7 +672,6 @@ export default function PDFTestEditor() {
               {/* Subjects List */}
               {subjects.map((subject) => (
                 <div key={subject.id} className="mb-4">
-                  {/* Subject Header */}
                   <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 cursor-pointer group"
                     onClick={() => {
                       const next = new Set(expandedSubjects);
@@ -528,13 +699,10 @@ export default function PDFTestEditor() {
                     </Button>
                   </div>
 
-                  {/* Subject Content */}
                   {expandedSubjects.has(subject.id) && (
                     <div className="ml-4 mt-2 space-y-2">
-                      {/* Sections */}
                       {subject.sections.map((section) => (
                         <div key={section.id} className="border border-border rounded-lg overflow-hidden">
-                          {/* Section Header */}
                           <div 
                             className="flex items-center gap-2 p-3 bg-background/50 cursor-pointer group"
                             onClick={() => {
@@ -568,15 +736,14 @@ export default function PDFTestEditor() {
                             </Button>
                           </div>
 
-                          {/* Section Content */}
                           {expandedSections.has(section.id) && (
                             <div className="p-3 space-y-2">
-                              {/* Questions */}
                               {section.questions.map((question) => (
                                 <QuestionCard
                                   key={question.id}
                                   question={question}
                                   sectionType={section.section_type}
+                                  sectionId={section.id}
                                   isEditing={editingQuestion === question.id}
                                   currentPdfPage={currentPdfPage}
                                   onEdit={() => setEditingQuestion(question.id)}
@@ -584,13 +751,13 @@ export default function PDFTestEditor() {
                                     updateQuestion(question.id, updates);
                                     setEditingQuestion(null);
                                   }}
+                                  onSaveAndNext={(updates) => saveAndNextQuestion(question.id, updates, section.id)}
                                   onCancel={() => setEditingQuestion(null)}
                                   onDelete={() => deleteQuestion(question.id)}
                                   onMapPage={() => updateQuestion(question.id, { pdf_page: currentPdfPage })}
                                 />
                               ))}
 
-                              {/* Add Question */}
                               <Button
                                 variant="ghost"
                                 className="w-full border border-dashed border-border"
@@ -604,7 +771,6 @@ export default function PDFTestEditor() {
                         </div>
                       ))}
 
-                      {/* Add Section */}
                       {showAddSection === subject.id ? (
                         <div className="p-3 rounded-lg bg-secondary/30 space-y-3">
                           <Input
@@ -668,10 +834,12 @@ export default function PDFTestEditor() {
 interface QuestionCardProps {
   question: Question;
   sectionType: string;
+  sectionId: string;
   isEditing: boolean;
   currentPdfPage: number;
   onEdit: () => void;
   onSave: (updates: Partial<Question>) => void;
+  onSaveAndNext: (updates: Partial<Question>) => void;
   onCancel: () => void;
   onDelete: () => void;
   onMapPage: () => void;
@@ -680,10 +848,12 @@ interface QuestionCardProps {
 function QuestionCard({ 
   question, 
   sectionType, 
+  sectionId,
   isEditing, 
   currentPdfPage,
   onEdit, 
-  onSave, 
+  onSave,
+  onSaveAndNext,
   onCancel, 
   onDelete,
   onMapPage 
@@ -691,15 +861,23 @@ function QuestionCard({
   const [localAnswer, setLocalAnswer] = useState(question.correct_answer);
   const [localMarks, setLocalMarks] = useState(question.marks);
   const [localNegative, setLocalNegative] = useState(question.negative_marks);
+  const [localPdfPage, setLocalPdfPage] = useState(question.pdf_page);
 
   useEffect(() => {
     setLocalAnswer(question.correct_answer);
     setLocalMarks(question.marks);
     setLocalNegative(question.negative_marks);
+    setLocalPdfPage(question.pdf_page);
   }, [question]);
 
+  const getUpdates = () => ({
+    correct_answer: localAnswer, 
+    marks: localMarks, 
+    negative_marks: localNegative,
+    pdf_page: localPdfPage
+  });
+
   if (!isEditing) {
-    // Collapsed View
     const displayAnswer = sectionType === "multiple_choice" && Array.isArray(question.correct_answer)
       ? question.correct_answer.join(", ")
       : question.correct_answer;
@@ -714,8 +892,9 @@ function QuestionCard({
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm">Page {question.pdf_page}</span>
-            <span className="text-xs text-muted-foreground">•</span>
+            {question.pdf_page > 1 && (
+              <span className="text-sm">Page {question.pdf_page}</span>
+            )}
             <span className="text-sm font-medium text-primary">
               {displayAnswer || "No answer"}
             </span>
@@ -739,19 +918,17 @@ function QuestionCard({
     );
   }
 
-  // Editing View
   return (
     <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-4">
       <div className="flex items-center justify-between">
         <span className="font-semibold">Question {question.question_number}</span>
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => onSave({ 
-            correct_answer: localAnswer, 
-            marks: localMarks, 
-            negative_marks: localNegative 
-          })}>
+          <Button size="sm" onClick={() => onSave(getUpdates())}>
             <Check className="w-4 h-4 mr-1" />
             Save
+          </Button>
+          <Button size="sm" variant="default" onClick={() => onSaveAndNext(getUpdates())}>
+            Save & Next
           </Button>
           <Button size="sm" variant="ghost" onClick={onCancel}>
             Cancel
@@ -762,9 +939,15 @@ function QuestionCard({
       {/* PDF Page Mapping */}
       <div className="flex items-center gap-3">
         <Label>PDF Page:</Label>
-        <span className="font-medium">{question.pdf_page}</span>
-        <Button size="sm" variant="outline" onClick={onMapPage}>
-          Map to Current Page ({currentPdfPage})
+        <Input
+          type="number"
+          value={localPdfPage}
+          onChange={(e) => setLocalPdfPage(parseInt(e.target.value) || 1)}
+          className="w-20"
+          min={1}
+        />
+        <Button size="sm" variant="outline" onClick={() => setLocalPdfPage(currentPdfPage)}>
+          Use Current ({currentPdfPage})
         </Button>
       </div>
 

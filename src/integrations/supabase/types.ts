@@ -198,6 +198,7 @@ export type Database = {
       test_attempts: {
         Row: {
           answers: Json | null
+          awaiting_result: boolean | null
           completed_at: string | null
           fullscreen_exit_count: number | null
           id: string
@@ -213,6 +214,7 @@ export type Database = {
         }
         Insert: {
           answers?: Json | null
+          awaiting_result?: boolean | null
           completed_at?: string | null
           fullscreen_exit_count?: number | null
           id?: string
@@ -228,6 +230,7 @@ export type Database = {
         }
         Update: {
           answers?: Json | null
+          awaiting_result?: boolean | null
           completed_at?: string | null
           fullscreen_exit_count?: number | null
           id?: string
@@ -419,44 +422,53 @@ export type Database = {
       }
       tests: {
         Row: {
+          answer_key_uploaded: boolean | null
           created_at: string
           created_by: string | null
           description: string | null
           duration_minutes: number
           exam_type: string | null
+          fullscreen_enabled: boolean | null
           id: string
           instructions_json: Json | null
           is_published: boolean | null
           name: string
           pdf_url: string | null
+          scheduled_at: string | null
           test_type: string
           updated_at: string
         }
         Insert: {
+          answer_key_uploaded?: boolean | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           duration_minutes?: number
           exam_type?: string | null
+          fullscreen_enabled?: boolean | null
           id?: string
           instructions_json?: Json | null
           is_published?: boolean | null
           name: string
           pdf_url?: string | null
+          scheduled_at?: string | null
           test_type?: string
           updated_at?: string
         }
         Update: {
+          answer_key_uploaded?: boolean | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           duration_minutes?: number
           exam_type?: string | null
+          fullscreen_enabled?: boolean | null
           id?: string
           instructions_json?: Json | null
           is_published?: boolean | null
           name?: string
           pdf_url?: string | null
+          scheduled_at?: string | null
           test_type?: string
           updated_at?: string
         }
