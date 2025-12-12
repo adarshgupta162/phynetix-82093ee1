@@ -82,31 +82,19 @@ export default function AdminUsers() {
 
   const toggleAdminRole = async (userId: string) => {
     const currentRole = getUserRole(userId);
+    const newRole = currentRole === 'admin' ? 'student' : 'admin';
     
-    if (currentRole === 'admin') {
-      const { error } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId)
-        .eq('role', 'admin');
-      
-      if (error) {
-        toast({ title: "Error updating role", variant: "destructive" });
-      } else {
-        toast({ title: "Admin role removed" });
-        fetchData();
-      }
+    // Update the existing role instead of inserting a new one
+    const { error } = await supabase
+      .from('user_roles')
+      .update({ role: newRole })
+      .eq('user_id', userId);
+    
+    if (error) {
+      toast({ title: "Error updating role", description: error.message, variant: "destructive" });
     } else {
-      const { error } = await supabase
-        .from('user_roles')
-        .insert({ user_id: userId, role: 'admin' });
-      
-      if (error) {
-        toast({ title: "Error updating role", variant: "destructive" });
-      } else {
-        toast({ title: "Admin role granted" });
-        fetchData();
-      }
+      toast({ title: newRole === 'admin' ? "Admin role granted" : "Admin role removed" });
+      fetchData();
     }
   };
 
