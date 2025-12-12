@@ -127,7 +127,7 @@ export default function AdminDashboard() {
               Admin <span className="gradient-text">Dashboard</span>
             </h1>
             <p className="text-muted-foreground">
-              Overview of your quiz platform
+              Overview of your PhyNetix platform
             </p>
           </div>
           <div className="flex gap-3">

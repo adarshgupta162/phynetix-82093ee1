@@ -6,6 +6,17 @@ import {
   DialogTitle,
   DialogFooter 
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +31,8 @@ import {
   Shield, 
   Ban,
   Key,
-  Send
+  Send,
+  Trash2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -171,6 +183,25 @@ export default function UserDetailsDialog({
     }
   };
 
+  const handleDeleteUser = async () => {
+    setIsLoading(true);
+    try {
+      const response = await supabase.functions.invoke('delete-user', {
+        body: { userId: user.id }
+      });
+
+      if (response.error) throw new Error(response.error.message);
+      
+      toast({ title: "User deleted successfully" });
+      onOpenChange(false);
+      onUpdate();
+    } catch (error: any) {
+      toast({ title: error.message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -189,11 +220,12 @@ export default function UserDetailsDialog({
         </DialogHeader>
 
         <Tabs defaultValue="info" className="mt-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="info">Info</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="access">Access</TabsTrigger>
             <TabsTrigger value="notify">Notify</TabsTrigger>
+            <TabsTrigger value="danger" className="text-destructive">Danger</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info" className="space-y-4 mt-4">
@@ -353,6 +385,50 @@ export default function UserDetailsDialog({
                     Email not available for this user
                   </p>
                 )}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="danger" className="space-y-4 mt-4">
+            <div className="space-y-4">
+              <h4 className="font-medium flex items-center gap-2 text-destructive">
+                <Trash2 className="w-4 h-4" /> Delete User Account
+              </h4>
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-muted-foreground mb-4">
+                  This action is irreversible. Deleting this user will permanently remove:
+                </p>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 mb-4">
+                  <li>User profile and personal data</li>
+                  <li>All test attempts and scores</li>
+                  <li>User roles and permissions</li>
+                  <li>Authentication credentials</li>
+                </ul>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" disabled={isLoading}>
+                      <Trash2 className="w-4 h-4 mr-2" /> Delete User Permanently
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete <strong>{user.full_name || 'this user'}</strong> and all their data. 
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDeleteUser}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete User
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </TabsContent>

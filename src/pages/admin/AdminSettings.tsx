@@ -180,7 +180,7 @@ export default function AdminSettings() {
   };
 
   const emailTemplates = [
-    { name: "Welcome", subject: "Welcome to QuizMaster!", message: "Thank you for joining QuizMaster. Start your learning journey today!" },
+    { name: "Welcome", subject: "Welcome to PhyNetix!", message: "Thank you for joining PhyNetix. Start your learning journey today!" },
     { name: "Test Reminder", subject: "New Test Available", message: "A new test has been published. Login to attempt it now!" },
     { name: "Results", subject: "Your Test Results Are Ready", message: "Your recent test results are now available. Check your dashboard for detailed analysis." },
     { name: "Maintenance", subject: "Scheduled Maintenance", message: "We will be performing scheduled maintenance. The platform will be temporarily unavailable." },

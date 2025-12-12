@@ -97,7 +97,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 exit={{ opacity: 0 }}
                 className="text-xl font-bold font-display gradient-text"
               >
-                QuizMaster
+                PhyNetix
               </motion.span>
             )}
           </Link>

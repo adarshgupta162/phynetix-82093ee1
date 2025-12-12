@@ -52,7 +52,7 @@ const testimonials = [
   {
     name: "Priya Sharma",
     role: "JEE Advanced 2024 - AIR 342",
-    content: "QuizMaster's analytics helped me identify my weak areas. The AI suggestions were incredibly accurate!",
+    content: "PhyNetix's analytics helped me identify my weak areas. The AI suggestions were incredibly accurate!",
     avatar: "PS"
   },
   {
@@ -64,7 +64,7 @@ const testimonials = [
   {
     name: "Ananya Singh",
     role: "JEE Main 2024 - 99.8%ile",
-    content: "Started using QuizMaster 6 months before my exam. Best decision ever!",
+    content: "Started using PhyNetix 6 months before my exam. Best decision ever!",
     avatar: "AS"
   }
 ];
@@ -93,7 +93,7 @@ export default function LandingPage() {
             <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold font-display gradient-text">QuizMaster</span>
+            <span className="text-xl font-bold font-display gradient-text">PhyNetix</span>
           </Link>
           
           <nav className="hidden md:flex items-center gap-8">
@@ -228,7 +228,7 @@ export default function LandingPage() {
               Loved by <span className="gradient-text">Toppers</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Join thousands of successful students who achieved their dreams with QuizMaster.
+              Join thousands of successful students who achieved their dreams with PhyNetix.
             </p>
           </div>
 
@@ -273,7 +273,7 @@ export default function LandingPage() {
                 Ready to Start Your Journey?
               </h2>
               <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-                Join QuizMaster today and get access to thousands of questions, 
+                Join PhyNetix today and get access to thousands of questions, 
                 personalized analytics, and AI-powered recommendations.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -307,7 +307,7 @@ export default function LandingPage() {
               <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold font-display">QuizMaster</span>
+              <span className="font-bold font-display">PhyNetix</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
@@ -315,7 +315,7 @@ export default function LandingPage() {
               <a href="#" className="hover:text-foreground transition-colors">Contact</a>
             </div>
             <div className="text-sm text-muted-foreground">
-              © 2024 QuizMaster. All rights reserved.
+              © 2024 PhyNetix. All rights reserved.
             </div>
           </div>
         </div>

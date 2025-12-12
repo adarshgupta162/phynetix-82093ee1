@@ -86,7 +86,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 exit={{ opacity: 0 }}
                 className="text-xl font-bold font-display gradient-text"
               >
-                Admin Panel
+                PhyNetix Admin
               </motion.span>
             )}
           </Link>

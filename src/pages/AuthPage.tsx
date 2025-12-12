@@ -109,7 +109,7 @@ export default function AuthPage() {
             toast({ title: "Signup failed", description: error.message, variant: "destructive" });
           }
         } else {
-          toast({ title: "Account created!", description: "Welcome to QuizMaster!" });
+          toast({ title: "Account created!", description: "Welcome to PhyNetix!" });
           navigate("/dashboard");
         }
       } else if (mode === 'login') {
@@ -208,7 +208,7 @@ export default function AuthPage() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-fuchsia-600 flex items-center justify-center">
                 <Sparkles className="w-7 h-7 text-white" />
               </div>
-              <span className="text-2xl font-bold font-display gradient-text">QuizMaster</span>
+              <span className="text-2xl font-bold font-display gradient-text">PhyNetix</span>
             </Link>
 
             <h1 className="text-4xl font-bold font-display mb-6">
@@ -251,7 +251,7 @@ export default function AuthPage() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-fuchsia-600 flex items-center justify-center">
               <Sparkles className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-bold font-display gradient-text">QuizMaster</span>
+            <span className="text-2xl font-bold font-display gradient-text">PhyNetix</span>
           </Link>
 
           {/* Form Card */}

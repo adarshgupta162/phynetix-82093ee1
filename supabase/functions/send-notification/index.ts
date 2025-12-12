@@ -58,33 +58,56 @@ serve(async (req) => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "Quiz Platform <onboarding@resend.dev>",
+      from: "PhyNetix <onboarding@resend.dev>",
       to: [userEmail],
       subject: subject,
       html: `
         <!DOCTYPE html>
         <html>
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
-            body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; padding: 40px; }
-            .container { max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 16px; padding: 32px; }
-            .header { text-align: center; margin-bottom: 24px; }
-            .logo { font-size: 28px; font-weight: bold; background: linear-gradient(135deg, #3b82f6, #8b5cf6, #d946ef); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-            .content { line-height: 1.6; }
-            .footer { margin-top: 32px; padding-top: 24px; border-top: 1px solid #334155; text-align: center; color: #94a3b8; font-size: 14px; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%); color: #e2e8f0; padding: 40px 20px; min-height: 100vh; }
+            .container { max-width: 600px; margin: 0 auto; background: linear-gradient(180deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%); border-radius: 24px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(139, 92, 246, 0.1); }
+            .header { background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.15) 50%, rgba(217, 70, 239, 0.15) 100%); padding: 40px 32px; text-align: center; border-bottom: 1px solid rgba(139, 92, 246, 0.2); }
+            .logo { display: inline-flex; align-items: center; gap: 12px; }
+            .logo-icon { width: 48px; height: 48px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #d946ef 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+            .logo-icon svg { width: 28px; height: 28px; fill: white; }
+            .logo-text { font-size: 28px; font-weight: 800; background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -0.5px; }
+            .content { padding: 40px 32px; line-height: 1.8; }
+            .greeting { font-size: 20px; font-weight: 600; color: #f1f5f9; margin-bottom: 20px; }
+            .message { color: #cbd5e1; font-size: 16px; background: rgba(51, 65, 85, 0.5); padding: 24px; border-radius: 16px; border-left: 4px solid #8b5cf6; }
+            .cta { display: block; width: fit-content; margin: 32px auto 0; padding: 14px 32px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 16px; text-align: center; box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.5); }
+            .footer { background: rgba(15, 23, 42, 0.8); padding: 32px; text-align: center; border-top: 1px solid rgba(51, 65, 85, 0.5); }
+            .footer-logo { font-size: 18px; font-weight: 700; background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 12px; }
+            .footer-text { color: #64748b; font-size: 13px; line-height: 1.6; }
+            .divider { width: 60px; height: 4px; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #d946ef 100%); border-radius: 2px; margin: 0 auto 24px; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <div class="logo">Quiz Platform</div>
+              <div class="logo">
+                <div class="logo-icon">
+                  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                </div>
+                <span class="logo-text">PhyNetix</span>
+              </div>
             </div>
             <div class="content">
-              <p>Hello ${userName || 'Student'},</p>
-              <p>${message}</p>
+              <div class="divider"></div>
+              <p class="greeting">Hello ${userName || 'Student'},</p>
+              <div class="message">${message}</div>
+              <a href="https://phynetix.com" class="cta">Visit PhyNetix →</a>
             </div>
             <div class="footer">
-              <p>This is an automated message from Quiz Platform Admin.</p>
+              <div class="footer-logo">PhyNetix</div>
+              <p class="footer-text">
+                AI-Powered Learning Platform<br>
+                © ${new Date().getFullYear()} PhyNetix. All rights reserved.
+              </p>
             </div>
           </div>
         </body>
