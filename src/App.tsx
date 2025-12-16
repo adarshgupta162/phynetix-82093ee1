@@ -9,6 +9,7 @@ import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import TestLibrary from "./pages/TestLibrary";
+import PDFTestLibrary from "./pages/PDFTestLibrary";
 import TestInterface from "./pages/TestInterface";
 import PDFTestInterface from "./pages/PDFTestInterface";
 import TestAnalysis from "./pages/TestAnalysis";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/signup" element={<AuthPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tests" element={<TestLibrary />} />
+            <Route path="/pdf-tests" element={<PDFTestLibrary />} />
             <Route path="/question-bank" element={<QuestionBankPage />} />
             <Route path="/test/:testId" element={<TestInterface />} />
             <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
