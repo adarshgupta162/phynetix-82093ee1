@@ -64,7 +64,7 @@ export default function TestLibrary() {
       .select("id, name, color, icon");
     if (coursesData) setCourses(coursesData);
 
-    // Fetch published tests with question count
+    // Fetch published tests with question count (exclude PDF tests)
     const { data: testsData } = await supabase
       .from("tests")
       .select(`
@@ -75,7 +75,8 @@ export default function TestLibrary() {
         test_type,
         test_questions(count)
       `)
-      .eq("is_published", true);
+      .eq("is_published", true)
+      .neq("test_type", "pdf");
 
     if (testsData) {
       // Get attempt counts and user's attempts
@@ -94,15 +95,8 @@ export default function TestLibrary() {
             .eq("user_id", user!.id)
             .maybeSingle();
 
-          // For PDF tests, get question count from test_section_questions
-          let questionCount = (test.test_questions as { count: number }[])?.[0]?.count || 0;
-          if (test.test_type === 'pdf') {
-            const { count: pdfQuestionCount } = await supabase
-              .from("test_section_questions")
-              .select("*", { count: "exact", head: true })
-              .eq("test_id", test.id);
-            questionCount = pdfQuestionCount || 0;
-          }
+          // For regular tests, use test_questions count
+          const questionCount = (test.test_questions as { count: number }[])?.[0]?.count || 0;
 
           return {
             id: test.id,
@@ -129,7 +123,7 @@ export default function TestLibrary() {
       navigate(`/test/${test.id}/analysis`);
     } else {
       // Go to test interface
-      navigate(test.test_type === 'pdf' ? `/pdf-test/${test.id}` : `/test/${test.id}`);
+      navigate(`/test/${test.id}`);
     }
   };
 
@@ -144,7 +138,6 @@ export default function TestLibrary() {
       full_length: "Full Length",
       topic: "Topic Test",
       mock: "Mock Test",
-      pdf: "PDF Test",
     };
     return labels[type] || type;
   };
