@@ -57,22 +57,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user, checkAdminRole]);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Only set loading false after initial check
-        if (event === 'INITIAL_SESSION') {
+        // Wait for role check before setting loading to false
+        if (session?.user) {
+          await checkAdminRole(session.user.id);
+        }
+        
+        if (isMounted) {
           setIsLoading(false);
         }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Set up auth state listener for future changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!isMounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
 
         // Check admin role after auth state change
         if (session?.user) {
-          setTimeout(() => {
-            checkAdminRole(session.user.id);
-          }, 0);
+          await checkAdminRole(session.user.id);
         } else {
           setIsAdmin(false);
           setViewMode('student');
@@ -80,18 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsLoading(false);
-      
-      if (session?.user) {
-        checkAdminRole(session.user.id);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [checkAdminRole]);
 
   const signUp = async (email: string, password: string, fullName: string) => {

@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
   Eye, EyeOff, Plus, Trash2, Upload, ChevronLeft, ChevronRight,
-  ZoomIn, ZoomOut, Check
+  ZoomIn, ZoomOut, Check, Image, FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -49,7 +50,9 @@ interface Question {
   section_id: string;
   test_id: string;
   question_number: number;
+  question_text: string | null;
   correct_answer: any;
+  options: any;
   marks: number;
   negative_marks: number;
   pdf_page: number | null;
@@ -254,6 +257,28 @@ export default function TestEditor() {
     ));
   };
 
+  const handleUpdateQuestionText = async (questionId: string, text: string) => {
+    await supabase
+      .from('test_section_questions')
+      .update({ question_text: text })
+      .eq('id', questionId);
+
+    setQuestions(questions.map(q => 
+      q.id === questionId ? { ...q, question_text: text } : q
+    ));
+  };
+
+  const handleUpdateOptions = async (questionId: string, options: any) => {
+    await supabase
+      .from('test_section_questions')
+      .update({ options })
+      .eq('id', questionId);
+
+    setQuestions(questions.map(q => 
+      q.id === questionId ? { ...q, options } : q
+    ));
+  };
+
   const handleDeleteQuestion = async (questionId: string) => {
     await supabase.from('test_section_questions').delete().eq('id', questionId);
     setQuestions(questions.filter(q => q.id !== questionId));
@@ -412,6 +437,31 @@ export default function TestEditor() {
                           </Button>
                         </div>
                       </div>
+
+                      {/* Question Text (supports LaTeX: use $...$ for inline, $$...$$ for block) */}
+                      <div className="mb-3">
+                        <Textarea
+                          placeholder="Question text (supports LaTeX: $x^2$ for inline math)"
+                          value={question.question_text || ''}
+                          onChange={(e) => handleUpdateQuestionText(question.id, e.target.value)}
+                          className="text-sm min-h-[60px]"
+                        />
+                      </div>
+
+                      {/* Options for MCQ */}
+                      {(sectionType === 'single_choice' || sectionType === 'multiple_choice') && (
+                        <div className="mb-3 grid grid-cols-2 gap-2">
+                          {['A', 'B', 'C', 'D'].map(opt => (
+                            <Input
+                              key={opt}
+                              placeholder={`Option ${opt}`}
+                              value={question.options?.[opt] || ''}
+                              onChange={(e) => handleUpdateOptions(question.id, { ...question.options, [opt]: e.target.value })}
+                              className="text-xs h-8"
+                            />
+                          ))}
+                        </div>
+                      )}
 
                       {/* Answer Options */}
                       {sectionType === 'single_choice' && (
