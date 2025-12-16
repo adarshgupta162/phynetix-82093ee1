@@ -17,7 +17,10 @@ import {
   Clock,
   Shield,
   Upload,
-  Calendar
+  Calendar,
+  Wand2,
+  GripVertical,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,6 +118,14 @@ export default function PDFTestEditor() {
   const [newSubjectName, setNewSubjectName] = useState("");
   const [showAddSection, setShowAddSection] = useState<string | null>(null);
   const [newSectionData, setNewSectionData] = useState({ name: "", type: "single_choice" });
+
+  // AI Answer Key extraction state
+  const [showAIExtract, setShowAIExtract] = useState(false);
+  const [aiImage, setAiImage] = useState<File | null>(null);
+  const [extractingAnswers, setExtractingAnswers] = useState(false);
+
+  // Drag state
+  const [draggedQuestion, setDraggedQuestion] = useState<{id: string, sectionId: string} | null>(null);
 
   useEffect(() => {
     if (testId) loadTestData();
@@ -506,6 +517,149 @@ export default function PDFTestEditor() {
     }
   };
 
+  // AI Answer Key Extraction
+  const extractAnswersFromImage = async () => {
+    if (!aiImage) return;
+
+    setExtractingAnswers(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result as string;
+        
+        const { data, error } = await supabase.functions.invoke('extract-answer-key', {
+          body: { image: base64 }
+        });
+
+        if (error) throw error;
+
+        if (data.answers && data.answers.length > 0) {
+          toast({ 
+            title: "Answers extracted!", 
+            description: `Found ${data.answers.length} answers. Apply them to questions.` 
+          });
+          
+          // Auto-apply answers to existing questions
+          const allQuestions = subjects.flatMap(s => 
+            s.sections.flatMap(sec => sec.questions)
+          );
+          
+          for (let i = 0; i < Math.min(data.answers.length, allQuestions.length); i++) {
+            const q = allQuestions[i];
+            const extractedAnswer = data.answers[i];
+            if (extractedAnswer && extractedAnswer.answer) {
+              await updateQuestion(q.id, { correct_answer: extractedAnswer.answer });
+            }
+          }
+          
+          loadTestData(); // Refresh
+        } else {
+          toast({ title: "No answers found", variant: "destructive" });
+        }
+        
+        setShowAIExtract(false);
+        setAiImage(null);
+      };
+      reader.readAsDataURL(aiImage);
+    } catch (err: any) {
+      toast({ title: "AI extraction failed", description: err.message, variant: "destructive" });
+    } finally {
+      setExtractingAnswers(false);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (questionId: string, sectionId: string) => {
+    setDraggedQuestion({ id: questionId, sectionId });
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetQuestionId: string, targetSectionId: string) => {
+    e.preventDefault();
+    if (!draggedQuestion || draggedQuestion.id === targetQuestionId) return;
+  };
+
+  const handleDrop = async (targetQuestionId: string, targetSectionId: string) => {
+    if (!draggedQuestion || draggedQuestion.id === targetQuestionId) {
+      setDraggedQuestion(null);
+      return;
+    }
+
+    // Find source and target questions
+    const sourceSection = subjects.flatMap(s => s.sections).find(sec => sec.id === draggedQuestion.sectionId);
+    const targetSection = subjects.flatMap(s => s.sections).find(sec => sec.id === targetSectionId);
+
+    if (!sourceSection || !targetSection) {
+      setDraggedQuestion(null);
+      return;
+    }
+
+    // Only allow reordering within same section
+    if (draggedQuestion.sectionId !== targetSectionId) {
+      toast({ title: "Can only reorder within the same section", variant: "destructive" });
+      setDraggedQuestion(null);
+      return;
+    }
+
+    const questions = [...sourceSection.questions];
+    const draggedIndex = questions.findIndex(q => q.id === draggedQuestion.id);
+    const targetIndex = questions.findIndex(q => q.id === targetQuestionId);
+
+    // Reorder
+    const [removed] = questions.splice(draggedIndex, 1);
+    questions.splice(targetIndex, 0, removed);
+
+    // Update question numbers and order_index
+    const updates = questions.map((q, index) => ({
+      id: q.id,
+      order_index: index,
+      question_number: index + 1 + getGlobalQuestionOffset(targetSectionId)
+    }));
+
+    try {
+      for (const update of updates) {
+        await supabase
+          .from("test_section_questions")
+          .update({ order_index: update.order_index, question_number: update.question_number })
+          .eq("id", update.id);
+      }
+
+      // Update local state
+      setSubjects(subjects.map(sub => ({
+        ...sub,
+        sections: sub.sections.map(sec => {
+          if (sec.id === targetSectionId) {
+            return {
+              ...sec,
+              questions: questions.map((q, index) => ({
+                ...q,
+                order_index: index,
+                question_number: index + 1 + getGlobalQuestionOffset(targetSectionId)
+              }))
+            };
+          }
+          return sec;
+        })
+      })));
+
+      toast({ title: "Questions reordered" });
+    } catch (err: any) {
+      toast({ title: "Error reordering", description: err.message, variant: "destructive" });
+    }
+
+    setDraggedQuestion(null);
+  };
+
+  const getGlobalQuestionOffset = (sectionId: string): number => {
+    let offset = 0;
+    for (const sub of subjects) {
+      for (const sec of sub.sections) {
+        if (sec.id === sectionId) return offset;
+        offset += sec.questions.length;
+      }
+    }
+    return offset;
+  };
+
   const totalQuestions = subjects.reduce((acc, sub) => 
     acc + sub.sections.reduce((a, sec) => a + sec.questions.length, 0), 0
   );
@@ -611,6 +765,71 @@ export default function PDFTestEditor() {
                 <Calculator className="w-4 h-4 mr-2" />
                 Recalculate
               </Button>
+
+              {/* AI Answer Key Extraction */}
+              <Dialog open={showAIExtract} onOpenChange={setShowAIExtract}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+                    <Wand2 className="w-4 h-4 mr-2 text-purple-500" />
+                    AI Extract
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Wand2 className="w-5 h-5 text-purple-500" />
+                      AI Answer Key Extraction
+                    </DialogTitle>
+                    <DialogDescription>
+                      Upload an image of the answer key and AI will automatically extract answers
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setAiImage(e.target.files?.[0] || null)}
+                        className="hidden"
+                        id="ai-image-upload"
+                      />
+                      <label htmlFor="ai-image-upload" className="cursor-pointer">
+                        {aiImage ? (
+                          <div className="space-y-2">
+                            <Check className="w-8 h-8 mx-auto text-green-500" />
+                            <p className="text-sm font-medium">{aiImage.name}</p>
+                            <p className="text-xs text-muted-foreground">Click to change</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
+                            <p className="text-sm font-medium">Click to upload answer key image</p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+
+                    <Button 
+                      onClick={extractAnswersFromImage} 
+                      className="w-full"
+                      disabled={!aiImage || extractingAnswers}
+                    >
+                      {extractingAnswers ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Extracting...
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-4 h-4 mr-2" />
+                          Extract & Apply Answers
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
 
               <span className={`px-3 py-1 text-sm rounded-full ${
                 test?.is_published 
@@ -740,23 +959,32 @@ export default function PDFTestEditor() {
                           {expandedSections.has(section.id) && (
                             <div className="p-3 space-y-2">
                               {section.questions.map((question) => (
-                                <QuestionCard
+                                <div
                                   key={question.id}
-                                  question={question}
-                                  sectionType={section.section_type}
-                                  sectionId={section.id}
-                                  isEditing={editingQuestion === question.id}
-                                  currentPdfPage={currentPdfPage}
-                                  onEdit={() => setEditingQuestion(question.id)}
-                                  onSave={(updates) => {
-                                    updateQuestion(question.id, updates);
-                                    setEditingQuestion(null);
-                                  }}
-                                  onSaveAndNext={(updates) => saveAndNextQuestion(question.id, updates, section.id)}
-                                  onCancel={() => setEditingQuestion(null)}
-                                  onDelete={() => deleteQuestion(question.id)}
-                                  onMapPage={() => updateQuestion(question.id, { pdf_page: currentPdfPage })}
-                                />
+                                  draggable={!editingQuestion}
+                                  onDragStart={() => handleDragStart(question.id, section.id)}
+                                  onDragOver={(e) => handleDragOver(e, question.id, section.id)}
+                                  onDrop={() => handleDrop(question.id, section.id)}
+                                  className={`${draggedQuestion?.id === question.id ? 'opacity-50' : ''}`}
+                                >
+                                  <QuestionCard
+                                    question={question}
+                                    sectionType={section.section_type}
+                                    sectionId={section.id}
+                                    isEditing={editingQuestion === question.id}
+                                    currentPdfPage={currentPdfPage}
+                                    onEdit={() => setEditingQuestion(question.id)}
+                                    onSave={(updates) => {
+                                      updateQuestion(question.id, updates);
+                                      setEditingQuestion(null);
+                                    }}
+                                    onSaveAndNext={(updates) => saveAndNextQuestion(question.id, updates, section.id)}
+                                    onCancel={() => setEditingQuestion(null)}
+                                    onDelete={() => deleteQuestion(question.id)}
+                                    onMapPage={() => updateQuestion(question.id, { pdf_page: currentPdfPage })}
+                                    isDragging={draggedQuestion?.id === question.id}
+                                  />
+                                </div>
                               ))}
 
                               <Button
@@ -844,6 +1072,7 @@ interface QuestionCardProps {
   onCancel: () => void;
   onDelete: () => void;
   onMapPage: () => void;
+  isDragging?: boolean;
 }
 
 function QuestionCard({ 
@@ -857,7 +1086,8 @@ function QuestionCard({
   onSaveAndNext,
   onCancel, 
   onDelete,
-  onMapPage 
+  onMapPage,
+  isDragging = false
 }: QuestionCardProps) {
   const [localAnswer, setLocalAnswer] = useState(question.correct_answer);
   const [localMarks, setLocalMarks] = useState(question.marks);
