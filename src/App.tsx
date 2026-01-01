@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import AdminRoute from "@/components/AdminRoute";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
@@ -56,17 +57,17 @@ const App = () => (
             <Route path="/attempts" element={<MyAttempts />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<SettingsPage />} />
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/question-bank" element={<AdminQuestionBank />} />
-            <Route path="/admin/tests" element={<AdminTests />} />
-            <Route path="/admin/test-creator" element={<TestCreator />} />
-            <Route path="/admin/test-editor/:testId" element={<TestEditor />} />
-            <Route path="/admin/pdf-tests" element={<PDFTestList />} />
-            <Route path="/admin/pdf-tests/create" element={<PDFTestCreate />} />
-            <Route path="/admin/pdf-tests/:testId/edit" element={<PDFTestEditor />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
-            <Route path="/admin/settings" element={<AdminSettings />} />
+            {/* Admin Routes - All protected with AdminRoute */}
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/admin/question-bank" element={<AdminRoute><AdminQuestionBank /></AdminRoute>} />
+            <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
+            <Route path="/admin/test-creator" element={<AdminRoute><TestCreator /></AdminRoute>} />
+            <Route path="/admin/test-editor/:testId" element={<AdminRoute><TestEditor /></AdminRoute>} />
+            <Route path="/admin/pdf-tests" element={<AdminRoute><PDFTestList /></AdminRoute>} />
+            <Route path="/admin/pdf-tests/create" element={<AdminRoute><PDFTestCreate /></AdminRoute>} />
+            <Route path="/admin/pdf-tests/:testId/edit" element={<AdminRoute><PDFTestEditor /></AdminRoute>} />
+            <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+            <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
