@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, Clock, Hash, ArrowRight, Upload, Check } from "lucide-react";
+import { FileText, Clock, Hash, ArrowRight, Upload, Check, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,8 @@ const MARKING_SCHEMES = {
   }
 };
 
+const UPLOAD_TIMEOUT_MS = 120000; // 2 minutes timeout
+
 export default function PDFTestCreate() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -33,6 +35,8 @@ export default function PDFTestCreate() {
   const [isCreating, setIsCreating] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -53,6 +57,17 @@ export default function PDFTestCreate() {
     }
   };
 
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsCreating(false);
+    setUploading(false);
+    setUploadProgress("");
+    toast({ title: "Upload cancelled" });
+  };
+
   const handleCreate = async () => {
     if (!formData.name.trim()) {
       toast({ title: "Please enter a test title", variant: "destructive" });
@@ -63,10 +78,27 @@ export default function PDFTestCreate() {
       return;
     }
 
+    // Create new AbortController for this upload
+    abortControllerRef.current = new AbortController();
+    
     setIsCreating(true);
     setUploading(true);
+    setUploadProgress("Uploading PDF...");
+
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    }, UPLOAD_TIMEOUT_MS);
 
     try {
+      // Check if we have a valid session before proceeding
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        throw new Error("Session expired. Please log in again.");
+      }
+
       // Upload PDF
       const pdfPath = `tests/${Date.now()}_${pdfFile.name}`;
       const { error: uploadError } = await supabase.storage
@@ -76,6 +108,7 @@ export default function PDFTestCreate() {
       if (uploadError) throw uploadError;
 
       setUploading(false);
+      setUploadProgress("Creating test...");
 
       // Create test
       const { data, error } = await supabase
@@ -98,10 +131,32 @@ export default function PDFTestCreate() {
       toast({ title: "Test created successfully!" });
       navigate(`/admin/pdf-tests/${data.id}/edit`);
     } catch (err: any) {
-      toast({ title: "Error creating test", description: err.message, variant: "destructive" });
+      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+        toast({ 
+          title: "Upload timed out", 
+          description: "The upload took too long. Please try again with a smaller file or check your connection.",
+          variant: "destructive" 
+        });
+      } else if (err.message?.includes('Session expired')) {
+        toast({ 
+          title: "Session expired", 
+          description: "Please log in again to continue.",
+          variant: "destructive" 
+        });
+        navigate('/auth');
+      } else {
+        toast({ 
+          title: "Error creating test", 
+          description: err.message || "An unexpected error occurred", 
+          variant: "destructive" 
+        });
+      }
     } finally {
+      clearTimeout(timeoutId);
+      abortControllerRef.current = null;
       setIsCreating(false);
       setUploading(false);
+      setUploadProgress("");
     }
   };
 
@@ -331,7 +386,7 @@ export default function PDFTestCreate() {
                       {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </div>
-                  <Button variant="outline" onClick={() => setPdfFile(null)}>
+                  <Button variant="outline" onClick={() => setPdfFile(null)} disabled={isCreating}>
                     Change PDF
                   </Button>
                 </div>
@@ -354,6 +409,27 @@ export default function PDFTestCreate() {
               )}
             </div>
 
+            {/* Upload Progress */}
+            {isCreating && (
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+                    <p className="text-sm font-medium text-primary">{uploadProgress}</p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleCancel}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="p-4 rounded-lg bg-[hsl(45,93%,47%)]/10 border border-[hsl(45,93%,47%)]/30">
               <p className="text-sm text-[hsl(45,93%,47%)]">
                 <strong>Important:</strong> The PDF will be displayed to students during the test. 
@@ -362,7 +438,7 @@ export default function PDFTestCreate() {
             </div>
 
             <div className="flex gap-4">
-              <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
+              <Button variant="outline" onClick={() => setStep(2)} className="flex-1" disabled={isCreating}>
                 Back
               </Button>
               <Button
