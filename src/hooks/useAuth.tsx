@@ -58,54 +58,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+    let roleCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const initializeAuth = async () => {
+    const scheduleRoleCheck = (userId: string) => {
+      if (roleCheckTimer) clearTimeout(roleCheckTimer);
+      roleCheckTimer = setTimeout(() => {
+        if (!isMounted) return;
+        checkAdminRole(userId)
+          .catch(() => {
+            if (!isMounted) return;
+            setIsAdmin(false);
+            setViewMode('student');
+          })
+          .finally(() => {
+            if (!isMounted) return;
+            setIsLoading(false);
+          });
+      }, 0);
+    };
+
+    // IMPORTANT: keep this callback synchronous to avoid auth deadlocks
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        scheduleRoleCheck(session.user.id);
+      } else {
+        setIsAdmin(false);
+        setViewMode('student');
+        setIsLoading(false);
+      }
+    });
+
+    // Then initialize from existing session
+    (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
         if (!isMounted) return;
-        
+
         setSession(session);
         setUser(session?.user ?? null);
-        
-        // Wait for role check before setting loading to false
+
         if (session?.user) {
-          await checkAdminRole(session.user.id);
-        }
-        
-        if (isMounted) {
+          scheduleRoleCheck(session.user.id);
+        } else {
+          setIsAdmin(false);
+          setViewMode('student');
           setIsLoading(false);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
-    };
-
-    initializeAuth();
-
-    // Set up auth state listener for future changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!isMounted) return;
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        // Check admin role after auth state change
-        if (session?.user) {
-          await checkAdminRole(session.user.id);
-        } else {
-          setIsAdmin(false);
-          setViewMode('student');
-        }
-      }
-    );
+    })();
 
     return () => {
       isMounted = false;
+      if (roleCheckTimer) clearTimeout(roleCheckTimer);
       subscription.unsubscribe();
     };
   }, [checkAdminRole]);

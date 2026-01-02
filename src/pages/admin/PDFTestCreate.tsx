@@ -86,10 +86,11 @@ export default function PDFTestCreate() {
     setUploadProgress("Uploading PDF...");
 
     try {
-      const sessionRes = (await Promise.race([
-        withTimeout(supabase.auth.getSession(), 15000, "Request timed out"),
-        cancelPromise,
-      ])) as any;
+      const sessionPromise = withTimeout(supabase.auth.getSession(), 15000, "Request timed out");
+      // prevent unhandled rejection if cancel wins the race
+      sessionPromise.catch(() => {});
+
+      const sessionRes = (await Promise.race([sessionPromise, cancelPromise])) as any;
 
       const sessionData = sessionRes?.data;
       const sessionError = sessionRes?.error;
@@ -100,10 +101,12 @@ export default function PDFTestCreate() {
       // Upload PDF (race with timeout + cancel)
       const pdfPath = `tests/${Date.now()}_${pdfFile.name}`;
       const uploadTask = supabase.storage.from("test-pdfs").upload(pdfPath, pdfFile);
-      const uploadRes = (await Promise.race([
-        withTimeout(uploadTask, UPLOAD_TIMEOUT_MS, "Upload timed out"),
-        cancelPromise,
-      ])) as any;
+
+      const uploadPromise = withTimeout(uploadTask, UPLOAD_TIMEOUT_MS, "Upload timed out");
+      // prevent unhandled rejection if cancel wins the race
+      uploadPromise.catch(() => {});
+
+      const uploadRes = (await Promise.race([uploadPromise, cancelPromise])) as any;
 
       if (uploadRes?.error) throw uploadRes.error;
 
@@ -127,10 +130,11 @@ export default function PDFTestCreate() {
         .select()
         .single();
 
-      const insertRes = (await Promise.race([
-        withTimeout(insertTask, 20000, "Request timed out"),
-        cancelPromise,
-      ])) as any;
+      const insertPromise = withTimeout(insertTask, 20000, "Request timed out");
+      // prevent unhandled rejection if cancel wins the race
+      insertPromise.catch(() => {});
+
+      const insertRes = (await Promise.race([insertPromise, cancelPromise])) as any;
 
       if (insertRes?.error) throw insertRes.error;
 
