@@ -10,6 +10,7 @@ import AdminLayout from "@/components/layout/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { createDeferred, isCancelError, withTimeout } from "@/lib/async";
 
 const MARKING_SCHEMES = {
   jee_mains: {
@@ -36,7 +37,7 @@ export default function PDFTestCreate() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const cancelRef = useRef<ReturnType<typeof createDeferred> | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -58,10 +59,9 @@ export default function PDFTestCreate() {
   };
 
   const handleCancel = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
+    cancelRef.current?.reject(new Error("CANCELLED"));
+    cancelRef.current = null;
+
     setIsCreating(false);
     setUploading(false);
     setUploadProgress("");
@@ -78,82 +78,93 @@ export default function PDFTestCreate() {
       return;
     }
 
-    // Create new AbortController for this upload
-    abortControllerRef.current = new AbortController();
-    
+    cancelRef.current = createDeferred();
+    const cancelPromise = cancelRef.current.promise as Promise<never>;
+
     setIsCreating(true);
     setUploading(true);
     setUploadProgress("Uploading PDF...");
 
-    // Set up timeout
-    const timeoutId = setTimeout(() => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    }, UPLOAD_TIMEOUT_MS);
-
     try {
-      // Check if we have a valid session before proceeding
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !sessionData.session) {
+      const sessionRes = (await Promise.race([
+        withTimeout(supabase.auth.getSession(), 15000, "Request timed out"),
+        cancelPromise,
+      ])) as any;
+
+      const sessionData = sessionRes?.data;
+      const sessionError = sessionRes?.error;
+      if (sessionError || !sessionData?.session) {
         throw new Error("Session expired. Please log in again.");
       }
 
-      // Upload PDF
+      // Upload PDF (race with timeout + cancel)
       const pdfPath = `tests/${Date.now()}_${pdfFile.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("test-pdfs")
-        .upload(pdfPath, pdfFile);
+      const uploadTask = supabase.storage.from("test-pdfs").upload(pdfPath, pdfFile);
+      const uploadRes = (await Promise.race([
+        withTimeout(uploadTask, UPLOAD_TIMEOUT_MS, "Upload timed out"),
+        cancelPromise,
+      ])) as any;
 
-      if (uploadError) throw uploadError;
+      if (uploadRes?.error) throw uploadRes.error;
 
       setUploading(false);
       setUploadProgress("Creating test...");
 
-      // Create test
-      const { data, error } = await supabase
+      const insertTask = supabase
         .from("tests")
-        .insert([{
-          name: formData.name,
-          exam_type: formData.exam_type,
-          duration_minutes: formData.duration_minutes,
-          test_type: "pdf",
-          is_published: false,
-          created_by: user?.id,
-          pdf_url: pdfPath,
-          description: `${formData.subject} - ${formData.total_questions} questions`
-        }])
+        .insert([
+          {
+            name: formData.name,
+            exam_type: formData.exam_type,
+            duration_minutes: formData.duration_minutes,
+            test_type: "pdf",
+            is_published: false,
+            created_by: user?.id,
+            pdf_url: pdfPath,
+            description: `${formData.subject} - ${formData.total_questions} questions`,
+          },
+        ])
         .select()
         .single();
 
-      if (error) throw error;
+      const insertRes = (await Promise.race([
+        withTimeout(insertTask, 20000, "Request timed out"),
+        cancelPromise,
+      ])) as any;
+
+      if (insertRes?.error) throw insertRes.error;
 
       toast({ title: "Test created successfully!" });
-      navigate(`/admin/pdf-tests/${data.id}/edit`);
+      navigate(`/admin/pdf-tests/${insertRes.data.id}/edit`);
     } catch (err: any) {
-      if (err.name === 'AbortError' || err.message?.includes('aborted')) {
-        toast({ 
-          title: "Upload timed out", 
-          description: "The upload took too long. Please try again with a smaller file or check your connection.",
-          variant: "destructive" 
+      if (isCancelError(err)) {
+        return;
+      }
+
+      const message = err?.message || "An unexpected error occurred";
+
+      if (message === "Upload timed out") {
+        toast({
+          title: "Upload timed out",
+          description: "The upload took too long. Please try again (or use a smaller PDF / better connection).",
+          variant: "destructive",
         });
-      } else if (err.message?.includes('Session expired')) {
-        toast({ 
-          title: "Session expired", 
+      } else if (message.includes("Session expired")) {
+        toast({
+          title: "Session expired",
           description: "Please log in again to continue.",
-          variant: "destructive" 
+          variant: "destructive",
         });
-        navigate('/auth');
+        navigate("/auth");
       } else {
-        toast({ 
-          title: "Error creating test", 
-          description: err.message || "An unexpected error occurred", 
-          variant: "destructive" 
+        toast({
+          title: "Error creating test",
+          description: message,
+          variant: "destructive",
         });
       }
     } finally {
-      clearTimeout(timeoutId);
-      abortControllerRef.current = null;
+      cancelRef.current = null;
       setIsCreating(false);
       setUploading(false);
       setUploadProgress("");
