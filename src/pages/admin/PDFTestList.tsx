@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
@@ -14,13 +14,15 @@ import {
   Trash2,
   Eye,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { withTimeout } from "@/lib/async";
 
 interface PDFTest {
   id: string;
@@ -38,66 +40,131 @@ export default function PDFTestList() {
   const { toast } = useToast();
   const [tests, setTests] = useState<PDFTest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const fetchIdRef = useRef(0);
+
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const testsPerPage = 15;
 
+  const QUERY_TIMEOUT_MS = 15000;
+  const COUNT_TIMEOUT_MS = 10000;
+
   useEffect(() => {
     fetchTests();
   }, [page, sortOrder]);
 
-  const fetchTests = async () => {
-    setLoading(true);
-    try {
-      // Get total count
-      const { count } = await supabase
-        .from("tests")
-        .select("*", { count: "exact", head: true })
-        .not("pdf_url", "is", null);
-
-      setTotalCount(count || 0);
-
-      // Fetch tests with pagination
-      const { data, error } = await supabase
-        .from("tests")
-        .select("*")
-        .not("pdf_url", "is", null)
-        .order("created_at", { ascending: sortOrder === "oldest" })
-        .range((page - 1) * testsPerPage, page * testsPerPage - 1);
-
-      if (error) throw error;
-
-      // Fetch question counts and attempt counts
-      const testsWithCounts = await Promise.all(
-        (data || []).map(async (test) => {
+  const hydrateCounts = async (testIds: string[], fetchId: number) => {
+    const results = await Promise.allSettled(
+      testIds.map(async (testId) => {
+        try {
           const [questionsRes, attemptsRes] = await Promise.all([
-            supabase
-              .from("test_section_questions")
-              .select("id", { count: "exact", head: true })
-              .eq("test_id", test.id),
-            supabase
-              .from("test_attempts")
-              .select("id", { count: "exact", head: true })
-              .eq("test_id", test.id)
+            withTimeout(
+              supabase
+                .from("test_section_questions")
+                .select("id", { count: "exact", head: true })
+                .eq("test_id", testId),
+              COUNT_TIMEOUT_MS
+            ),
+            withTimeout(
+              supabase
+                .from("test_attempts")
+                .select("id", { count: "exact", head: true })
+                .eq("test_id", testId),
+              COUNT_TIMEOUT_MS
+            ),
           ]);
 
+          if (questionsRes.error || attemptsRes.error) return null;
+
           return {
-            ...test,
-            _count: {
-              questions: questionsRes.count || 0,
-              attempts: attemptsRes.count || 0
-            }
+            testId,
+            questions: questionsRes.count || 0,
+            attempts: attemptsRes.count || 0,
           };
-        })
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    if (fetchIdRef.current !== fetchId) return;
+
+    const map = new Map<string, { questions: number; attempts: number }>();
+    results.forEach((r) => {
+      if (r.status === "fulfilled" && r.value) {
+        map.set(r.value.testId, { questions: r.value.questions, attempts: r.value.attempts });
+      }
+    });
+
+    if (map.size === 0) return;
+
+    setTests((prev) =>
+      prev.map((t) => {
+        const counts = map.get(t.id);
+        if (!counts) return t;
+        return { ...t, _count: counts };
+      })
+    );
+  };
+
+  const fetchTests = async (showRetryToast = false) => {
+    const fetchId = ++fetchIdRef.current;
+
+    setLoading(true);
+    setError(null);
+    if (showRetryToast) setRetrying(true);
+
+    try {
+      // Total count
+      const countRes = await withTimeout(
+        supabase.from("tests").select("*", { count: "exact", head: true }).not("pdf_url", "is", null),
+        QUERY_TIMEOUT_MS
+      );
+      if (countRes.error) throw countRes.error;
+      if (fetchIdRef.current !== fetchId) return;
+      setTotalCount(countRes.count || 0);
+
+      // Page data
+      const listRes = await withTimeout(
+        supabase
+          .from("tests")
+          .select("*")
+          .not("pdf_url", "is", null)
+          .order("created_at", { ascending: sortOrder === "oldest" })
+          .range((page - 1) * testsPerPage, page * testsPerPage - 1),
+        QUERY_TIMEOUT_MS
       );
 
-      setTests(testsWithCounts);
+      if (listRes.error) throw listRes.error;
+
+      const baseList = (listRes.data || []).map((t: any) => ({
+        ...t,
+        _count: { questions: 0, attempts: 0 },
+      }));
+
+      if (fetchIdRef.current !== fetchId) return;
+      setTests(baseList);
+
+      // Non-blocking count hydration (so UI never spins forever)
+      void hydrateCounts(
+        baseList.map((t: any) => t.id),
+        fetchId
+      );
+
+      if (showRetryToast) toast({ title: "Tests refreshed" });
     } catch (err: any) {
-      toast({ title: "Error loading tests", description: err.message, variant: "destructive" });
+      const message = err?.message || "Failed to load tests";
+      setError(message);
+      toast({ title: "Error loading tests", description: message, variant: "destructive" });
     } finally {
-      setLoading(false);
+      if (fetchIdRef.current === fetchId) {
+        setLoading(false);
+        setRetrying(false);
+      }
     }
   };
 
@@ -184,6 +251,16 @@ export default function PDFTestList() {
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="glass-card p-12 text-center">
+            <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
+            <h2 className="text-xl font-semibold mb-2">Couldn't load PDF Tests</h2>
+            <p className="text-muted-foreground mb-6">{error}</p>
+            <Button onClick={() => fetchTests(true)} disabled={retrying}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${retrying ? "animate-spin" : ""}`} />
+              {retrying ? "Retrying..." : "Try Again"}
+            </Button>
           </div>
         ) : filteredTests.length === 0 ? (
           <div className="glass-card p-12 text-center">
