@@ -1,3 +1,14 @@
-<title>PhyNetix – AI Powered JEE & NEET Test Platform</title>
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
-<meta name="description" content="PhyNetix is an AI-powered learning and test platform for JEE and NEET students with smart tests, analytics, and performance tracking." />
+  <url>
+    <loc>https://www.phynetix.me/</loc>
+    <priority>1.0</priority>
+  </url>
+
+  <url>
+    <loc>https://www.phynetix.me/auth</loc>
+    <priority>0.8</priority>
+  </url>
+
+</urlset>
