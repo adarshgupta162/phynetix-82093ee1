@@ -18,7 +18,7 @@ import {
   Shield,
   Upload,
   Calendar,
-  Wand2,
+  
   GripVertical,
   Loader2
 } from "lucide-react";
@@ -119,10 +119,6 @@ export default function PDFTestEditor() {
   const [showAddSection, setShowAddSection] = useState<string | null>(null);
   const [newSectionData, setNewSectionData] = useState({ name: "", type: "single_choice" });
 
-  // AI Answer Key extraction state
-  const [showAIExtract, setShowAIExtract] = useState(false);
-  const [aiImage, setAiImage] = useState<File | null>(null);
-  const [extractingAnswers, setExtractingAnswers] = useState(false);
 
   // Drag state
   const [draggedQuestion, setDraggedQuestion] = useState<{id: string, sectionId: string} | null>(null);
@@ -517,57 +513,6 @@ export default function PDFTestEditor() {
     }
   };
 
-  // AI Answer Key Extraction
-  const extractAnswersFromImage = async () => {
-    if (!aiImage) return;
-
-    setExtractingAnswers(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = reader.result as string;
-        
-        const { data, error } = await supabase.functions.invoke('extract-answer-key', {
-          body: { image: base64 }
-        });
-
-        if (error) throw error;
-
-        if (data.answers && data.answers.length > 0) {
-          toast({ 
-            title: "Answers extracted!", 
-            description: `Found ${data.answers.length} answers. Apply them to questions.` 
-          });
-          
-          // Auto-apply answers to existing questions
-          const allQuestions = subjects.flatMap(s => 
-            s.sections.flatMap(sec => sec.questions)
-          );
-          
-          for (let i = 0; i < Math.min(data.answers.length, allQuestions.length); i++) {
-            const q = allQuestions[i];
-            const extractedAnswer = data.answers[i];
-            if (extractedAnswer && extractedAnswer.answer) {
-              await updateQuestion(q.id, { correct_answer: extractedAnswer.answer });
-            }
-          }
-          
-          loadTestData(); // Refresh
-        } else {
-          toast({ title: "No answers found", variant: "destructive" });
-        }
-        
-        setShowAIExtract(false);
-        setAiImage(null);
-      };
-      reader.readAsDataURL(aiImage);
-    } catch (err: any) {
-      toast({ title: "AI extraction failed", description: err.message, variant: "destructive" });
-    } finally {
-      setExtractingAnswers(false);
-    }
-  };
-
   // Drag and drop handlers
   const handleDragStart = (questionId: string, sectionId: string) => {
     setDraggedQuestion({ id: questionId, sectionId });
@@ -765,71 +710,6 @@ export default function PDFTestEditor() {
                 <Calculator className="w-4 h-4 mr-2" />
                 Recalculate
               </Button>
-
-              {/* AI Answer Key Extraction */}
-              <Dialog open={showAIExtract} onOpenChange={setShowAIExtract}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
-                    <Wand2 className="w-4 h-4 mr-2 text-purple-500" />
-                    AI Extract
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Wand2 className="w-5 h-5 text-purple-500" />
-                      AI Answer Key Extraction
-                    </DialogTitle>
-                    <DialogDescription>
-                      Upload an image of the answer key and AI will automatically extract answers
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setAiImage(e.target.files?.[0] || null)}
-                        className="hidden"
-                        id="ai-image-upload"
-                      />
-                      <label htmlFor="ai-image-upload" className="cursor-pointer">
-                        {aiImage ? (
-                          <div className="space-y-2">
-                            <Check className="w-8 h-8 mx-auto text-green-500" />
-                            <p className="text-sm font-medium">{aiImage.name}</p>
-                            <p className="text-xs text-muted-foreground">Click to change</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
-                            <p className="text-sm font-medium">Click to upload answer key image</p>
-                            <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
-                          </div>
-                        )}
-                      </label>
-                    </div>
-
-                    <Button 
-                      onClick={extractAnswersFromImage} 
-                      className="w-full"
-                      disabled={!aiImage || extractingAnswers}
-                    >
-                      {extractingAnswers ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Extracting...
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="w-4 h-4 mr-2" />
-                          Extract & Apply Answers
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
 
               <span className={`px-3 py-1 text-sm rounded-full ${
                 test?.is_published 
