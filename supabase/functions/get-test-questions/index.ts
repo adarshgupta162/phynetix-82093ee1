@@ -37,7 +37,7 @@ serve(async (req) => {
 
     const { data: testQuestions, error: questionsError } = await supabaseClient
       .from("test_questions")
-      .select(`order_index, question_id, questions(id, question_text, options, difficulty, marks, negative_marks, question_type, chapters(id, name, courses(id, name)))`)
+      .select(`order_index, question_id, questions(id, question_text, options, difficulty, marks, negative_marks, question_type, image_url, chapters(id, name, courses(id, name)))`)
       .eq("test_id", test_id)
       .order("order_index");
 
@@ -59,6 +59,7 @@ serve(async (req) => {
         marks: q?.marks ?? 4,
         negative_marks: q?.negative_marks ?? 1,
         question_type: q?.question_type,
+        image_url: q?.image_url,
         subject: course?.name ?? "General",
         chapter: chapter?.name ?? "General",
       };
