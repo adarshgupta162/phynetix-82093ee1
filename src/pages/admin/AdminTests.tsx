@@ -14,7 +14,8 @@ import {
   Upload,
   FileText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  BarChart3
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -375,6 +376,14 @@ export default function AdminTests() {
                       ) : (
                         <><Eye className="w-4 h-4" /> Publish</>
                       )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.location.href = `/admin/test-analytics/${test.id}`}
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      Analytics
                     </Button>
                     <button
                       onClick={() => {

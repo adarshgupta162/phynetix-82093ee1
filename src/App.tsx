@@ -1,5 +1,4 @@
 import { Toaster } from "@/components/ui/toaster";
-import DetailedAnalysis from "@/pages/DetailedAnalysis";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,9 +10,10 @@ import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import TestLibrary from "./pages/TestLibrary";
 import PDFTestLibrary from "./pages/PDFTestLibrary";
-import TestInterface from "./pages/TestInterface";
+import NormalTestInterface from "./pages/NormalTestInterface";
 import PDFTestInterface from "./pages/PDFTestInterface";
-import TestAnalysis from "./pages/TestAnalysis";
+import NormalTestAnalysis from "./pages/NormalTestAnalysis";
+import DetailedAnalysis from "./pages/DetailedAnalysis";
 import QuestionWiseAnalysis from "./pages/QuestionWiseAnalysis";
 import MyAttempts from "./pages/MyAttempts";
 import Analytics from "./pages/Analytics";
@@ -30,6 +30,7 @@ import TestEditor from "./pages/admin/TestEditor";
 import PDFTestList from "./pages/admin/PDFTestList";
 import PDFTestCreate from "./pages/admin/PDFTestCreate";
 import PDFTestEditor from "./pages/admin/PDFTestEditor";
+import NormalTestAnalytics from "./pages/admin/NormalTestAnalytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -50,9 +51,10 @@ const App = () => (
             <Route path="/tests" element={<TestLibrary />} />
             <Route path="/pdf-tests" element={<PDFTestLibrary />} />
             <Route path="/question-bank" element={<QuestionBankPage />} />
-            <Route path="/test/:testId" element={<TestInterface />} />
+            <Route path="/test/:testId" element={<NormalTestInterface />} />
             <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
-            <Route path="/test/:testId/analysis" element={<DetailedAnalysis />} />
+            <Route path="/test/:testId/analysis" element={<NormalTestAnalysis />} />
+            <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/attempts" element={<MyAttempts />} />
             <Route path="/analytics" element={<Analytics />} />
@@ -63,6 +65,7 @@ const App = () => (
             <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
             <Route path="/admin/test-creator" element={<AdminRoute><TestCreator /></AdminRoute>} />
             <Route path="/admin/test-editor/:testId" element={<AdminRoute><TestEditor /></AdminRoute>} />
+            <Route path="/admin/test-analytics/:testId" element={<AdminRoute><NormalTestAnalytics /></AdminRoute>} />
             <Route path="/admin/pdf-tests" element={<AdminRoute><PDFTestList /></AdminRoute>} />
             <Route path="/admin/pdf-tests/create" element={<AdminRoute><PDFTestCreate /></AdminRoute>} />
             <Route path="/admin/pdf-tests/:testId/edit" element={<AdminRoute><PDFTestEditor /></AdminRoute>} />
