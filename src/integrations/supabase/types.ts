@@ -79,56 +79,110 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          title: string
+          type: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          title: string
+          type?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          title?: string
+          type?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          academic_status: string | null
           address: string | null
           avatar_url: string | null
           banned_reason: string | null
           banned_until: string | null
           city: string | null
+          coaching_name: string | null
+          coaching_type: string | null
           created_at: string
           date_of_birth: string | null
           full_name: string | null
+          gender: string | null
           id: string
           is_banned: boolean | null
           phone: string | null
+          preferred_language: string | null
+          profile_completed: boolean | null
           roll_number: string | null
           state: string | null
           target_exam: string | null
+          telegram_id: string | null
           updated_at: string
         }
         Insert: {
+          academic_status?: string | null
           address?: string | null
           avatar_url?: string | null
           banned_reason?: string | null
           banned_until?: string | null
           city?: string | null
+          coaching_name?: string | null
+          coaching_type?: string | null
           created_at?: string
           date_of_birth?: string | null
           full_name?: string | null
+          gender?: string | null
           id: string
           is_banned?: boolean | null
           phone?: string | null
+          preferred_language?: string | null
+          profile_completed?: boolean | null
           roll_number?: string | null
           state?: string | null
           target_exam?: string | null
+          telegram_id?: string | null
           updated_at?: string
         }
         Update: {
+          academic_status?: string | null
           address?: string | null
           avatar_url?: string | null
           banned_reason?: string | null
           banned_until?: string | null
           city?: string | null
+          coaching_name?: string | null
+          coaching_type?: string | null
           created_at?: string
           date_of_birth?: string | null
           full_name?: string | null
+          gender?: string | null
           id?: string
           is_banned?: boolean | null
           phone?: string | null
+          preferred_language?: string | null
+          profile_completed?: boolean | null
           roll_number?: string | null
           state?: string | null
           target_exam?: string | null
+          telegram_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -633,6 +687,8 @@ export type Database = {
           name: string
           pdf_url: string | null
           scheduled_at: string | null
+          show_solutions: boolean | null
+          solution_reopen_mode: boolean | null
           test_type: string
           updated_at: string
         }
@@ -650,6 +706,8 @@ export type Database = {
           name: string
           pdf_url?: string | null
           scheduled_at?: string | null
+          show_solutions?: boolean | null
+          solution_reopen_mode?: boolean | null
           test_type?: string
           updated_at?: string
         }
@@ -667,6 +725,8 @@ export type Database = {
           name?: string
           pdf_url?: string | null
           scheduled_at?: string | null
+          show_solutions?: boolean | null
+          solution_reopen_mode?: boolean | null
           test_type?: string
           updated_at?: string
         }

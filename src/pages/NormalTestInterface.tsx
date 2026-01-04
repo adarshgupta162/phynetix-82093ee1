@@ -20,6 +20,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import FullscreenGuard from "@/components/test/FullscreenGuard";
 
 interface Question {
   id: string;
@@ -58,6 +59,8 @@ export default function NormalTestInterface() {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [fullscreenEnabled, setFullscreenEnabled] = useState(true);
+  const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
 
   useEffect(() => {
     if (testId) {
@@ -67,6 +70,17 @@ export default function NormalTestInterface() {
 
   const initializeTest = async () => {
     try {
+      // Fetch test settings first
+      const { data: testData } = await supabase
+        .from("tests")
+        .select("fullscreen_enabled")
+        .eq("id", testId)
+        .single();
+      
+      if (testData) {
+        setFullscreenEnabled(testData.fullscreen_enabled ?? true);
+      }
+
       const { data: startData, error: startError } = await supabase.functions.invoke("start-test", {
         body: { test_id: testId },
       });
@@ -78,6 +92,11 @@ export default function NormalTestInterface() {
       setAttemptId(startData.attempt_id);
       setTestName(startData.test_name);
       setTimeLeft(startData.duration_minutes * 60);
+      
+      // Get existing fullscreen exit count if resuming
+      if (startData.fullscreen_exit_count) {
+        setFullscreenExitCount(startData.fullscreen_exit_count);
+      }
 
       const { data: questionsData, error: questionsError } = await supabase.functions.invoke("get-test-questions", {
         body: { test_id: testId },
@@ -224,7 +243,7 @@ export default function NormalTestInterface() {
     }
   };
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (fromFullscreenMax = false) => {
     if (!attemptId || submitting) return;
 
     setSubmitting(true);
@@ -234,6 +253,7 @@ export default function NormalTestInterface() {
           attempt_id: attemptId,
           answers,
           time_taken_seconds: Math.max(1, timeLeft > 0 ? (questions.length * 60 - timeLeft) : 1),
+          fullscreen_exit_count: fullscreenExitCount,
         },
       });
 
@@ -256,7 +276,30 @@ export default function NormalTestInterface() {
       });
       setSubmitting(false);
     }
-  }, [attemptId, answers, timeLeft, testId, testName, navigate, submitting, questions]);
+  }, [attemptId, answers, timeLeft, testId, testName, navigate, submitting, questions, fullscreenExitCount]);
+
+  const handleFullscreenExitCountChange = useCallback((count: number) => {
+    setFullscreenExitCount(count);
+    // Update the attempt with the new count
+    if (attemptId) {
+      supabase
+        .from("test_attempts")
+        .update({ fullscreen_exit_count: count })
+        .eq("id", attemptId)
+        .then(({ error }) => {
+          if (error) console.error("Failed to update fullscreen count:", error);
+        });
+    }
+  }, [attemptId]);
+
+  const handleMaxFullscreenExits = useCallback(() => {
+    toast({
+      title: "Test Auto-Submitted",
+      description: "You exceeded the maximum allowed fullscreen exits.",
+      variant: "destructive",
+    });
+    handleSubmit(true);
+  }, [handleSubmit]);
 
   const getQuestionStatus = (questionId: string) => {
     if (currentQuestion?.id === questionId) return "current";
@@ -296,7 +339,7 @@ export default function NormalTestInterface() {
 
   const statusCounts = getStatusCounts();
 
-  return (
+  const testContent = (
     <div className="min-h-screen bg-[#0a1628] flex flex-col">
       {/* Header */}
       <header className="bg-[#1e3a5f] text-white px-4 py-2 flex items-center justify-between">
@@ -561,7 +604,7 @@ export default function NormalTestInterface() {
                 </Button>
                 <Button 
                   className="flex-1 bg-[#34a853] hover:bg-[#2d8f47]" 
-                  onClick={handleSubmit} 
+                  onClick={() => handleSubmit()} 
                   disabled={submitting}
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Now"}
@@ -573,4 +616,20 @@ export default function NormalTestInterface() {
       </AnimatePresence>
     </div>
   );
+
+  // Wrap with FullscreenGuard if enabled
+  if (fullscreenEnabled) {
+    return (
+      <FullscreenGuard
+        maxExits={7}
+        onMaxExitsReached={handleMaxFullscreenExits}
+        onExitCountChange={handleFullscreenExitCountChange}
+        initialExitCount={fullscreenExitCount}
+      >
+        {testContent}
+      </FullscreenGuard>
+    );
+  }
+
+  return testContent;
 }
