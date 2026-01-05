@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AuthCallback from "./pages/AuthCallback";
 import { AuthProvider } from "@/hooks/useAuth";
 import AdminRoute from "@/components/AdminRoute";
 import ProfileGuard from "@/components/ProfileGuard";
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/attempts" element={<MyAttempts />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<SettingsPage />} />
             {/* Admin Routes - All protected with AdminRoute */}
