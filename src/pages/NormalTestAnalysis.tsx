@@ -118,74 +118,110 @@ export default function NormalTestAnalysis() {
 
   const fetchQuestionDetails = async (userAnswers?: Record<string, string>) => {
     try {
-      const { data: questionsData } = await supabase.functions.invoke("get-test-questions", {
-        body: { test_id: testId }
+      // For normal tests, get questions with correct answers
+      const { data: testQuestions } = await supabase
+        .from("test_questions")
+        .select(`
+          question_id,
+          order_index,
+          questions(
+            id,
+            question_text,
+            options,
+            correct_answer,
+            marks,
+            negative_marks,
+            question_type,
+            image_url,
+            chapters(
+              name,
+              courses(name)
+            )
+          )
+        `)
+        .eq("test_id", testId)
+        .order("order_index");
+
+      if (!testQuestions || testQuestions.length === 0) {
+        console.error("No questions found for this test");
+        setLoading(false);
+        return;
+      }
+
+      const answers = userAnswers || (location.state?.results?.answers as Record<string, string>) || {};
+
+      const processedQuestions: Question[] = testQuestions.map((tq: any, index: number) => {
+        const q = tq.questions;
+        if (!q) return null;
+        
+        const userAnswer = answers[q.id];
+        const correctAnswer = q.correct_answer;
+        const isCorrect = userAnswer !== undefined && String(userAnswer) === String(correctAnswer);
+        const isSkipped = userAnswer === undefined;
+        const marks = q.marks || 4;
+        const negativeMarks = q.negative_marks || 1;
+        
+        return {
+          id: q.id,
+          question_text: q.question_text,
+          options: Array.isArray(q.options) ? q.options : (q.options ? Object.values(q.options) : []),
+          correct_answer: correctAnswer,
+          marks: marks,
+          negative_marks: negativeMarks,
+          subject: q.chapters?.courses?.name || "General",
+          user_answer: userAnswer,
+          is_correct: isCorrect,
+          marks_obtained: isSkipped ? 0 : (isCorrect ? marks : -negativeMarks)
+        };
+      }).filter(Boolean) as Question[];
+
+      setQuestions(processedQuestions);
+
+      // Calculate subject scores
+      const subjectMap: Record<string, SubjectScore> = {};
+      let totalCorrect = 0;
+      let totalIncorrect = 0;
+      let totalSkipped = 0;
+      let totalScore = 0;
+      let totalMaxMarks = 0;
+
+      processedQuestions.forEach((q) => {
+        const subj = q.subject || "General";
+        if (!subjectMap[subj]) {
+          subjectMap[subj] = { correct: 0, incorrect: 0, skipped: 0, total: 0, marks: 0, totalMarks: 0 };
+        }
+        subjectMap[subj].total++;
+        subjectMap[subj].totalMarks += q.marks;
+        totalMaxMarks += q.marks;
+        
+        if (q.user_answer === undefined) {
+          subjectMap[subj].skipped++;
+          totalSkipped++;
+        } else if (q.is_correct) {
+          subjectMap[subj].correct++;
+          subjectMap[subj].marks += q.marks;
+          totalCorrect++;
+          totalScore += q.marks;
+        } else {
+          subjectMap[subj].incorrect++;
+          subjectMap[subj].marks -= q.negative_marks;
+          totalIncorrect++;
+          totalScore -= q.negative_marks;
+        }
       });
 
-      if (questionsData?.questions) {
-        const answers = userAnswers || (location.state?.results?.answers as Record<string, string>) || {};
-        
-        // Fetch correct answers
-        const { data: testQuestions } = await supabase
-          .from("test_questions")
-          .select("question_id, questions(id, correct_answer)")
-          .eq("test_id", testId);
+      // Update results with calculated data
+      setResults(prev => ({
+        score: prev?.score ?? totalScore,
+        total_marks: prev?.total_marks ?? totalMaxMarks,
+        correct: totalCorrect,
+        incorrect: totalIncorrect,
+        skipped: totalSkipped,
+        percentile: prev?.percentile ?? 0,
+        subject_scores: subjectMap,
+        time_taken_seconds: prev?.time_taken_seconds ?? 0
+      }));
 
-        const correctAnswers: Record<string, string> = {};
-        testQuestions?.forEach((tq: any) => {
-          if (tq.questions) {
-            correctAnswers[tq.questions.id] = tq.questions.correct_answer;
-          }
-        });
-
-        const processedQuestions: Question[] = questionsData.questions.map((q: any) => {
-          const userAnswer = answers[q.id];
-          const correctAnswer = correctAnswers[q.id];
-          const isCorrect = userAnswer !== undefined && userAnswer === correctAnswer;
-          const isSkipped = userAnswer === undefined;
-          
-          return {
-            ...q,
-            correct_answer: correctAnswer,
-            user_answer: userAnswer,
-            is_correct: isCorrect,
-            marks_obtained: isSkipped ? 0 : (isCorrect ? q.marks : -q.negative_marks)
-          };
-        });
-
-        setQuestions(processedQuestions);
-
-        // Calculate subject scores
-        const subjectMap: Record<string, SubjectScore> = {};
-        processedQuestions.forEach((q) => {
-          const subj = q.subject || "General";
-          if (!subjectMap[subj]) {
-            subjectMap[subj] = { correct: 0, incorrect: 0, skipped: 0, total: 0, marks: 0, totalMarks: 0 };
-          }
-          subjectMap[subj].total++;
-          subjectMap[subj].totalMarks += q.marks;
-          
-          if (q.user_answer === undefined) {
-            subjectMap[subj].skipped++;
-          } else if (q.is_correct) {
-            subjectMap[subj].correct++;
-            subjectMap[subj].marks += q.marks;
-          } else {
-            subjectMap[subj].incorrect++;
-            subjectMap[subj].marks -= q.negative_marks;
-          }
-        });
-
-        if (results) {
-          setResults({
-            ...results,
-            subject_scores: subjectMap,
-            correct: Object.values(subjectMap).reduce((sum, s) => sum + s.correct, 0),
-            incorrect: Object.values(subjectMap).reduce((sum, s) => sum + s.incorrect, 0),
-            skipped: Object.values(subjectMap).reduce((sum, s) => sum + s.skipped, 0)
-          });
-        }
-      }
     } catch (error) {
       console.error("Error fetching questions:", error);
     } finally {
