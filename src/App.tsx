@@ -34,9 +34,21 @@ import PDFTestCreate from "./pages/admin/PDFTestCreate";
 import PDFTestEditor from "./pages/admin/PDFTestEditor";
 import NormalTestAnalytics from "./pages/admin/NormalTestAnalytics";
 import NotFound from "./pages/NotFound";
+import { Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import AuthCallback from "./pages/AuthCallback";
 
 const queryClient = new QueryClient();
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+    </Routes>
+  );
+}
 
+export default App;
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
