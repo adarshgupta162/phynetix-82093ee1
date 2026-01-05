@@ -61,12 +61,79 @@ export default function NormalTestInterface() {
   const [submitting, setSubmitting] = useState(false);
   const [fullscreenEnabled, setFullscreenEnabled] = useState(true);
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
+  
+  // Instructions page state
+  const [showInstructions, setShowInstructions] = useState(true);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [testDuration, setTestDuration] = useState(0);
+  const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
 
   useEffect(() => {
     if (testId) {
-      initializeTest();
+      checkExistingAttemptFn();
     }
   }, [testId]);
+
+  const checkExistingAttemptFn = async () => {
+    try {
+      // Get test info first
+      const { data: testData } = await supabase
+        .from("tests")
+        .select("name, duration_minutes, fullscreen_enabled")
+        .eq("id", testId)
+        .single();
+
+      if (testData) {
+        setTestName(testData.name);
+        setTestDuration(testData.duration_minutes);
+        setFullscreenEnabled(testData.fullscreen_enabled ?? true);
+      }
+
+      // Check for existing attempt
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: existingAttempt } = await supabase
+          .from("test_attempts")
+          .select("id, completed_at, fullscreen_exit_count")
+          .eq("test_id", testId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existingAttempt) {
+          if (existingAttempt.completed_at) {
+            // Already completed, redirect to analysis
+            navigate(`/test/${testId}/analysis`);
+            return;
+          }
+          // Has ongoing attempt - skip instructions
+          setHasExistingAttempt(true);
+          setShowInstructions(false);
+          setFullscreenExitCount(existingAttempt.fullscreen_exit_count || 0);
+          initializeTest();
+          return;
+        }
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Error checking attempt:", error);
+      setLoading(false);
+    }
+  };
+
+  const startTest = () => {
+    if (!agreedToTerms) {
+      toast({
+        title: "Please agree to the terms",
+        description: "You must agree to the test rules before starting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setShowInstructions(false);
+    setLoading(true);
+    initializeTest();
+  };
 
   const initializeTest = async () => {
     try {
@@ -320,12 +387,176 @@ export default function NormalTestInterface() {
     return { answered, notAnswered, markedCount, answeredMarked, notVisited };
   };
 
-  if (loading) {
+  // Loading state
+  if (loading && !showInstructions) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Loading test...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Instructions page
+  if (showInstructions && !hasExistingAttempt) {
+    return (
+      <div className="min-h-screen bg-[#0a1628] flex flex-col">
+        <header className="bg-[#1e3a5f] text-white px-6 py-4">
+          <h1 className="text-xl font-bold">{testName}</h1>
+          <p className="text-white/70 text-sm">JEE Mains Pattern Test</p>
+        </header>
+
+        <div className="flex-1 p-6 lg:p-10 overflow-y-auto">
+          <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div className="bg-[#1a73e8] text-white px-6 py-4">
+              <h2 className="text-xl font-bold">Instructions</h2>
+              <p className="text-white/80 text-sm">Please read carefully before starting</p>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* General Instructions */}
+              <div>
+                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-[#1a73e8]" />
+                  General Instructions
+                </h3>
+                <ul className="list-disc ml-6 space-y-2 text-gray-700 text-sm">
+                  <li>Total duration of examination is <strong>{testDuration} minutes</strong>.</li>
+                  <li>The clock will be set at the server. The countdown timer will display the remaining time.</li>
+                  <li>The test will auto-submit when the time expires. You cannot resume once submitted.</li>
+                  <li>Only <strong>1 attempt</strong> is allowed per user.</li>
+                </ul>
+              </div>
+
+              {/* Answering Instructions */}
+              <div>
+                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  Answering a Question
+                </h3>
+                <ul className="list-disc ml-6 space-y-2 text-gray-700 text-sm">
+                  <li>Click on the option to select your answer.</li>
+                  <li>Click <strong>Save & Next</strong> to save and proceed to the next question.</li>
+                  <li>Click <strong>Mark for Review & Next</strong> to save and mark for review.</li>
+                  <li>Click <strong>Clear Response</strong> to deselect your answer.</li>
+                </ul>
+              </div>
+
+              {/* Navigating Instructions */}
+              <div>
+                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <Menu className="w-5 h-5 text-purple-600" />
+                  Navigating the Question Palette
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded bg-gray-300 flex items-center justify-center text-gray-600 font-bold">1</div>
+                    <span className="text-gray-600">Not Visited</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded bg-red-500 text-white flex items-center justify-center font-bold">2</div>
+                    <span className="text-gray-600">Not Answered</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded bg-green-500 text-white flex items-center justify-center font-bold">3</div>
+                    <span className="text-gray-600">Answered</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded bg-purple-500 text-white flex items-center justify-center font-bold">4</div>
+                    <span className="text-gray-600">Marked for Review</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded bg-purple-500 text-white flex items-center justify-center font-bold relative">
+                      5
+                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></span>
+                    </div>
+                    <span className="text-gray-600">Answered & Marked</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Marking Scheme */}
+              <div>
+                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  <Flag className="w-5 h-5 text-orange-500" />
+                  Marking Scheme
+                </h3>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-gray-600">
+                        <th className="text-left py-2">Question Type</th>
+                        <th className="text-center py-2">Correct</th>
+                        <th className="text-center py-2">Incorrect</th>
+                        <th className="text-center py-2">Unattempted</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-gray-800">
+                      <tr className="border-t border-gray-200">
+                        <td className="py-2">MCQ (Single Correct)</td>
+                        <td className="text-center text-green-600 font-bold">+4</td>
+                        <td className="text-center text-red-600 font-bold">-1</td>
+                        <td className="text-center text-gray-400">0</td>
+                      </tr>
+                      <tr className="border-t border-gray-200">
+                        <td className="py-2">Integer Type</td>
+                        <td className="text-center text-green-600 font-bold">+4</td>
+                        <td className="text-center text-gray-400">0</td>
+                        <td className="text-center text-gray-400">0</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Fullscreen Warning */}
+              {fullscreenEnabled && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-yellow-800">Fullscreen Mode Required</h4>
+                      <p className="text-yellow-700 text-sm mt-1">
+                        This test requires fullscreen mode. Exiting fullscreen more than 7 times will auto-submit your test.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Agreement Checkbox */}
+              <div className="border-t border-gray-200 pt-6">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-1 w-5 h-5 rounded border-gray-300 text-[#1a73e8] focus:ring-[#1a73e8]"
+                  />
+                  <span className="text-gray-700 text-sm">
+                    I have read and understood all the instructions. I agree to abide by them and understand that any violation may lead to disqualification.
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Start Button */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+              <Button
+                onClick={startTest}
+                disabled={!agreedToTerms || loading}
+                className="bg-[#34a853] hover:bg-[#2d8f47] text-white px-8 py-2 text-lg"
+              >
+                {loading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  "I am ready to begin"
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );

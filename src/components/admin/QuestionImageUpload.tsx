@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { Upload, X, Loader2, ImageIcon } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Upload, X, Loader2, ImageIcon, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,17 +10,16 @@ interface ImageUploadProps {
   onChange: (url: string | null) => void;
   disabled?: boolean;
   className?: string;
+  compact?: boolean;
 }
 
-export function QuestionImageUpload({ value, onChange, disabled, className }: ImageUploadProps) {
+export function QuestionImageUpload({ value, onChange, disabled, className, compact = false }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const uploadFile = async (file: File) => {
     // Validate file type
     if (!file.type.startsWith("image/")) {
       toast({
@@ -60,7 +59,7 @@ export function QuestionImageUpload({ value, onChange, disabled, className }: Im
         .getPublicUrl(data.path);
 
       onChange(urlData.publicUrl);
-      toast({ title: "Image uploaded successfully" });
+      toast({ title: "Image uploaded" });
     } catch (error: any) {
       console.error("Upload error:", error);
       toast({
@@ -76,12 +75,112 @@ export function QuestionImageUpload({ value, onChange, disabled, className }: Im
     }
   };
 
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+  };
+
+  // Drag and drop handlers - passive detection, no visible drop zone
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled && !uploading) {
+      setIsDragging(true);
+    }
+  }, [disabled, uploading]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (disabled || uploading) return;
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      await uploadFile(files[0]);
+    }
+  }, [disabled, uploading]);
+
   const handleRemove = () => {
     onChange(null);
   };
 
+  // Compact mode - just a small icon button
+  if (compact) {
+    return (
+      <div 
+        className={cn("inline-flex items-center gap-2", className)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleUpload}
+          disabled={disabled || uploading}
+          className="hidden"
+        />
+        
+        {value ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-green-600 flex items-center gap-1">
+              <Paperclip className="w-3 h-3" />
+              Image attached
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+              onClick={handleRemove}
+              disabled={disabled}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={disabled || uploading}
+            className={cn(
+              "h-7 px-2 text-xs",
+              isDragging && "ring-2 ring-primary"
+            )}
+          >
+            {uploading ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <>
+                <ImageIcon className="w-3 h-3 mr-1" />
+                Image
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  // Standard mode
   return (
-    <div className={cn("space-y-2", className)}>
+    <div 
+      className={cn("space-y-2", className)}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -115,7 +214,10 @@ export function QuestionImageUpload({ value, onChange, disabled, className }: Im
           variant="outline"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || uploading}
-          className="w-full h-20 border-dashed"
+          className={cn(
+            "w-full h-12 border-dashed",
+            isDragging && "ring-2 ring-primary border-primary"
+          )}
         >
           {uploading ? (
             <>
@@ -125,7 +227,7 @@ export function QuestionImageUpload({ value, onChange, disabled, className }: Im
           ) : (
             <>
               <ImageIcon className="w-4 h-4 mr-2" />
-              Upload Question Image
+              {isDragging ? "Drop image here" : "Add Image"}
             </>
           )}
         </Button>

@@ -87,7 +87,8 @@ export default function AdminTests() {
 
   const fetchData = async () => {
     const [testsRes, questionsRes, chaptersRes, testQuestionsRes] = await Promise.all([
-      supabase.from('tests').select('*').order('created_at', { ascending: false }),
+      // Only fetch Normal Tests (not PDF tests)
+      supabase.from('tests').select('*').neq('test_type', 'pdf').order('created_at', { ascending: false }),
       supabase.from('questions').select('id, question_text, chapter_id, difficulty, question_number'),
       supabase.from('chapters').select('id, name'),
       supabase.from('test_questions').select('test_id, question_id')
@@ -264,10 +265,10 @@ export default function AdminTests() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl lg:text-3xl font-bold font-display mb-1">
-              Manage <span className="gradient-text">Tests</span>
+              Normal <span className="gradient-text">Tests</span>
             </h1>
             <p className="text-muted-foreground">
-              Create and manage tests with PDF support
+              Create and manage question-based tests
             </p>
           </div>
           <Button variant="gradient" onClick={() => window.location.href = '/admin/test-creator'}>
