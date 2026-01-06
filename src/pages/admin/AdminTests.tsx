@@ -10,9 +10,6 @@ import {
   EyeOff,
   Clock,
   FileQuestion,
-  X,
-  Upload,
-  FileText,
   ChevronLeft,
   ChevronRight,
   BarChart3
@@ -22,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
 
 interface Test {
   id: string;
@@ -33,169 +29,48 @@ interface Test {
   is_published: boolean | null;
   created_at: string;
   exam_type: string;
-  pdf_url: string | null;
-}
-
-interface Question {
-  id: string;
-  question_text: string;
-  chapter_id: string;
-  difficulty: string;
-  question_number: number | null;
-}
-
-interface Chapter {
-  id: string;
-  name: string;
 }
 
 const TESTS_PER_PAGE = 15;
 
 export default function AdminTests() {
   const [tests, setTests] = useState<Test[]>([]);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [testQuestions, setTestQuestions] = useState<Record<string, string[]>>({});
+  const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingTest, setEditingTest] = useState<Test | null>(null);
-  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  
-  // PDF upload state
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [uploadingPdf, setUploadingPdf] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    test_type: "chapter",
-    duration_minutes: 60,
-    is_published: false,
-    exam_type: "jee_mains",
-    pdf_url: ""
-  });
 
   const { toast } = useToast();
-  const { user } = useAuth();
 
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    const [testsRes, questionsRes, chaptersRes, testQuestionsRes] = await Promise.all([
-      // Only fetch Normal Tests (not PDF tests)
-      supabase.from('tests').select('*').neq('test_type', 'pdf').order('created_at', { ascending: false }),
-      supabase.from('questions').select('id, question_text, chapter_id, difficulty, question_number'),
-      supabase.from('chapters').select('id, name'),
-      supabase.from('test_questions').select('test_id, question_id')
-    ]);
+    // Only fetch Normal Tests (not PDF tests)
+    const { data: testsData, error: testsError } = await supabase
+      .from('tests')
+      .select('*')
+      .neq('test_type', 'pdf')
+      .order('created_at', { ascending: false });
 
-    if (!testsRes.error) setTests(testsRes.data || []);
-    if (!questionsRes.error) setQuestions(questionsRes.data || []);
-    if (!chaptersRes.error) setChapters(chaptersRes.data || []);
-    
-    if (!testQuestionsRes.error && testQuestionsRes.data) {
-      const mapping: Record<string, string[]> = {};
-      testQuestionsRes.data.forEach(tq => {
-        if (!mapping[tq.test_id]) mapping[tq.test_id] = [];
-        mapping[tq.test_id].push(tq.question_id);
-      });
-      setTestQuestions(mapping);
+    if (!testsError && testsData) {
+      setTests(testsData);
+      
+      // Get question counts for each test from test_section_questions
+      const counts: Record<string, number> = {};
+      for (const test of testsData) {
+        const { count } = await supabase
+          .from('test_section_questions')
+          .select('*', { count: 'exact', head: true })
+          .eq('test_id', test.id);
+        counts[test.id] = count || 0;
+      }
+      setQuestionCounts(counts);
     }
     
     setIsLoading(false);
-  };
-
-  const handlePdfUpload = async (): Promise<string | null> => {
-    if (!pdfFile) return null;
-    
-    setUploadingPdf(true);
-    try {
-      const fileName = `${Date.now()}-${pdfFile.name}`;
-      const { data, error } = await supabase.storage
-        .from('test-pdfs')
-        .upload(fileName, pdfFile);
-      
-      if (error) throw error;
-      return data.path;
-    } catch (err: any) {
-      toast({ title: "Error uploading PDF", description: err.message, variant: "destructive" });
-      return null;
-    } finally {
-      setUploadingPdf(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    let pdfPath = formData.pdf_url;
-    
-    // Upload PDF if new file selected
-    if (pdfFile) {
-      const uploadedPath = await handlePdfUpload();
-      if (uploadedPath) {
-        pdfPath = uploadedPath;
-      }
-    }
-    
-    const testData = { ...formData, pdf_url: pdfPath || null };
-    
-    if (editingTest) {
-      const { error } = await supabase
-        .from('tests')
-        .update(testData)
-        .eq('id', editingTest.id);
-      
-      if (error) {
-        toast({ title: "Error updating test", variant: "destructive" });
-        return;
-      }
-
-      // Update test questions
-      await supabase.from('test_questions').delete().eq('test_id', editingTest.id);
-      if (selectedQuestions.length > 0) {
-        await supabase.from('test_questions').insert(
-          selectedQuestions.map((qId, idx) => ({
-            test_id: editingTest.id,
-            question_id: qId,
-            order_index: idx
-          }))
-        );
-      }
-
-      toast({ title: "Test updated successfully" });
-    } else {
-      const { data, error } = await supabase
-        .from('tests')
-        .insert([{ ...testData, created_by: user?.id }])
-        .select()
-        .single();
-      
-      if (error) {
-        toast({ title: "Error creating test", variant: "destructive" });
-        return;
-      }
-
-      if (selectedQuestions.length > 0) {
-        await supabase.from('test_questions').insert(
-          selectedQuestions.map((qId, idx) => ({
-            test_id: data.id,
-            question_id: qId,
-            order_index: idx
-          }))
-        );
-      }
-
-      toast({ title: "Test created successfully" });
-    }
-    
-    fetchData();
-    resetForm();
   };
 
   const handleTogglePublish = async (test: Test) => {
@@ -213,6 +88,24 @@ export default function AdminTests() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this test?")) return;
+    
+    // Delete related data first
+    await supabase.from('test_section_questions').delete().eq('test_id', id);
+    
+    // Get subjects and sections
+    const { data: subjects } = await supabase
+      .from('test_subjects')
+      .select('id')
+      .eq('test_id', id);
+    
+    if (subjects) {
+      for (const subject of subjects) {
+        await supabase.from('test_sections').delete().eq('subject_id', subject.id);
+      }
+    }
+    await supabase.from('test_subjects').delete().eq('test_id', id);
+    
     const { error } = await supabase.from('tests').delete().eq('id', id);
     if (error) {
       toast({ title: "Error deleting test", variant: "destructive" });
@@ -220,26 +113,6 @@ export default function AdminTests() {
       toast({ title: "Test deleted successfully" });
       fetchData();
     }
-  };
-
-  const resetForm = () => {
-    setShowModal(false);
-    setEditingTest(null);
-    setSelectedQuestions([]);
-    setPdfFile(null);
-    setFormData({
-      name: "",
-      description: "",
-      test_type: "chapter",
-      duration_minutes: 60,
-      is_published: false,
-      exam_type: "jee_mains",
-      pdf_url: ""
-    });
-  };
-
-  const getChapterName = (chapterId: string) => {
-    return chapters.find(ch => ch.id === chapterId)?.name || "Unknown";
   };
 
   // Filter and sort tests
@@ -272,7 +145,7 @@ export default function AdminTests() {
             </p>
           </div>
           <Button variant="gradient" onClick={() => window.location.href = '/admin/test-creator'}>
-            <Plus className="w-5 h-5" />
+            <Plus className="w-5 h-5 mr-1" />
             Create Test
           </Button>
         </div>
@@ -308,8 +181,8 @@ export default function AdminTests() {
             <ClipboardList className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-xl font-semibold mb-2">No tests yet</h3>
             <p className="text-muted-foreground mb-4">Create your first test</p>
-            <Button variant="gradient" onClick={() => setShowModal(true)}>
-              <Plus className="w-5 h-5" />
+            <Button variant="gradient" onClick={() => window.location.href = '/admin/test-creator'}>
+              <Plus className="w-5 h-5 mr-1" />
               Create Test
             </Button>
           </div>
@@ -332,12 +205,6 @@ export default function AdminTests() {
                       <span className="px-2 py-1 rounded-md bg-accent/10 text-accent text-xs font-medium">
                         {test.exam_type === 'jee_advanced' ? 'JEE Adv' : 'JEE Mains'}
                       </span>
-                      {test.pdf_url && (
-                        <span className="px-2 py-1 rounded-md bg-[hsl(45,93%,47%)]/10 text-[hsl(45,93%,47%)] text-xs font-medium flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          PDF
-                        </span>
-                      )}
                       {test.is_published ? (
                         <span className="px-2 py-1 rounded-md bg-[hsl(142,76%,36%)]/10 text-[hsl(142,76%,36%)] text-xs font-medium">
                           Published
@@ -362,7 +229,7 @@ export default function AdminTests() {
                     </span>
                     <span className="flex items-center gap-1">
                       <FileQuestion className="w-4 h-4" />
-                      {testQuestions[test.id]?.length || 0} questions
+                      {questionCounts[test.id] || 0} questions
                     </span>
                   </div>
 
@@ -373,9 +240,9 @@ export default function AdminTests() {
                       onClick={() => handleTogglePublish(test)}
                     >
                       {test.is_published ? (
-                        <><EyeOff className="w-4 h-4" /> Unpublish</>
+                        <><EyeOff className="w-4 h-4 mr-1" /> Unpublish</>
                       ) : (
-                        <><Eye className="w-4 h-4" /> Publish</>
+                        <><Eye className="w-4 h-4 mr-1" /> Publish</>
                       )}
                     </Button>
                     <Button
@@ -383,31 +250,20 @@ export default function AdminTests() {
                       size="sm"
                       onClick={() => window.location.href = `/admin/test-analytics/${test.id}`}
                     >
-                      <BarChart3 className="w-4 h-4" />
+                      <BarChart3 className="w-4 h-4 mr-1" />
                       Analytics
                     </Button>
                     <button
-                      onClick={() => {
-                        setEditingTest(test);
-                        setFormData({
-                          name: test.name,
-                          description: test.description || "",
-                          test_type: test.test_type,
-                          duration_minutes: test.duration_minutes,
-                          is_published: test.is_published || false,
-                          exam_type: test.exam_type || "jee_mains",
-                          pdf_url: test.pdf_url || ""
-                        });
-                        setSelectedQuestions(testQuestions[test.id] || []);
-                        setShowModal(true);
-                      }}
+                      onClick={() => window.location.href = `/admin/test-editor/${test.id}`}
                       className="p-2 rounded-lg hover:bg-secondary transition-colors"
+                      title="Edit test"
                     >
                       <Edit2 className="w-4 h-4 text-muted-foreground" />
                     </button>
                     <button
                       onClick={() => handleDelete(test.id)}
                       className="p-2 rounded-lg hover:bg-destructive/10 transition-colors"
+                      title="Delete test"
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </button>
@@ -441,201 +297,6 @@ export default function AdminTests() {
               </div>
             )}
           </>
-        )}
-
-        {/* Test Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="glass-card p-6 w-full max-w-3xl my-8"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold font-display">
-                  {editingTest ? "Edit Test" : "Create Test"}
-                </h2>
-                <button onClick={resetForm} className="p-2 rounded-lg hover:bg-secondary">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Test Name</label>
-                    <Input
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="e.g., JEE Main Mock Test 1"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Exam Type</label>
-                    <select
-                      value={formData.exam_type}
-                      onChange={(e) => setFormData({ ...formData, exam_type: e.target.value })}
-                      className="w-full h-11 px-4 rounded-lg border border-border bg-secondary/50 text-foreground"
-                    >
-                      <option value="jee_mains">JEE Mains</option>
-                      <option value="jee_advanced">JEE Advanced</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium">Test Type</label>
-                    <select
-                      value={formData.test_type}
-                      onChange={(e) => setFormData({ ...formData, test_type: e.target.value })}
-                      className="w-full h-11 px-4 rounded-lg border border-border bg-secondary/50 text-foreground"
-                    >
-                      <option value="chapter">Chapter Test</option>
-                      <option value="full-length">Full Length</option>
-                      <option value="topic">Topic Test</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Duration (minutes)</label>
-                    <Input
-                      type="number"
-                      value={formData.duration_minutes}
-                      onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) })}
-                      min={1}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Description</label>
-                  <Input
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Brief description of the test"
-                  />
-                </div>
-
-                {/* PDF Upload */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Test PDF (Optional)</label>
-                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                    {pdfFile ? (
-                      <div className="flex items-center justify-center gap-3">
-                        <FileText className="w-8 h-8 text-primary" />
-                        <div className="text-left">
-                          <p className="font-medium">{pdfFile.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {(pdfFile.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setPdfFile(null)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ) : formData.pdf_url ? (
-                      <div className="flex items-center justify-center gap-3">
-                        <FileText className="w-8 h-8 text-[hsl(142,76%,36%)]" />
-                        <p className="text-muted-foreground">PDF already uploaded</p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setFormData({ ...formData, pdf_url: "" })}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer">
-                        <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-muted-foreground">
-                          Click to upload PDF or drag and drop
-                        </p>
-                        <input
-                          type="file"
-                          accept=".pdf"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) setPdfFile(file);
-                          }}
-                        />
-                      </label>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Select Questions ({selectedQuestions.length} selected)
-                  </label>
-                  <div className="max-h-64 overflow-y-auto border border-border rounded-lg p-2 space-y-2">
-                    {questions.length === 0 ? (
-                      <p className="text-sm text-muted-foreground p-4 text-center">
-                        No questions available. Add questions first.
-                      </p>
-                    ) : (
-                      questions.map((q) => (
-                        <label
-                          key={q.id}
-                          className="flex items-start gap-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedQuestions.includes(q.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedQuestions([...selectedQuestions, q.id]);
-                              } else {
-                                setSelectedQuestions(selectedQuestions.filter(id => id !== q.id));
-                              }
-                            }}
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <p className="text-sm line-clamp-1">{q.question_text}</p>
-                            <div className="flex gap-2 mt-1">
-                              <span className="text-xs text-muted-foreground">
-                                {getChapterName(q.chapter_id)}
-                              </span>
-                              <span className={`text-xs px-1 rounded ${
-                                q.difficulty === 'easy' ? 'text-[hsl(142,76%,36%)]' :
-                                q.difficulty === 'hard' ? 'text-destructive' : 'text-[hsl(45,93%,47%)]'
-                              }`}>
-                                {q.difficulty}
-                              </span>
-                            </div>
-                          </div>
-                        </label>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="glass" className="flex-1" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    variant="gradient" 
-                    className="flex-1"
-                    disabled={uploadingPdf}
-                  >
-                    {uploadingPdf ? "Uploading..." : editingTest ? "Update Test" : "Create Test"}
-                  </Button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
         )}
       </div>
     </AdminLayout>
