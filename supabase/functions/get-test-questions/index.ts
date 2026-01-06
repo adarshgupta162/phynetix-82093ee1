@@ -35,35 +35,157 @@ serve(async (req) => {
 
     console.log(`Fetching questions for test ${test_id}`);
 
-    const { data: testQuestions, error: questionsError } = await supabaseClient
-      .from("test_questions")
-      .select(`order_index, question_id, questions(id, question_text, options, difficulty, marks, negative_marks, question_type, image_url, chapters(id, name, courses(id, name)))`)
-      .eq("test_id", test_id)
-      .order("order_index");
+    // First get the test type
+    const { data: testData, error: testError } = await supabaseClient
+      .from("tests")
+      .select("test_type")
+      .eq("id", test_id)
+      .single();
 
-    if (questionsError) {
-      console.error("Failed to fetch questions:", questionsError);
-      throw new Error("Failed to fetch questions");
+    if (testError) {
+      console.error("Failed to fetch test:", testError);
+      throw new Error("Failed to fetch test");
     }
 
-    const questions = (testQuestions || []).map((tq: any, index: number) => {
-      const q = tq.questions;
-      const chapter = q?.chapters;
-      const course = chapter?.courses;
-      return {
-        id: q?.id,
-        order: tq.order_index ?? index,
-        question_text: q?.question_text,
-        options: q?.options,
-        difficulty: q?.difficulty,
-        marks: q?.marks ?? 4,
-        negative_marks: q?.negative_marks ?? 1,
-        question_type: q?.question_type,
-        image_url: q?.image_url,
-        subject: course?.name ?? "General",
-        chapter: chapter?.name ?? "General",
-      };
-    });
+    const testType = testData?.test_type;
+    console.log(`Test type: ${testType}`);
+
+    let questions = [];
+
+    if (testType === "pdf") {
+      // PDF Tests: Fetch from test_section_questions via subjects/sections
+      const { data: sectionQuestions, error: sqError } = await supabaseClient
+        .from("test_section_questions")
+        .select(`
+          id, 
+          question_number, 
+          question_text, 
+          options, 
+          correct_answer,
+          marks, 
+          negative_marks,
+          order_index,
+          pdf_page,
+          section:test_sections(
+            id,
+            name,
+            section_type,
+            subject:test_subjects(id, name)
+          )
+        `)
+        .eq("test_id", test_id)
+        .order("question_number");
+
+      if (sqError) {
+        console.error("Failed to fetch PDF test questions:", sqError);
+        throw new Error("Failed to fetch questions");
+      }
+
+      questions = (sectionQuestions || []).map((q: any, index: number) => ({
+        id: q.id,
+        order: q.order_index ?? q.question_number ?? index,
+        question_text: q.question_text || `Question ${q.question_number}`,
+        options: q.options,
+        difficulty: "medium",
+        marks: q.marks ?? 4,
+        negative_marks: q.negative_marks ?? 1,
+        question_type: q.section?.section_type || "single_choice",
+        subject: q.section?.subject?.name ?? "General",
+        chapter: q.section?.name ?? "General",
+        pdf_page: q.pdf_page,
+        correct_answer: q.correct_answer
+      }));
+    } else {
+      // Normal Tests: Fetch from test_questions joined with questions table
+      const { data: testQuestions, error: questionsError } = await supabaseClient
+        .from("test_questions")
+        .select(`
+          order_index, 
+          question_id, 
+          questions(
+            id, 
+            question_text, 
+            options, 
+            difficulty, 
+            marks, 
+            negative_marks, 
+            question_type, 
+            image_url, 
+            correct_answer,
+            chapters(id, name, courses(id, name))
+          )
+        `)
+        .eq("test_id", test_id)
+        .order("order_index");
+
+      if (questionsError) {
+        console.error("Failed to fetch normal test questions:", questionsError);
+        throw new Error("Failed to fetch questions");
+      }
+
+      questions = (testQuestions || []).map((tq: any, index: number) => {
+        const q = tq.questions;
+        const chapter = q?.chapters;
+        const course = chapter?.courses;
+        return {
+          id: q?.id,
+          order: tq.order_index ?? index,
+          question_text: q?.question_text,
+          options: q?.options,
+          difficulty: q?.difficulty,
+          marks: q?.marks ?? 4,
+          negative_marks: q?.negative_marks ?? 1,
+          question_type: q?.question_type,
+          image_url: q?.image_url,
+          subject: course?.name ?? "General",
+          chapter: chapter?.name ?? "General",
+          correct_answer: q?.correct_answer
+        };
+      });
+
+      // If no questions in test_questions, try fetching from test_section_questions
+      // (this handles tests created with JEE preset that use section-based structure)
+      if (questions.length === 0) {
+        console.log("No questions in test_questions, trying test_section_questions...");
+        
+        const { data: sectionQuestions, error: sqError } = await supabaseClient
+          .from("test_section_questions")
+          .select(`
+            id, 
+            question_number, 
+            question_text, 
+            options, 
+            correct_answer,
+            marks, 
+            negative_marks,
+            order_index,
+            section:test_sections(
+              id,
+              name,
+              section_type,
+              subject:test_subjects(id, name)
+            )
+          `)
+          .eq("test_id", test_id)
+          .order("question_number");
+
+        if (!sqError && sectionQuestions && sectionQuestions.length > 0) {
+          questions = sectionQuestions.map((q: any, index: number) => ({
+            id: q.id,
+            order: q.order_index ?? q.question_number ?? index,
+            question_text: q.question_text || `Question ${q.question_number}`,
+            options: q.options,
+            difficulty: "medium",
+            marks: q.marks ?? 4,
+            negative_marks: q.negative_marks ?? 1,
+            question_type: q.section?.section_type || "single_choice",
+            subject: q.section?.subject?.name ?? "General",
+            chapter: q.section?.name ?? "General",
+            correct_answer: q.correct_answer
+          }));
+        }
+      }
+    }
 
     console.log(`Returning ${questions.length} questions for test ${test_id}`);
 
