@@ -66,6 +66,7 @@ serve(async (req) => {
           negative_marks,
           order_index,
           pdf_page,
+          image_url,
           section:test_sections(
             id,
             name,
@@ -93,6 +94,7 @@ serve(async (req) => {
         subject: q.section?.subject?.name ?? "General",
         chapter: q.section?.name ?? "General",
         pdf_page: q.pdf_page,
+        image_url: q.image_url,
         correct_answer: q.correct_answer
       }));
     } else {
@@ -159,6 +161,7 @@ serve(async (req) => {
             marks, 
             negative_marks,
             order_index,
+            image_url,
             section:test_sections(
               id,
               name,
@@ -181,6 +184,7 @@ serve(async (req) => {
             question_type: q.section?.section_type || "single_choice",
             subject: q.section?.subject?.name ?? "General",
             chapter: q.section?.name ?? "General",
+            image_url: q.image_url,
             correct_answer: q.correct_answer
           }));
         }

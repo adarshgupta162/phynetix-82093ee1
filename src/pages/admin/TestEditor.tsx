@@ -59,13 +59,13 @@ interface Question {
 const MARKING_SCHEMES = {
   jee_mains: {
     single_choice: { marks: 4, negative: 1 },
-    multiple_choice: { marks: 4, negative: 0 },
-    integer: { marks: 4, negative: 0 }
+    multiple_choice: { marks: 4, negative: 1 },
+    integer: { marks: 4, negative: 1 }
   },
   jee_advanced: {
     single_choice: { marks: 3, negative: 1 },
     multiple_choice: { marks: 4, negative: 2 },
-    integer: { marks: 3, negative: 0 }
+    integer: { marks: 3, negative: 1 }
   }
 };
 
