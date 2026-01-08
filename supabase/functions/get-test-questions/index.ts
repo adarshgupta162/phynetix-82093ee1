@@ -166,17 +166,31 @@ serve(async (req) => {
               id,
               name,
               section_type,
-              subject:test_subjects(id, name)
+              order_index,
+              subject:test_subjects(id, name, order_index)
             )
           `)
           .eq("test_id", test_id)
           .order("question_number");
 
         if (!sqError && sectionQuestions && sectionQuestions.length > 0) {
-          questions = sectionQuestions.map((q: any, index: number) => ({
+          // Sort by subject order, then section order, then question number
+          const sorted = sectionQuestions.sort((a: any, b: any) => {
+            const subjectOrderA = a.section?.subject?.order_index ?? 0;
+            const subjectOrderB = b.section?.subject?.order_index ?? 0;
+            if (subjectOrderA !== subjectOrderB) return subjectOrderA - subjectOrderB;
+            
+            const sectionOrderA = a.section?.order_index ?? 0;
+            const sectionOrderB = b.section?.order_index ?? 0;
+            if (sectionOrderA !== sectionOrderB) return sectionOrderA - sectionOrderB;
+            
+            return (a.question_number ?? 0) - (b.question_number ?? 0);
+          });
+
+          questions = sorted.map((q: any, index: number) => ({
             id: q.id,
-            order: q.order_index ?? q.question_number ?? index,
-            question_text: q.question_text || `Question ${q.question_number}`,
+            order: index,
+            question_text: q.question_text || null,
             options: q.options,
             difficulty: "medium",
             marks: q.marks ?? 4,
@@ -184,9 +198,11 @@ serve(async (req) => {
             question_type: q.section?.section_type || "single_choice",
             subject: q.section?.subject?.name ?? "General",
             chapter: q.section?.name ?? "General",
-            image_url: q.image_url,
+            image_url: q.image_url || null,
             correct_answer: q.correct_answer
           }));
+          
+          console.log("Sample question data:", JSON.stringify(questions[0]));
         }
       }
     }
