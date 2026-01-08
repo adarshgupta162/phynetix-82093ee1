@@ -22,7 +22,7 @@ const JEE_MAINS_PATTERN: PatternInfo = {
   subjects: ["Physics", "Chemistry", "Mathematics"],
   sectionsPerSubject: [
     { name: "Single Correct MCQ", type: "single_choice", questionCount: 20, marks: 4, negative: 1 },
-    { name: "Integer Type", type: "integer", questionCount: 5, marks: 4, negative: 0 }
+    { name: "Integer Type", type: "integer", questionCount: 5, marks: 4, negative: 1 }
   ],
   totalQuestions: 75,
   duration: 180

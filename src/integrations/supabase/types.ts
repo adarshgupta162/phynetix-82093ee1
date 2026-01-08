@@ -543,7 +543,9 @@ export type Database = {
         Row: {
           correct_answer: Json
           created_at: string
+          difficulty: string | null
           id: string
+          image_url: string | null
           is_bonus: boolean | null
           marks: number | null
           negative_marks: number | null
@@ -553,13 +555,18 @@ export type Database = {
           question_number: number
           question_text: string | null
           section_id: string
+          solution_image_url: string | null
+          solution_text: string | null
           test_id: string
+          time_seconds: number | null
           updated_at: string
         }
         Insert: {
           correct_answer: Json
           created_at?: string
+          difficulty?: string | null
           id?: string
+          image_url?: string | null
           is_bonus?: boolean | null
           marks?: number | null
           negative_marks?: number | null
@@ -569,13 +576,18 @@ export type Database = {
           question_number: number
           question_text?: string | null
           section_id: string
+          solution_image_url?: string | null
+          solution_text?: string | null
           test_id: string
+          time_seconds?: number | null
           updated_at?: string
         }
         Update: {
           correct_answer?: Json
           created_at?: string
+          difficulty?: string | null
           id?: string
+          image_url?: string | null
           is_bonus?: boolean | null
           marks?: number | null
           negative_marks?: number | null
@@ -585,7 +597,10 @@ export type Database = {
           question_number?: number
           question_text?: string | null
           section_id?: string
+          solution_image_url?: string | null
+          solution_text?: string | null
           test_id?: string
+          time_seconds?: number | null
           updated_at?: string
         }
         Relationships: [

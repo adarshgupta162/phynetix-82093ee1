@@ -137,7 +137,12 @@ export function QuestionEditorPanel({
       options: localQuestion.options,
       marks: localQuestion.marks,
       negative_marks: localQuestion.negative_marks,
-      is_bonus: localQuestion.is_bonus
+      is_bonus: localQuestion.is_bonus,
+      image_url: localQuestion.image_url,
+      solution_text: localQuestion.solution_text,
+      solution_image_url: localQuestion.solution_image_url,
+      difficulty: localQuestion.difficulty,
+      time_seconds: localQuestion.time_seconds
     });
   }, [localQuestion, onUpdate]);
 
