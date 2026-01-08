@@ -250,6 +250,14 @@ export default function NormalTestInterface() {
     }
   };
 
+  const handleIntegerAnswer = (value: string) => {
+    if (currentQuestion) {
+      // Only allow numbers and minus sign
+      const sanitized = value.replace(/[^0-9-]/g, '');
+      setAnswers({ ...answers, [currentQuestion.id]: sanitized });
+    }
+  };
+
   const clearResponse = () => {
     if (currentQuestion) {
       const newAnswers = { ...answers };
@@ -562,10 +570,26 @@ export default function NormalTestInterface() {
     );
   }
 
+  // Determine if this is an integer type question
+  const isIntegerQuestion = currentQuestion?.question_type === 'integer' || 
+                            currentQuestion?.question_type === 'numerical';
+  
+  // Parse options - handle both array and object formats
   const options = Array.isArray(currentQuestion?.options) 
-    ? currentQuestion.options 
+    ? currentQuestion.options.map((opt: any) => {
+        // If option is an object with text/label properties
+        if (typeof opt === 'object' && opt !== null) {
+          return opt.text || opt.label || '';
+        }
+        return opt;
+      }).filter((opt: string) => opt && opt.trim() !== '') // Filter out empty options
     : typeof currentQuestion?.options === 'object' && currentQuestion?.options !== null
-      ? Object.values(currentQuestion.options as Record<string, string>)
+      ? Object.values(currentQuestion.options as Record<string, any>).map((opt: any) => {
+          if (typeof opt === 'object' && opt !== null) {
+            return opt.text || opt.label || '';
+          }
+          return opt;
+        }).filter((opt: string) => opt && opt.trim() !== '')
       : [];
 
   const statusCounts = getStatusCounts();
@@ -619,55 +643,98 @@ export default function NormalTestInterface() {
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-700">
             <ul className="list-disc ml-4 space-y-1">
               <li>This section contains <strong>{currentSection?.questions.length || 0}</strong> questions.</li>
-              <li>Each question has FOUR options. ONLY ONE is correct.</li>
-              <li>Full Marks: +{currentQuestion?.marks || 4} if ONLY the correct option is chosen</li>
-              <li>Zero Marks: 0 if none of the options is chosen</li>
-              <li>Negative Marks: -{currentQuestion?.negative_marks || 1} in all other cases</li>
+              {isIntegerQuestion ? (
+                <>
+                  <li>Enter your answer as a numerical value (integer only).</li>
+                  <li>Full Marks: +{currentQuestion?.marks || 4} if the correct answer is entered</li>
+                  <li>Zero Marks: 0 if no answer is entered</li>
+                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect answer</li>
+                </>
+              ) : (
+                <>
+                  <li>Each question has FOUR options. ONLY ONE is correct.</li>
+                  <li>Full Marks: +{currentQuestion?.marks || 4} if ONLY the correct option is chosen</li>
+                  <li>Zero Marks: 0 if none of the options is chosen</li>
+                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} in all other cases</li>
+                </>
+              )}
             </ul>
           </div>
 
           {/* Question Content */}
           <div className="mb-6">
+            {/* Question Number Badge */}
+            <div className="mb-4 flex items-center gap-2">
+              <span className="px-3 py-1 bg-[#1a73e8] text-white rounded text-sm font-medium">
+                Q.{currentQuestionIndex + 1}
+              </span>
+              <span className="text-xs text-gray-500">
+                {isIntegerQuestion ? 'Integer Type' : 'Single Choice'}
+              </span>
+            </div>
+
             {currentQuestion?.image_url && (
               <div className="mb-4">
                 <img 
                   src={currentQuestion.image_url} 
                   alt="Question" 
                   className="max-w-full h-auto rounded-lg border border-gray-200"
+                  onError={(e) => {
+                    console.error('Image failed to load:', currentQuestion.image_url);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
                 />
               </div>
             )}
             
-            <p className="text-base leading-relaxed text-gray-800 mb-6">
-              {currentQuestion?.question_text}
-            </p>
+            {currentQuestion?.question_text && (
+              <p className="text-base leading-relaxed text-gray-800 mb-6">
+                {currentQuestion.question_text}
+              </p>
+            )}
 
-            {/* Options */}
-            <div className="space-y-3">
-              {options.map((option, index) => (
-                <label
-                  key={index}
-                  className={cn(
-                    "flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all",
-                    currentQuestion && answers[currentQuestion.id] === String(index)
-                      ? "border-[#1a73e8] bg-blue-50" 
-                      : "border-gray-200 hover:bg-gray-50"
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="answer"
-                    checked={currentQuestion && answers[currentQuestion.id] === String(index)}
-                    onChange={() => handleAnswer(index)}
-                    className="w-4 h-4 text-[#1a73e8] border-gray-300 focus:ring-[#1a73e8]"
-                  />
-                  <span className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gray-100 text-gray-700">
-                    {String.fromCharCode(65 + index)}
-                  </span>
-                  <span className="text-gray-700">{String(option)}</span>
+            {/* Answer Input - Different for Integer vs MCQ */}
+            {isIntegerQuestion ? (
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter your answer (integer only):
                 </label>
-              ))}
-            </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={currentQuestion ? (answers[currentQuestion.id] || '') : ''}
+                  onChange={(e) => handleIntegerAnswer(e.target.value)}
+                  placeholder="Enter numerical answer"
+                  className="w-full max-w-xs px-4 py-3 border border-gray-300 rounded-lg text-lg font-mono focus:ring-2 focus:ring-[#1a73e8] focus:border-[#1a73e8] outline-none"
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {options.map((option, index) => (
+                  <label
+                    key={index}
+                    className={cn(
+                      "flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all",
+                      currentQuestion && answers[currentQuestion.id] === String(index)
+                        ? "border-[#1a73e8] bg-blue-50" 
+                        : "border-gray-200 hover:bg-gray-50"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="answer"
+                      checked={currentQuestion && answers[currentQuestion.id] === String(index)}
+                      onChange={() => handleAnswer(index)}
+                      className="w-4 h-4 text-[#1a73e8] border-gray-300 focus:ring-[#1a73e8]"
+                    />
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gray-100 text-gray-700">
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span className="text-gray-700">{String(option)}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         </main>
 
