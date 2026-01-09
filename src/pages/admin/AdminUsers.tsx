@@ -15,8 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AdminLayout from "@/components/layout/AdminLayout";
 import UserDetailsDialog from "@/components/admin/UserDetailsDialog";
+import CreateUserDialog from "@/components/admin/CreateUserDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AppRole, roleLabels, roleBadgeColors } from "@/lib/permissions";
 
 interface Profile {
   id: string;
@@ -37,7 +39,8 @@ interface Profile {
 
 interface UserRole {
   user_id: string;
-  role: 'admin' | 'student';
+  role: AppRole;
+  department_id?: string | null;
 }
 
 interface UserEmail {
@@ -75,7 +78,7 @@ export default function AdminUsers() {
     setIsLoading(false);
   };
 
-  const getUserRole = (userId: string): 'admin' | 'student' => {
+  const getUserRole = (userId: string): AppRole => {
     const role = userRoles.find(r => r.user_id === userId);
     return role?.role || 'student';
   };
@@ -155,14 +158,17 @@ export default function AdminUsers() {
               Manage users, roles, and access controls
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={handleRecalculateAllScores}
-            disabled={isRecalculating}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRecalculating ? 'animate-spin' : ''}`} />
-            {isRecalculating ? 'Recalculating...' : 'Recalculate All Scores'}
-          </Button>
+          <div className="flex gap-2">
+            <CreateUserDialog onUserCreated={fetchData} />
+            <Button 
+              variant="outline" 
+              onClick={handleRecalculateAllScores}
+              disabled={isRecalculating}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRecalculating ? 'animate-spin' : ''}`} />
+              {isRecalculating ? 'Recalculating...' : 'Recalculate All Scores'}
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -276,12 +282,8 @@ export default function AdminUsers() {
                           <span className="text-sm">{profile.target_exam || 'Not set'}</span>
                         </td>
                         <td className="py-4 px-6">
-                          <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                            role === 'admin' 
-                              ? 'bg-primary/10 text-primary' 
-                              : 'bg-secondary text-muted-foreground'
-                          }`}>
-                            {role === 'admin' ? 'Admin' : 'Student'}
+                          <span className={`px-2 py-1 rounded-md text-xs font-medium border ${roleBadgeColors[role]}`}>
+                            {roleLabels[role]}
                           </span>
                         </td>
                         <td className="py-4 px-6">
