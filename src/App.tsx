@@ -8,6 +8,7 @@ import AdminRoute from "@/components/AdminRoute";
 import ProfileGuard from "@/components/ProfileGuard";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
+import StaffAuthPage from "./pages/StaffAuthPage";
 import Dashboard from "./pages/Dashboard";
 import TestLibrary from "./pages/TestLibrary";
 import PDFTestLibrary from "./pages/PDFTestLibrary";
@@ -32,6 +33,9 @@ import PDFTestList from "./pages/admin/PDFTestList";
 import PDFTestCreate from "./pages/admin/PDFTestCreate";
 import PDFTestEditor from "./pages/admin/PDFTestEditor";
 import NormalTestAnalytics from "./pages/admin/NormalTestAnalytics";
+import StaffCommunity from "./pages/admin/StaffCommunity";
+import AuditLogs from "./pages/admin/AuditLogs";
+import StaffRequests from "./pages/admin/StaffRequests";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -49,6 +53,7 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/login" element={<AuthPage />} />
               <Route path="/signup" element={<AuthPage />} />
+              <Route path="/staff-login" element={<StaffAuthPage />} />
               <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tests" element={<TestLibrary />} />
@@ -74,6 +79,9 @@ const App = () => (
             <Route path="/admin/pdf-tests/:testId/edit" element={<AdminRoute><PDFTestEditor /></AdminRoute>} />
             <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+            <Route path="/admin/community" element={<AdminRoute><StaffCommunity /></AdminRoute>} />
+            <Route path="/admin/audit-logs" element={<AdminRoute><AuditLogs /></AdminRoute>} />
+            <Route path="/admin/requests" element={<AdminRoute><StaffRequests /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
             </Routes>
           </ProfileGuard>
