@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { AppRole, roleLabels } from "@/lib/permissions";
 
 interface Profile {
   id: string;
@@ -57,7 +58,7 @@ interface Profile {
 interface UserDetailsDialogProps {
   user: Profile | null;
   userEmail: string | null;
-  userRole: 'admin' | 'student';
+  userRole: AppRole;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: () => void;
@@ -213,7 +214,7 @@ export default function UserDetailsDialog({
             <div>
               <div className="font-semibold">{user.full_name || 'Unknown User'}</div>
               <div className="text-sm text-muted-foreground font-normal">
-                {userRole === 'admin' ? 'Administrator' : 'Student'}
+                {roleLabels[userRole] || 'Student'}
               </div>
             </div>
           </DialogTitle>

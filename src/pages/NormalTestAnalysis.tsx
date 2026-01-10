@@ -17,7 +17,6 @@ import {
   Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,8 +26,36 @@ interface SubjectScore {
   incorrect: number;
   skipped: number;
   total: number;
+  marks?: number;
+  totalMarks?: number;
+}
+
+interface QuestionResult {
+  question_number?: number;
+  correct_answer: string | number | string[];
+  user_answer: string | number | string[] | null;
+  is_correct: boolean;
+  marks_obtained: number;
   marks: number;
-  totalMarks: number;
+  negative_marks: number;
+  subject: string;
+  section_type?: string;
+  chapter?: string;
+  is_bonus?: boolean;
+}
+
+interface Results {
+  score: number;
+  total_marks: number;
+  correct: number;
+  incorrect: number;
+  skipped: number;
+  percentile: number;
+  subject_scores: Record<string, SubjectScore>;
+  time_taken_seconds: number;
+  question_results?: Record<string, QuestionResult>;
+  answers?: Record<string, string>;
+  rank?: number;
 }
 
 interface Question {
@@ -42,17 +69,8 @@ interface Question {
   user_answer?: string;
   is_correct?: boolean;
   marks_obtained?: number;
-}
-
-interface Results {
-  score: number;
-  total_marks: number;
-  correct: number;
-  incorrect: number;
-  skipped: number;
-  percentile: number;
-  subject_scores: Record<string, SubjectScore>;
-  time_taken_seconds: number;
+  section_type?: string;
+  question_number?: number;
 }
 
 export default function NormalTestAnalysis() {
@@ -68,12 +86,39 @@ export default function NormalTestAnalysis() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questionFilter, setQuestionFilter] = useState<"all" | "correct" | "incorrect" | "unattempted">("all");
   const [loading, setLoading] = useState(true);
+  const [testType, setTestType] = useState<string>("normal");
   const testName = location.state?.testName || "Test Analysis";
 
   useEffect(() => {
     if (location.state?.results) {
-      setResults(location.state.results);
-      fetchQuestionDetails();
+      // Results passed from submit
+      const passedResults = location.state.results as Results;
+      setResults(passedResults);
+      
+      // Build questions from question_results if available
+      if (passedResults.question_results) {
+        const questionList: Question[] = Object.entries(passedResults.question_results).map(([id, qr]) => ({
+          id,
+          question_text: "",
+          options: [],
+          correct_answer: String(qr.correct_answer),
+          marks: qr.marks || 4,
+          negative_marks: qr.negative_marks || 1,
+          subject: qr.subject || "General",
+          user_answer: qr.user_answer !== null ? String(qr.user_answer) : undefined,
+          is_correct: qr.is_correct,
+          marks_obtained: qr.marks_obtained,
+          section_type: qr.section_type,
+          question_number: qr.question_number,
+        }));
+        
+        // Sort by question number
+        questionList.sort((a, b) => (a.question_number || 0) - (b.question_number || 0));
+        setQuestions(questionList);
+      }
+      
+      fetchTestType();
+      setLoading(false);
     } else if (testId && user) {
       fetchAttemptData();
     } else {
@@ -81,8 +126,32 @@ export default function NormalTestAnalysis() {
     }
   }, [location.state, testId, user, navigate]);
 
+  const fetchTestType = async () => {
+    if (!testId) return;
+    const { data: test } = await supabase
+      .from("tests")
+      .select("test_type")
+      .eq("id", testId)
+      .single();
+    
+    if (test) {
+      setTestType(test.test_type);
+    }
+  };
+
   const fetchAttemptData = async () => {
     try {
+      // Get test type
+      const { data: test } = await supabase
+        .from("tests")
+        .select("test_type, name")
+        .eq("id", testId)
+        .single();
+      
+      if (test) {
+        setTestType(test.test_type);
+      }
+
       const { data: attempt, error } = await supabase
         .from("test_attempts")
         .select("*")
@@ -95,20 +164,14 @@ export default function NormalTestAnalysis() {
       if (error) throw error;
 
       if (attempt && attempt.completed_at) {
-        const subjectScores: Record<string, SubjectScore> = {};
+        const userAnswers = (attempt.answers as Record<string, string>) || {};
         
-        setResults({
-          score: attempt.score || 0,
-          total_marks: attempt.total_marks || 0,
-          correct: 0,
-          incorrect: 0,
-          skipped: 0,
-          percentile: attempt.percentile || 0,
-          subject_scores: subjectScores,
-          time_taken_seconds: attempt.time_taken_seconds || 0
-        });
-
-        await fetchQuestionDetails(attempt.answers as Record<string, string>);
+        // Determine which table to query based on test type
+        if (test?.test_type === 'pdf') {
+          await fetchPDFTestQuestions(userAnswers, attempt);
+        } else {
+          await fetchNormalTestQuestions(userAnswers, attempt);
+        }
       }
     } catch (error) {
       console.error("Error fetching attempt:", error);
@@ -116,117 +179,222 @@ export default function NormalTestAnalysis() {
     }
   };
 
-  const fetchQuestionDetails = async (userAnswers?: Record<string, string>) => {
-    try {
-      // For normal tests, get questions with correct answers
-      const { data: testQuestions } = await supabase
-        .from("test_questions")
-        .select(`
-          question_id,
-          order_index,
-          questions(
-            id,
-            question_text,
-            options,
-            correct_answer,
-            marks,
-            negative_marks,
-            question_type,
-            image_url,
-            chapters(
-              name,
-              courses(name)
-            )
+  const fetchPDFTestQuestions = async (userAnswers: Record<string, string>, attempt: any) => {
+    const { data: sectionQuestions } = await supabase
+      .from("test_section_questions")
+      .select(`
+        id,
+        question_number,
+        correct_answer,
+        marks,
+        negative_marks,
+        question_text,
+        options,
+        image_url,
+        test_sections!inner (
+          section_type,
+          name,
+          test_subjects!inner (
+            name
           )
-        `)
-        .eq("test_id", testId)
-        .order("order_index");
+        )
+      `)
+      .eq("test_id", testId)
+      .order("question_number");
 
-      if (!testQuestions || testQuestions.length === 0) {
-        console.error("No questions found for this test");
-        setLoading(false);
-        return;
+    if (!sectionQuestions || sectionQuestions.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    const processedQuestions: Question[] = [];
+    const subjectScores: Record<string, SubjectScore> = {};
+    let totalCorrect = 0, totalIncorrect = 0, totalSkipped = 0;
+    let totalScore = 0, totalMaxMarks = 0;
+
+    for (const sq of sectionQuestions) {
+      const section = sq.test_sections as any;
+      const subject = section?.test_subjects?.name || "General";
+      const sectionType = section?.section_type || "single_choice";
+      const userAnswer = userAnswers[sq.id];
+      const correctAnswer = sq.correct_answer;
+      const marks = sq.marks || 4;
+      const negativeMarks = sq.negative_marks || 1;
+
+      totalMaxMarks += marks;
+
+      if (!subjectScores[subject]) {
+        subjectScores[subject] = { correct: 0, incorrect: 0, skipped: 0, total: 0, marks: 0, totalMarks: 0 };
+      }
+      subjectScores[subject].total++;
+      subjectScores[subject].totalMarks = (subjectScores[subject].totalMarks || 0) + marks;
+
+      let isCorrect = false;
+      let marksObtained = 0;
+
+      if (userAnswer === undefined || userAnswer === null || userAnswer === '') {
+        totalSkipped++;
+        subjectScores[subject].skipped++;
+      } else {
+        // Check answer based on section type
+        if (sectionType === 'integer') {
+          const correctNum = parseFloat(String(correctAnswer));
+          const userNum = parseFloat(String(userAnswer));
+          isCorrect = !isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01;
+        } else if (sectionType === 'multiple_choice') {
+          const correctArr = Array.isArray(correctAnswer) ? correctAnswer.sort() : [correctAnswer];
+          const userArr = Array.isArray(userAnswer) ? (userAnswer as any).sort() : [userAnswer];
+          isCorrect = JSON.stringify(correctArr) === JSON.stringify(userArr);
+        } else {
+          isCorrect = String(userAnswer) === String(correctAnswer);
+        }
+
+        if (isCorrect) {
+          totalCorrect++;
+          totalScore += marks;
+          marksObtained = marks;
+          subjectScores[subject].correct++;
+          subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marks;
+        } else {
+          totalIncorrect++;
+          totalScore -= negativeMarks;
+          marksObtained = -negativeMarks;
+          subjectScores[subject].incorrect++;
+          subjectScores[subject].marks = (subjectScores[subject].marks || 0) - negativeMarks;
+        }
       }
 
-      const answers = userAnswers || (location.state?.results?.answers as Record<string, string>) || {};
-
-      const processedQuestions: Question[] = testQuestions.map((tq: any, index: number) => {
-        const q = tq.questions;
-        if (!q) return null;
-        
-        const userAnswer = answers[q.id];
-        const correctAnswer = q.correct_answer;
-        const isCorrect = userAnswer !== undefined && String(userAnswer) === String(correctAnswer);
-        const isSkipped = userAnswer === undefined;
-        const marks = q.marks || 4;
-        const negativeMarks = q.negative_marks || 1;
-        
-        return {
-          id: q.id,
-          question_text: q.question_text,
-          options: Array.isArray(q.options) ? q.options : (q.options ? Object.values(q.options) : []),
-          correct_answer: correctAnswer,
-          marks: marks,
-          negative_marks: negativeMarks,
-          subject: q.chapters?.courses?.name || "General",
-          user_answer: userAnswer,
-          is_correct: isCorrect,
-          marks_obtained: isSkipped ? 0 : (isCorrect ? marks : -negativeMarks)
-        };
-      }).filter(Boolean) as Question[];
-
-      setQuestions(processedQuestions);
-
-      // Calculate subject scores
-      const subjectMap: Record<string, SubjectScore> = {};
-      let totalCorrect = 0;
-      let totalIncorrect = 0;
-      let totalSkipped = 0;
-      let totalScore = 0;
-      let totalMaxMarks = 0;
-
-      processedQuestions.forEach((q) => {
-        const subj = q.subject || "General";
-        if (!subjectMap[subj]) {
-          subjectMap[subj] = { correct: 0, incorrect: 0, skipped: 0, total: 0, marks: 0, totalMarks: 0 };
-        }
-        subjectMap[subj].total++;
-        subjectMap[subj].totalMarks += q.marks;
-        totalMaxMarks += q.marks;
-        
-        if (q.user_answer === undefined) {
-          subjectMap[subj].skipped++;
-          totalSkipped++;
-        } else if (q.is_correct) {
-          subjectMap[subj].correct++;
-          subjectMap[subj].marks += q.marks;
-          totalCorrect++;
-          totalScore += q.marks;
-        } else {
-          subjectMap[subj].incorrect++;
-          subjectMap[subj].marks -= q.negative_marks;
-          totalIncorrect++;
-          totalScore -= q.negative_marks;
-        }
+      processedQuestions.push({
+        id: sq.id,
+        question_text: sq.question_text || "",
+        options: Array.isArray(sq.options) ? sq.options.map(String) : [],
+        correct_answer: String(correctAnswer),
+        marks,
+        negative_marks: negativeMarks,
+        subject,
+        user_answer: userAnswer,
+        is_correct: isCorrect,
+        marks_obtained: marksObtained,
+        section_type: sectionType,
+        question_number: sq.question_number,
       });
-
-      // Update results with calculated data
-      setResults(prev => ({
-        score: prev?.score ?? totalScore,
-        total_marks: prev?.total_marks ?? totalMaxMarks,
-        correct: totalCorrect,
-        incorrect: totalIncorrect,
-        skipped: totalSkipped,
-        percentile: prev?.percentile ?? 0,
-        subject_scores: subjectMap,
-        time_taken_seconds: prev?.time_taken_seconds ?? 0
-      }));
-
-    } catch (error) {
-      console.error("Error fetching questions:", error);
-    } finally {
-      setLoading(false);
     }
+
+    setQuestions(processedQuestions);
+    setResults({
+      score: attempt.score ?? totalScore,
+      total_marks: attempt.total_marks ?? totalMaxMarks,
+      correct: totalCorrect,
+      incorrect: totalIncorrect,
+      skipped: totalSkipped,
+      percentile: attempt.percentile ?? 0,
+      rank: attempt.rank,
+      subject_scores: subjectScores,
+      time_taken_seconds: attempt.time_taken_seconds ?? 0,
+    });
+    setLoading(false);
+  };
+
+  const fetchNormalTestQuestions = async (userAnswers: Record<string, string>, attempt: any) => {
+    const { data: testQuestions } = await supabase
+      .from("test_questions")
+      .select(`
+        question_id,
+        order_index,
+        questions(
+          id,
+          question_text,
+          options,
+          correct_answer,
+          marks,
+          negative_marks,
+          question_type,
+          chapters(
+            name,
+            courses(name)
+          )
+        )
+      `)
+      .eq("test_id", testId)
+      .order("order_index");
+
+    if (!testQuestions || testQuestions.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    const processedQuestions: Question[] = [];
+    const subjectScores: Record<string, SubjectScore> = {};
+    let totalCorrect = 0, totalIncorrect = 0, totalSkipped = 0;
+    let totalScore = 0, totalMaxMarks = 0;
+
+    for (const tq of testQuestions) {
+      const q = tq.questions as any;
+      if (!q) continue;
+
+      const subject = q.chapters?.courses?.name || "General";
+      const userAnswer = userAnswers[q.id];
+      const correctAnswer = q.correct_answer;
+      const marks = q.marks || 4;
+      const negativeMarks = q.negative_marks || 1;
+
+      totalMaxMarks += marks;
+
+      if (!subjectScores[subject]) {
+        subjectScores[subject] = { correct: 0, incorrect: 0, skipped: 0, total: 0, marks: 0, totalMarks: 0 };
+      }
+      subjectScores[subject].total++;
+      subjectScores[subject].totalMarks = (subjectScores[subject].totalMarks || 0) + marks;
+
+      const isCorrect = userAnswer !== undefined && String(userAnswer) === String(correctAnswer);
+      const isSkipped = userAnswer === undefined;
+      let marksObtained = 0;
+
+      if (isSkipped) {
+        totalSkipped++;
+        subjectScores[subject].skipped++;
+      } else if (isCorrect) {
+        totalCorrect++;
+        totalScore += marks;
+        marksObtained = marks;
+        subjectScores[subject].correct++;
+        subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marks;
+      } else {
+        totalIncorrect++;
+        totalScore -= negativeMarks;
+        marksObtained = -negativeMarks;
+        subjectScores[subject].incorrect++;
+        subjectScores[subject].marks = (subjectScores[subject].marks || 0) - negativeMarks;
+      }
+
+      processedQuestions.push({
+        id: q.id,
+        question_text: q.question_text || "",
+        options: Array.isArray(q.options) ? q.options : (q.options ? Object.values(q.options) : []),
+        correct_answer: correctAnswer,
+        marks,
+        negative_marks: negativeMarks,
+        subject,
+        user_answer: userAnswer,
+        is_correct: isCorrect,
+        marks_obtained: marksObtained,
+        section_type: q.question_type,
+      });
+    }
+
+    setQuestions(processedQuestions);
+    setResults({
+      score: attempt.score ?? totalScore,
+      total_marks: attempt.total_marks ?? totalMaxMarks,
+      correct: totalCorrect,
+      incorrect: totalIncorrect,
+      skipped: totalSkipped,
+      percentile: attempt.percentile ?? 0,
+      rank: attempt.rank,
+      subject_scores: subjectScores,
+      time_taken_seconds: attempt.time_taken_seconds ?? 0,
+    });
+    setLoading(false);
   };
 
   const filteredQuestions = useMemo(() => {
@@ -255,7 +423,7 @@ export default function NormalTestAnalysis() {
 
   const currentQuestion = filteredQuestions[currentQuestionIndex];
 
-  if (loading || !results) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -263,8 +431,19 @@ export default function NormalTestAnalysis() {
     );
   }
 
-  const accuracy = results.total_marks > 0 
-    ? Math.round((results.score / results.total_marks) * 100) 
+  if (!results) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground mb-4">No results found</p>
+          <Button onClick={() => navigate("/tests")}>Back to Tests</Button>
+        </div>
+      </div>
+    );
+  }
+
+  const accuracy = (results.correct + results.incorrect) > 0 
+    ? Math.round((results.correct / (results.correct + results.incorrect)) * 100) 
     : 0;
   const timeTaken = Math.round(results.time_taken_seconds / 60);
 
@@ -283,14 +462,10 @@ export default function NormalTestAnalysis() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-              <Download className="w-4 h-4 mr-2" />
-              Download Analysis
-            </Button>
-            <Link to={`/test/${testId}/solutions`}>
-              <Button variant="default">
-                View Solution
-                <ChevronRight className="w-4 h-4 ml-2" />
+            <Link to={`/test/${testId}/question-analysis`}>
+              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                <Eye className="w-4 h-4 mr-2" />
+                Question Analysis
               </Button>
             </Link>
           </div>
@@ -344,7 +519,9 @@ export default function NormalTestAnalysis() {
                     {Object.entries(results.subject_scores).slice(0, 3).map(([subject, scores]) => (
                       <div key={subject}>
                         <div className="text-gray-400">{subject.slice(0, 4)} Score</div>
-                        <div className="text-white font-semibold">{scores.marks}<span className="text-gray-400">/{scores.totalMarks}</span></div>
+                        <div className="text-white font-semibold">
+                          {scores.marks ?? 0}<span className="text-gray-400">/{scores.totalMarks ?? 0}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -359,7 +536,7 @@ export default function NormalTestAnalysis() {
                 >
                   <h3 className="text-gray-400 text-sm mb-4">Predicted Percentile</h3>
                   <div className="text-5xl font-bold text-[#a78bfa] mb-2">
-                    {results.percentile.toFixed(2)}
+                    {results.percentile?.toFixed(2) ?? "0.00"}
                   </div>
                   <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
                     {Object.entries(results.subject_scores).slice(0, 3).map(([subject, scores]) => {
@@ -367,7 +544,7 @@ export default function NormalTestAnalysis() {
                       return (
                         <div key={subject}>
                           <div className="text-gray-400">{subject.slice(0, 4)}</div>
-                          <div className="text-white font-semibold">{subjectAcc}%ile</div>
+                          <div className="text-white font-semibold">{subjectAcc}%</div>
                         </div>
                       );
                     })}
@@ -387,7 +564,7 @@ export default function NormalTestAnalysis() {
                     <Trophy className="w-4 h-4" />
                     RANK
                   </div>
-                  <div className="text-2xl font-bold text-white">-</div>
+                  <div className="text-2xl font-bold text-white">{results.rank ?? "-"}</div>
                 </motion.div>
 
                 <motion.div
@@ -426,10 +603,10 @@ export default function NormalTestAnalysis() {
                 >
                   <div className="flex items-center gap-2 text-green-400 text-sm mb-2">
                     <TrendingUp className="w-4 h-4" />
-                    POSITIVE SCORE
+                    CORRECT
                   </div>
                   <div className="text-2xl font-bold text-white">
-                    {results.correct * (questions[0]?.marks || 4)}<span className="text-lg text-gray-400">/{results.total_marks}</span>
+                    {results.correct}<span className="text-lg text-gray-400">/{questions.length}</span>
                   </div>
                 </motion.div>
 
@@ -441,10 +618,10 @@ export default function NormalTestAnalysis() {
                 >
                   <div className="flex items-center gap-2 text-red-400 text-sm mb-2">
                     <XCircle className="w-4 h-4" />
-                    MARKS LOST
+                    INCORRECT
                   </div>
                   <div className="text-2xl font-bold text-white">
-                    {results.incorrect * (questions[0]?.negative_marks || 1)}<span className="text-lg text-gray-400">/{results.total_marks}</span>
+                    {results.incorrect}<span className="text-lg text-gray-400">/{questions.length}</span>
                   </div>
                 </motion.div>
 
@@ -472,19 +649,19 @@ export default function NormalTestAnalysis() {
                 <h3 className="text-white font-semibold mb-4">Subject-wise Performance</h3>
                 <div className="space-y-4">
                   {Object.entries(results.subject_scores).map(([subject, scores]) => {
-                    const accuracy = scores.total > 0 ? Math.round((scores.correct / scores.total) * 100) : 0;
+                    const subjectAccuracy = scores.total > 0 ? Math.round((scores.correct / scores.total) * 100) : 0;
                     return (
                       <div key={subject} className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-gray-300">{subject}</span>
                           <span className="text-gray-400">
-                            {scores.correct}/{scores.total} correct ({accuracy}%)
+                            {scores.correct}/{scores.total} correct ({subjectAccuracy}%)
                           </span>
                         </div>
                         <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all"
-                            style={{ width: `${accuracy}%` }}
+                            style={{ width: `${subjectAccuracy}%` }}
                           />
                         </div>
                       </div>
@@ -562,14 +739,17 @@ export default function NormalTestAnalysis() {
               {/* Filter Tabs */}
               <div className="flex items-center gap-2 mb-6">
                 {[
-                  { key: "all", label: "All", count: filteredQuestions.length },
-                  { key: "correct", label: "Correct", count: filteredQuestions.filter(q => q.is_correct).length },
-                  { key: "incorrect", label: "Incorrect", count: filteredQuestions.filter(q => q.user_answer !== undefined && !q.is_correct).length },
-                  { key: "unattempted", label: "Unattempted", count: filteredQuestions.filter(q => q.user_answer === undefined).length },
+                  { key: "all", label: "All", count: questions.filter(q => activeSubject === "all" || q.subject === activeSubject).length },
+                  { key: "correct", label: "Correct", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.is_correct).length },
+                  { key: "incorrect", label: "Incorrect", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.user_answer !== undefined && !q.is_correct).length },
+                  { key: "unattempted", label: "Unattempted", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.user_answer === undefined).length },
                 ].map((filter) => (
                   <button
                     key={filter.key}
-                    onClick={() => setQuestionFilter(filter.key as any)}
+                    onClick={() => {
+                      setQuestionFilter(filter.key as any);
+                      setCurrentQuestionIndex(0);
+                    }}
                     className={cn(
                       "px-3 py-1.5 rounded text-xs font-medium transition-colors",
                       questionFilter === filter.key 
@@ -592,7 +772,9 @@ export default function NormalTestAnalysis() {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <span className="px-2 py-1 rounded bg-white/10 text-white text-sm">Q{currentQuestionIndex + 1}</span>
+                      <span className="px-2 py-1 rounded bg-white/10 text-white text-sm">
+                        Q{currentQuestion.question_number || currentQuestionIndex + 1}
+                      </span>
                       <span className={cn(
                         "px-2 py-1 rounded text-xs",
                         currentQuestion.is_correct 
@@ -601,50 +783,75 @@ export default function NormalTestAnalysis() {
                             ? "bg-gray-500/20 text-gray-400"
                             : "bg-red-500/20 text-red-400"
                       )}>
-                        {currentQuestion.is_correct ? "+4" : currentQuestion.user_answer === undefined ? "0" : "-1"}
+                        {currentQuestion.is_correct 
+                          ? `+${currentQuestion.marks}` 
+                          : currentQuestion.user_answer === undefined 
+                            ? "0" 
+                            : `-${currentQuestion.negative_marks}`}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
-                        <Bookmark className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <div className="text-sm text-gray-400">{currentQuestion.subject}</div>
                   </div>
 
-                  <p className="text-white mb-6">{currentQuestion.question_text}</p>
+                  {currentQuestion.question_text && (
+                    <p className="text-white mb-6">{currentQuestion.question_text}</p>
+                  )}
 
-                  {/* Options */}
-                  <div className="space-y-3">
-                    {currentQuestion.options?.map((option, index) => {
-                      const optionLetter = String(index);
-                      const isCorrect = currentQuestion.correct_answer === optionLetter;
-                      const isUserAnswer = currentQuestion.user_answer === optionLetter;
-                      
-                      return (
-                        <div
-                          key={index}
-                          className={cn(
-                            "flex items-center gap-4 p-4 rounded-lg border transition-all",
-                            isCorrect && "border-green-500 bg-green-500/10",
-                            isUserAnswer && !isCorrect && "border-red-500 bg-red-500/10",
-                            !isCorrect && !isUserAnswer && "border-white/10"
-                          )}
-                        >
-                          <span className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm",
-                            isCorrect && "bg-green-500 text-white",
-                            isUserAnswer && !isCorrect && "bg-red-500 text-white",
-                            !isCorrect && !isUserAnswer && "bg-white/10 text-gray-300"
-                          )}>
-                            {String.fromCharCode(65 + index)}
-                          </span>
-                          <span className="text-gray-300 flex-1">{option}</span>
-                          {isCorrect && <CheckCircle2 className="w-5 h-5 text-green-400" />}
-                          {isUserAnswer && !isCorrect && <XCircle className="w-5 h-5 text-red-400" />}
+                  {/* For integer type, show answers differently */}
+                  {currentQuestion.section_type === 'integer' ? (
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-lg bg-secondary/50">
+                        <div className="text-sm text-muted-foreground mb-1">Your Answer</div>
+                        <div className="font-semibold text-white">
+                          {currentQuestion.user_answer ?? "-"}
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                      <div className={cn(
+                        "p-4 rounded-lg border",
+                        currentQuestion.is_correct 
+                          ? "bg-green-500/10 border-green-500/20" 
+                          : "bg-green-500/10 border-green-500/20"
+                      )}>
+                        <div className="text-sm text-green-400 mb-1">Correct Answer</div>
+                        <div className="font-semibold text-green-400">
+                          {currentQuestion.correct_answer}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Options */
+                    <div className="space-y-3">
+                      {currentQuestion.options?.map((option, index) => {
+                        const optionLetter = String(index);
+                        const isCorrect = currentQuestion.correct_answer === optionLetter;
+                        const isUserAnswer = currentQuestion.user_answer === optionLetter;
+                        
+                        return (
+                          <div
+                            key={index}
+                            className={cn(
+                              "flex items-center gap-4 p-4 rounded-lg border transition-all",
+                              isCorrect && "border-green-500 bg-green-500/10",
+                              isUserAnswer && !isCorrect && "border-red-500 bg-red-500/10",
+                              !isCorrect && !isUserAnswer && "border-white/10"
+                            )}
+                          >
+                            <span className={cn(
+                              "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm",
+                              isCorrect && "bg-green-500 text-white",
+                              isUserAnswer && !isCorrect && "bg-red-500 text-white",
+                              !isCorrect && !isUserAnswer && "bg-white/10 text-gray-300"
+                            )}>
+                              {String.fromCharCode(65 + index)}
+                            </span>
+                            <span className="text-gray-300 flex-1">{option}</span>
+                            {isCorrect && <CheckCircle2 className="w-5 h-5 text-green-400" />}
+                            {isUserAnswer && !isCorrect && <XCircle className="w-5 h-5 text-red-400" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {/* Navigation */}
                   <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
@@ -657,10 +864,9 @@ export default function NormalTestAnalysis() {
                       <ChevronLeft className="w-4 h-4 mr-2" />
                       Previous
                     </Button>
-                    <Button variant="outline" className="border-white/20 text-white">
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Solution
-                    </Button>
+                    <span className="text-sm text-gray-400">
+                      {currentQuestionIndex + 1} / {filteredQuestions.length}
+                    </span>
                     <Button
                       variant="ghost"
                       onClick={() => setCurrentQuestionIndex(Math.min(filteredQuestions.length - 1, currentQuestionIndex + 1))}
@@ -700,7 +906,7 @@ export default function NormalTestAnalysis() {
                       q.user_answer === undefined && "bg-gray-600 text-gray-300"
                     )}
                   >
-                    {index + 1}
+                    {q.question_number || index + 1}
                   </button>
                 ))}
               </div>
@@ -709,15 +915,15 @@ export default function NormalTestAnalysis() {
               <div className="mt-6 space-y-2 text-xs">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded bg-green-500"></div>
-                  <span className="text-gray-400">Correct</span>
+                  <span className="text-gray-400">Correct ({results.correct})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded bg-red-500"></div>
-                  <span className="text-gray-400">Incorrect</span>
+                  <span className="text-gray-400">Incorrect ({results.incorrect})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded bg-gray-600"></div>
-                  <span className="text-gray-400">Unattempted</span>
+                  <span className="text-gray-400">Unattempted ({results.skipped})</span>
                 </div>
               </div>
             </div>
