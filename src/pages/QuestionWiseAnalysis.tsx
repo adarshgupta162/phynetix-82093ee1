@@ -25,6 +25,9 @@ interface Question {
   negative_marks: number;
   section_type: string;
   subject_name: string;
+  question_text?: string;
+  options?: any[];
+  image_url?: string;
 }
 
 interface Attempt {
@@ -44,6 +47,7 @@ export default function QuestionWiseAnalysis() {
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [testName, setTestName] = useState("");
+  const [testType, setTestType] = useState<string>("pdf");
   const [loading, setLoading] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -58,11 +62,14 @@ export default function QuestionWiseAnalysis() {
     // Fetch test details
     const { data: test } = await supabase
       .from("tests")
-      .select("name")
+      .select("name, test_type")
       .eq("id", testId)
       .single();
     
-    if (test) setTestName(test.name);
+    if (test) {
+      setTestName(test.name);
+      setTestType(test.test_type);
+    }
 
     // Fetch user's attempt
     const { data: attemptData } = await supabase
@@ -71,6 +78,8 @@ export default function QuestionWiseAnalysis() {
       .eq("test_id", testId)
       .eq("user_id", user!.id)
       .not("completed_at", "is", null)
+      .order("completed_at", { ascending: false })
+      .limit(1)
       .single();
 
     if (!attemptData) {
@@ -83,34 +92,79 @@ export default function QuestionWiseAnalysis() {
       answers: (attemptData.answers as Record<string, any>) || {},
     });
 
-    // Fetch questions with subject info
-    const { data: questionsData } = await supabase
-      .from("test_section_questions")
-      .select(`
-        id,
-        question_number,
-        correct_answer,
-        marks,
-        negative_marks,
-        section:test_sections(
-          section_type,
-          subject:test_subjects(name)
-        )
-      `)
-      .eq("test_id", testId)
-      .order("question_number");
+    // Fetch questions based on test type
+    if (test?.test_type === 'pdf') {
+      const { data: questionsData } = await supabase
+        .from("test_section_questions")
+        .select(`
+          id,
+          question_number,
+          correct_answer,
+          marks,
+          negative_marks,
+          question_text,
+          options,
+          image_url,
+          section:test_sections(
+            section_type,
+            subject:test_subjects(name)
+          )
+        `)
+        .eq("test_id", testId)
+        .order("question_number");
 
-    if (questionsData) {
-      const formattedQuestions = questionsData.map((q: any) => ({
-        id: q.id,
-        question_number: q.question_number,
-        correct_answer: q.correct_answer,
-        marks: q.marks || 4,
-        negative_marks: q.negative_marks || 1,
-        section_type: q.section?.section_type || "single_choice",
-        subject_name: q.section?.subject?.name || "Unknown",
-      }));
-      setQuestions(formattedQuestions);
+      if (questionsData) {
+        const formattedQuestions = questionsData.map((q: any) => ({
+          id: q.id,
+          question_number: q.question_number,
+          correct_answer: q.correct_answer,
+          marks: q.marks || 4,
+          negative_marks: q.negative_marks || 1,
+          section_type: q.section?.section_type || "single_choice",
+          subject_name: q.section?.subject?.name || "Unknown",
+          question_text: q.question_text,
+          options: q.options,
+          image_url: q.image_url,
+        }));
+        setQuestions(formattedQuestions);
+      }
+    } else {
+      // Normal test questions
+      const { data: testQuestions } = await supabase
+        .from("test_questions")
+        .select(`
+          question_id,
+          order_index,
+          questions(
+            id,
+            question_text,
+            options,
+            correct_answer,
+            marks,
+            negative_marks,
+            question_type,
+            image_url,
+            chapters(name, courses(name))
+          )
+        `)
+        .eq("test_id", testId)
+        .order("order_index");
+
+      if (testQuestions) {
+        const formattedQuestions = testQuestions.map((tq: any, idx: number) => ({
+          id: tq.questions.id,
+          question_number: idx + 1,
+          correct_answer: tq.questions.correct_answer,
+          marks: tq.questions.marks || 4,
+          negative_marks: tq.questions.negative_marks || 1,
+          section_type: tq.questions.question_type || "single_choice",
+          subject_name: tq.questions.chapters?.courses?.name || "General",
+          question_text: tq.questions.question_text,
+          options: tq.questions.options,
+          image_url: tq.questions.image_url,
+        }));
+        setQuestions(formattedQuestions);
+      }
     }
 
     setLoading(false);
@@ -119,7 +173,9 @@ export default function QuestionWiseAnalysis() {
   const getQuestionStatus = (questionId: string) => {
     if (!attempt) return "skipped";
     const answer = attempt.answers[questionId];
-    if (!answer || (Array.isArray(answer) && answer.length === 0)) return "skipped";
+    if (answer === undefined || answer === null || answer === '' || (Array.isArray(answer) && answer.length === 0)) {
+      return "skipped";
+    }
     
     const question = questions.find(q => q.id === questionId);
     if (!question) return "skipped";
@@ -127,7 +183,9 @@ export default function QuestionWiseAnalysis() {
     const correctAnswer = question.correct_answer;
     
     if (question.section_type === "integer") {
-      return String(answer) === String(correctAnswer) ? "correct" : "incorrect";
+      const correctNum = parseFloat(String(correctAnswer));
+      const userNum = parseFloat(String(answer));
+      return !isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01 ? "correct" : "incorrect";
     }
     
     if (question.section_type === "multiple_choice") {
@@ -136,13 +194,35 @@ export default function QuestionWiseAnalysis() {
       return JSON.stringify(userAnswers) === JSON.stringify(correctAnswers) ? "correct" : "incorrect";
     }
     
-    return answer === correctAnswer ? "correct" : "incorrect";
+    return String(answer) === String(correctAnswer) ? "correct" : "incorrect";
   };
 
   const formatAnswer = (answer: any, sectionType: string) => {
-    if (!answer || (Array.isArray(answer) && answer.length === 0)) return "-";
+    if (answer === undefined || answer === null || answer === '' || (Array.isArray(answer) && answer.length === 0)) {
+      return "-";
+    }
     if (sectionType === "integer") return String(answer);
-    if (Array.isArray(answer)) return answer.join(", ");
+    if (Array.isArray(answer)) {
+      // Convert indices to letters for MCQ
+      return answer.map(a => String.fromCharCode(65 + parseInt(String(a)))).join(", ");
+    }
+    // Single choice - convert index to letter
+    const num = parseInt(String(answer));
+    if (!isNaN(num)) {
+      return String.fromCharCode(65 + num);
+    }
+    return answer;
+  };
+
+  const formatCorrectAnswer = (answer: any, sectionType: string) => {
+    if (sectionType === "integer") return String(answer);
+    if (Array.isArray(answer)) {
+      return answer.map(a => String.fromCharCode(65 + parseInt(String(a)))).join(", ");
+    }
+    const num = parseInt(String(answer));
+    if (!isNaN(num)) {
+      return String.fromCharCode(65 + num);
+    }
     return answer;
   };
 
@@ -167,7 +247,7 @@ export default function QuestionWiseAnalysis() {
   if (!attempt) return null;
 
   const currentQ = questions[currentQuestion];
-  const accuracy = attempt.total_marks > 0 
+  const accuracy = (attempt.score >= 0 && attempt.total_marks > 0)
     ? Math.round((attempt.score / attempt.total_marks) * 100) 
     : 0;
 
@@ -193,15 +273,15 @@ export default function QuestionWiseAnalysis() {
           </div>
           <div className="flex items-center gap-3">
             <Button 
-              variant={showLeaderboard ? "gradient" : "glass"}
+              variant={showLeaderboard ? "default" : "outline"}
               onClick={() => setShowLeaderboard(!showLeaderboard)}
             >
-              <Trophy className="w-5 h-5" />
+              <Trophy className="w-5 h-5 mr-2" />
               Leaderboard
             </Button>
             <Link to="/tests">
-              <Button variant="glass">
-                <BookOpen className="w-5 h-5" />
+              <Button variant="outline">
+                <BookOpen className="w-5 h-5 mr-2" />
                 More Tests
               </Button>
             </Link>
@@ -212,23 +292,23 @@ export default function QuestionWiseAnalysis() {
       {/* Overview Stats */}
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="stat-card text-center">
-            <div className="text-2xl font-bold gradient-text">{attempt.score}/{attempt.total_marks}</div>
+          <div className="bg-card border rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold">{attempt.score}/{attempt.total_marks}</div>
             <div className="text-sm text-muted-foreground">Score</div>
           </div>
-          <div className="stat-card text-center">
-            <div className="text-2xl font-bold text-success">{stats.correct}</div>
+          <div className="bg-card border rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-green-500">{stats.correct}</div>
             <div className="text-sm text-muted-foreground">Correct</div>
           </div>
-          <div className="stat-card text-center">
-            <div className="text-2xl font-bold text-destructive">{stats.incorrect}</div>
+          <div className="bg-card border rounded-xl p-4 text-center">
+            <div className="text-2xl font-bold text-red-500">{stats.incorrect}</div>
             <div className="text-sm text-muted-foreground">Incorrect</div>
           </div>
-          <div className="stat-card text-center">
+          <div className="bg-card border rounded-xl p-4 text-center">
             <div className="text-2xl font-bold text-muted-foreground">{stats.skipped}</div>
             <div className="text-sm text-muted-foreground">Skipped</div>
           </div>
-          <div className="stat-card text-center">
+          <div className="bg-card border rounded-xl p-4 text-center">
             <div className="text-2xl font-bold">{accuracy}%</div>
             <div className="text-sm text-muted-foreground">Accuracy</div>
           </div>
@@ -238,10 +318,10 @@ export default function QuestionWiseAnalysis() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-card p-6"
+            className="bg-card border rounded-xl p-6"
           >
             <h2 className="text-lg font-semibold font-display mb-4 flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-warning" />
+              <Trophy className="w-5 h-5 text-yellow-500" />
               Leaderboard
             </h2>
             <Leaderboard testId={testId!} currentUserId={user?.id} />
@@ -252,7 +332,7 @@ export default function QuestionWiseAnalysis() {
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="glass-card p-6"
+              className="bg-card border rounded-xl p-6"
             >
               <h2 className="text-lg font-semibold font-display mb-4">Question Palette</h2>
               <div className="grid grid-cols-5 gap-2">
@@ -265,8 +345,8 @@ export default function QuestionWiseAnalysis() {
                       className={cn(
                         "w-10 h-10 rounded-lg flex items-center justify-center font-semibold text-sm transition-all",
                         currentQuestion === index && "ring-2 ring-primary",
-                        status === "correct" && "bg-success/20 text-success border border-success/30",
-                        status === "incorrect" && "bg-destructive/20 text-destructive border border-destructive/30",
+                        status === "correct" && "bg-green-500/20 text-green-600 border border-green-500/30",
+                        status === "incorrect" && "bg-red-500/20 text-red-600 border border-red-500/30",
                         status === "skipped" && "bg-secondary text-muted-foreground"
                       )}
                     >
@@ -278,11 +358,11 @@ export default function QuestionWiseAnalysis() {
 
               <div className="mt-6 space-y-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-success/20 border border-success/30" />
+                  <div className="w-4 h-4 rounded bg-green-500/20 border border-green-500/30" />
                   <span>Correct ({stats.correct})</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded bg-destructive/20 border border-destructive/30" />
+                  <div className="w-4 h-4 rounded bg-red-500/20 border border-red-500/30" />
                   <span>Incorrect ({stats.incorrect})</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -296,7 +376,7 @@ export default function QuestionWiseAnalysis() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="lg:col-span-2 glass-card p-6"
+              className="lg:col-span-2 bg-card border rounded-xl p-6"
             >
               {currentQ && (
                 <>
@@ -309,8 +389,8 @@ export default function QuestionWiseAnalysis() {
                     </div>
                     <div className={cn(
                       "px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2",
-                      getQuestionStatus(currentQ.id) === "correct" && "bg-success/20 text-success",
-                      getQuestionStatus(currentQ.id) === "incorrect" && "bg-destructive/20 text-destructive",
+                      getQuestionStatus(currentQ.id) === "correct" && "bg-green-500/20 text-green-600",
+                      getQuestionStatus(currentQ.id) === "incorrect" && "bg-red-500/20 text-red-600",
                       getQuestionStatus(currentQ.id) === "skipped" && "bg-secondary text-muted-foreground"
                     )}>
                       {getQuestionStatus(currentQ.id) === "correct" && <CheckCircle2 className="w-4 h-4" />}
@@ -320,6 +400,18 @@ export default function QuestionWiseAnalysis() {
                     </div>
                   </div>
 
+                  {currentQ.question_text && (
+                    <p className="text-foreground mb-4">{currentQ.question_text}</p>
+                  )}
+
+                  {currentQ.image_url && (
+                    <img 
+                      src={currentQ.image_url} 
+                      alt="Question" 
+                      className="max-w-full max-h-64 object-contain mb-4 rounded-lg"
+                    />
+                  )}
+
                   <div className="space-y-4 mb-6">
                     <div className="p-4 rounded-lg bg-secondary/50">
                       <div className="text-sm text-muted-foreground mb-1">Your Answer</div>
@@ -328,10 +420,10 @@ export default function QuestionWiseAnalysis() {
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-lg bg-success/10 border border-success/20">
-                      <div className="text-sm text-success mb-1">Correct Answer</div>
-                      <div className="font-semibold text-success">
-                        {formatAnswer(currentQ.correct_answer, currentQ.section_type)}
+                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                      <div className="text-sm text-green-600 mb-1">Correct Answer</div>
+                      <div className="font-semibold text-green-600">
+                        {formatCorrectAnswer(currentQ.correct_answer, currentQ.section_type)}
                       </div>
                     </div>
 
@@ -339,8 +431,8 @@ export default function QuestionWiseAnalysis() {
                       <div className="text-sm text-muted-foreground mb-1">Marks</div>
                       <div className={cn(
                         "font-semibold text-lg",
-                        getMarksObtained(currentQ.id) > 0 && "text-success",
-                        getMarksObtained(currentQ.id) < 0 && "text-destructive"
+                        getMarksObtained(currentQ.id) > 0 && "text-green-600",
+                        getMarksObtained(currentQ.id) < 0 && "text-red-600"
                       )}>
                         {getMarksObtained(currentQ.id) > 0 && "+"}
                         {getMarksObtained(currentQ.id)}
@@ -348,25 +440,67 @@ export default function QuestionWiseAnalysis() {
                     </div>
                   </div>
 
+                  {/* Options display for MCQ */}
+                  {currentQ.options && Array.isArray(currentQ.options) && currentQ.options.length > 0 && (
+                    <div className="space-y-2 mb-6">
+                      <div className="text-sm text-muted-foreground mb-2">Options:</div>
+                      {currentQ.options.map((opt, idx) => {
+                        const optIdx = String(idx);
+                        const isCorrect = currentQ.section_type === 'multiple_choice' 
+                          ? (Array.isArray(currentQ.correct_answer) ? currentQ.correct_answer.includes(optIdx) : currentQ.correct_answer === optIdx)
+                          : currentQ.correct_answer === optIdx;
+                        const isUserAnswer = currentQ.section_type === 'multiple_choice'
+                          ? (Array.isArray(attempt.answers[currentQ.id]) 
+                              ? attempt.answers[currentQ.id].includes(optIdx) 
+                              : attempt.answers[currentQ.id] === optIdx)
+                          : attempt.answers[currentQ.id] === optIdx;
+
+                        return (
+                          <div 
+                            key={idx}
+                            className={cn(
+                              "p-3 rounded-lg border flex items-center gap-3",
+                              isCorrect && "border-green-500 bg-green-500/10",
+                              isUserAnswer && !isCorrect && "border-red-500 bg-red-500/10",
+                              !isCorrect && !isUserAnswer && "border-border"
+                            )}
+                          >
+                            <span className={cn(
+                              "w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium",
+                              isCorrect && "bg-green-500 text-white",
+                              isUserAnswer && !isCorrect && "bg-red-500 text-white",
+                              !isCorrect && !isUserAnswer && "bg-secondary"
+                            )}>
+                              {String.fromCharCode(65 + idx)}
+                            </span>
+                            <span className="flex-1">{String(opt)}</span>
+                            {isCorrect && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                            {isUserAnswer && !isCorrect && <XCircle className="w-4 h-4 text-red-500" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     <Button
-                      variant="glass"
+                      variant="outline"
                       onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
                       disabled={currentQuestion === 0}
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="w-5 h-5 mr-2" />
                       Previous
                     </Button>
                     <span className="text-sm text-muted-foreground">
                       {currentQuestion + 1} of {questions.length}
                     </span>
                     <Button
-                      variant="glass"
+                      variant="outline"
                       onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
                       disabled={currentQuestion === questions.length - 1}
                     >
                       Next
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="w-5 h-5 ml-2" />
                     </Button>
                   </div>
                 </>
