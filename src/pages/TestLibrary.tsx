@@ -95,8 +95,15 @@ export default function TestLibrary() {
             .eq("user_id", user!.id)
             .maybeSingle();
 
-          // For regular tests, use test_questions count
-          const questionCount = (test.test_questions as { count: number }[])?.[0]?.count || 0;
+          // Prefer test_questions count; fallback to section-based count.
+          let questionCount = (test.test_questions as { count: number }[])?.[0]?.count || 0;
+          if (questionCount === 0) {
+            const { count: sectionCount } = await supabase
+              .from("test_section_questions")
+              .select("*", { count: "exact", head: true })
+              .eq("test_id", test.id);
+            questionCount = sectionCount || 0;
+          }
 
           return {
             id: test.id,

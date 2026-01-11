@@ -6,6 +6,35 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type SubjectScore = {
+  correct: number;
+  incorrect: number;
+  skipped: number;
+  total: number;
+  marks: number;
+  totalMarks: number;
+};
+
+type QuestionResult = {
+  question_number?: number;
+  question_text?: string | null;
+  options?: unknown;
+  image_url?: string | null;
+
+  correct_answer: unknown;
+  user_answer: unknown;
+  is_correct: boolean;
+  is_bonus?: boolean;
+
+  marks_obtained: number;
+  marks: number;
+  negative_marks: number;
+
+  subject: string;
+  section_type?: string;
+  chapter?: string;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -20,12 +49,12 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
+      { global: { headers: { Authorization: authHeader } } },
     );
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
@@ -38,7 +67,7 @@ serve(async (req) => {
       throw new Error("attempt_id is required");
     }
 
-    console.log(`Submitting test attempt ${attempt_id} for user ${user.id}`);
+    console.log(`[submit-test] Submitting attempt=${attempt_id} user=${user.id}`);
 
     const { data: attempt, error: attemptError } = await supabaseClient
       .from("test_attempts")
@@ -48,12 +77,12 @@ serve(async (req) => {
       .maybeSingle();
 
     if (attemptError || !attempt) {
-      console.error("Attempt not found:", attemptError);
+      console.error("[submit-test] Attempt not found:", attemptError);
       throw new Error("Test attempt not found");
     }
 
     if (attempt.completed_at) {
-      console.log("Attempt already completed");
+      console.log("[submit-test] Attempt already completed");
       throw new Error("Test already submitted");
     }
 
@@ -68,110 +97,133 @@ serve(async (req) => {
     let correct = 0;
     let incorrect = 0;
     let skipped = 0;
-    const questionResults: Record<string, any> = {};
-    const subjectScores: Record<string, { correct: number; incorrect: number; skipped: number; total: number }> = {};
 
-    if (test?.test_type === 'pdf') {
-      console.log("Grading PDF test");
-      
+    const questionResults: Record<string, QuestionResult> = {};
+    const subjectScores: Record<string, SubjectScore> = {};
+
+    const ensureSubject = (subject: string) => {
+      if (!subjectScores[subject]) {
+        subjectScores[subject] = {
+          correct: 0,
+          incorrect: 0,
+          skipped: 0,
+          total: 0,
+          marks: 0,
+          totalMarks: 0,
+        };
+      }
+    };
+
+    const pushResult = (questionId: string, result: QuestionResult) => {
+      questionResults[questionId] = result;
+    };
+
+    const gradeSectionBased = async () => {
+      console.log("[submit-test] Grading section-based questions (test_section_questions)");
+
       const { data: sectionQuestions, error: sqError } = await supabaseAdmin
         .from("test_section_questions")
         .select(`
           id,
           question_number,
+          question_text,
+          options,
+          image_url,
           correct_answer,
           marks,
           negative_marks,
           is_bonus,
-          section_id,
           test_sections!inner (
             section_type,
             name,
-            subject_id,
-            test_subjects!inner (
-              name
-            )
+            test_subjects!inner (name)
           )
         `)
         .eq("test_id", attempt.test_id)
         .order("question_number");
 
       if (sqError) {
-        console.error("Failed to fetch section questions:", sqError);
+        console.error("[submit-test] Failed to fetch section questions:", sqError);
         throw new Error("Failed to calculate score");
       }
 
       for (const q of sectionQuestions || []) {
-        const questionId = q.id;
-        const correctAnswer = q.correct_answer;
-        const marks = q.marks ?? 4;
-        const negativeMarks = q.negative_marks ?? 1;
-        const isBonus = q.is_bonus ?? false;
-        const userAnswer = answers?.[questionId];
-        const section = q.test_sections as any;
-        const sectionType = section?.section_type || 'single_choice';
-        const subject = section?.test_subjects?.name ?? "General";
+        const questionId = q.id as string;
+        const correctAnswer = (q as any).correct_answer;
+        const marks = (q as any).marks ?? 4;
+        const negativeMarks = (q as any).negative_marks ?? 1;
+        const isBonus = (q as any).is_bonus ?? false;
+        const userAnswer = (answers as any)?.[questionId];
 
+        const section = (q as any).test_sections;
+        const sectionType = section?.section_type || "single_choice";
+        const subject = section?.test_subjects?.name ?? "General";
+        const chapterName = section?.name ?? "General";
+
+        ensureSubject(subject);
+        subjectScores[subject].total++;
+        subjectScores[subject].totalMarks += marks;
         totalMarks += marks;
 
-        if (!subjectScores[subject]) {
-          subjectScores[subject] = { correct: 0, incorrect: 0, skipped: 0, total: 0 };
-        }
-        subjectScores[subject].total++;
-
-        let isCorrect = false;
-        let marksObtained = 0;
-
-        // Bonus question - everyone gets full marks
+        // Bonus question: everyone gets full marks
         if (isBonus) {
           correct++;
           score += marks;
-          marksObtained = marks;
-          isCorrect = true;
           subjectScores[subject].correct++;
-          
-          questionResults[questionId] = {
-            question_number: q.question_number,
+          subjectScores[subject].marks += marks;
+
+          pushResult(questionId, {
+            question_number: (q as any).question_number,
+            question_text: (q as any).question_text ?? null,
+            options: (q as any).options,
+            image_url: (q as any).image_url ?? null,
             correct_answer: correctAnswer,
             user_answer: userAnswer ?? null,
             is_correct: true,
             is_bonus: true,
             marks_obtained: marks,
-            marks: marks,
+            marks,
             negative_marks: negativeMarks,
             subject,
             section_type: sectionType,
-          };
+            chapter: chapterName,
+          });
           continue;
         }
 
-        if (userAnswer === undefined || userAnswer === null || userAnswer === '') {
+        let isCorrect = false;
+        let marksObtained = 0;
+
+        if (userAnswer === undefined || userAnswer === null || userAnswer === "") {
           skipped++;
           subjectScores[subject].skipped++;
         } else {
-          if (sectionType === 'multiple_choice') {
-            const correctArr = Array.isArray(correctAnswer) ? correctAnswer.sort() : [correctAnswer];
-            const userArr = Array.isArray(userAnswer) ? userAnswer.sort() : [userAnswer];
-            
+          if (sectionType === "multiple_choice") {
+            const correctArr = Array.isArray(correctAnswer) ? [...correctAnswer].sort() : [correctAnswer];
+            const userArr = Array.isArray(userAnswer) ? [...userAnswer].sort() : [userAnswer];
+
             if (JSON.stringify(correctArr) === JSON.stringify(userArr)) {
+              isCorrect = true;
               correct++;
               score += marks;
               marksObtained = marks;
-              isCorrect = true;
               subjectScores[subject].correct++;
+              subjectScores[subject].marks += marks;
             } else {
-              if (test?.exam_type === 'jee_advanced') {
+              if (test?.exam_type === "jee_advanced") {
                 const correctSet = new Set(correctArr);
                 const userSet = new Set(userArr);
-                const correctCount = [...userArr].filter(a => correctSet.has(a)).length;
-                const wrongCount = [...userArr].filter(a => !correctSet.has(a)).length;
-                
+                const correctCount = [...userSet].filter((a) => correctSet.has(a)).length;
+                const wrongCount = [...userSet].filter((a) => !correctSet.has(a)).length;
+
                 if (wrongCount === 0 && correctCount > 0) {
                   marksObtained = Math.floor((correctCount / correctArr.length) * marks);
                   score += marksObtained;
+                  subjectScores[subject].marks += marksObtained;
+
                   if (correctCount === correctArr.length) {
-                    correct++;
                     isCorrect = true;
+                    correct++;
                     subjectScores[subject].correct++;
                   }
                 } else {
@@ -179,120 +231,155 @@ serve(async (req) => {
                   score -= 2;
                   marksObtained = -2;
                   subjectScores[subject].incorrect++;
+                  subjectScores[subject].marks -= 2;
                 }
               } else {
+                // Keep existing behavior for non-Advanced multiple choice
                 incorrect++;
                 subjectScores[subject].incorrect++;
               }
             }
-          } else if (sectionType === 'integer') {
+          } else if (sectionType === "integer") {
             const correctNum = parseFloat(String(correctAnswer));
             const userNum = parseFloat(String(userAnswer));
-            
+
             if (!isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01) {
+              isCorrect = true;
               correct++;
               score += marks;
               marksObtained = marks;
-              isCorrect = true;
               subjectScores[subject].correct++;
+              subjectScores[subject].marks += marks;
             } else {
               incorrect++;
-              // JEE Mains integer now has -1 negative marking
               score -= negativeMarks;
               marksObtained = -negativeMarks;
               subjectScores[subject].incorrect++;
+              subjectScores[subject].marks -= negativeMarks;
             }
           } else {
             if (String(userAnswer) === String(correctAnswer)) {
+              isCorrect = true;
               correct++;
               score += marks;
               marksObtained = marks;
-              isCorrect = true;
               subjectScores[subject].correct++;
+              subjectScores[subject].marks += marks;
             } else {
               incorrect++;
               score -= negativeMarks;
               marksObtained = -negativeMarks;
               subjectScores[subject].incorrect++;
+              subjectScores[subject].marks -= negativeMarks;
             }
           }
         }
 
-        questionResults[questionId] = {
-          question_number: q.question_number,
+        pushResult(questionId, {
+          question_number: (q as any).question_number,
+          question_text: (q as any).question_text ?? null,
+          options: (q as any).options,
+          image_url: (q as any).image_url ?? null,
           correct_answer: correctAnswer,
           user_answer: userAnswer ?? null,
           is_correct: isCorrect,
           is_bonus: false,
           marks_obtained: marksObtained,
-          marks: marks,
+          marks,
           negative_marks: negativeMarks,
           subject,
           section_type: sectionType,
-        };
+          chapter: chapterName,
+        });
       }
-    } else {
-      console.log("Grading regular test");
-      
+    };
+
+    const gradeRegular = async () => {
+      console.log("[submit-test] Grading regular test_questions -> questions");
+
       const { data: testQuestions, error: questionsError } = await supabaseAdmin
         .from("test_questions")
-        .select(`question_id, questions(id, correct_answer, marks, negative_marks, chapters(name, courses(name)))`)
-        .eq("test_id", attempt.test_id);
+        .select(
+          `order_index, questions(id, question_text, options, image_url, question_type, correct_answer, marks, negative_marks, chapters(name, courses(name)))`,
+        )
+        .eq("test_id", attempt.test_id)
+        .order("order_index");
 
       if (questionsError) {
-        console.error("Failed to fetch questions:", questionsError);
+        console.error("[submit-test] Failed to fetch questions:", questionsError);
         throw new Error("Failed to calculate score");
       }
 
-      for (const tq of testQuestions || []) {
-        const q = tq.questions as any;
+      // If this test was built using the section-based structure, test_questions will be empty.
+      if (!testQuestions || testQuestions.length === 0) {
+        await gradeSectionBased();
+        return;
+      }
+
+      for (let idx = 0; idx < testQuestions.length; idx++) {
+        const tq: any = testQuestions[idx];
+        const q: any = tq.questions;
         if (!q) continue;
 
-        const questionId = q.id;
+        const questionId = q.id as string;
         const correctAnswer = q.correct_answer;
         const marks = q.marks ?? 4;
         const negativeMarks = q.negative_marks ?? 1;
-        const userAnswer = answers?.[questionId];
+        const userAnswer = (answers as any)?.[questionId];
         const chapter = q.chapters as any;
         const course = chapter?.courses as any;
         const subject = course?.name ?? "General";
         const chapterName = chapter?.name ?? "General";
 
-        totalMarks += marks;
-
-        if (!subjectScores[subject]) {
-          subjectScores[subject] = { correct: 0, incorrect: 0, skipped: 0, total: 0 };
-        }
+        ensureSubject(subject);
         subjectScores[subject].total++;
+        subjectScores[subject].totalMarks += marks;
+        totalMarks += marks;
 
         let isCorrect = false;
         let marksObtained = 0;
 
-        if (userAnswer === undefined || userAnswer === null) {
+        if (userAnswer === undefined || userAnswer === null || userAnswer === "") {
           skipped++;
           subjectScores[subject].skipped++;
         } else if (String(userAnswer) === String(correctAnswer)) {
+          isCorrect = true;
           correct++;
           score += marks;
           marksObtained = marks;
-          isCorrect = true;
           subjectScores[subject].correct++;
+          subjectScores[subject].marks += marks;
         } else {
           incorrect++;
           score -= negativeMarks;
           marksObtained = -negativeMarks;
           subjectScores[subject].incorrect++;
+          subjectScores[subject].marks -= negativeMarks;
         }
 
-        questionResults[questionId] = {
+        pushResult(questionId, {
+          question_number: idx + 1,
+          question_text: q.question_text ?? null,
+          options: q.options,
+          image_url: q.image_url ?? null,
           correct_answer: correctAnswer,
           user_answer: userAnswer ?? null,
           is_correct: isCorrect,
           marks_obtained: marksObtained,
+          marks,
+          negative_marks: negativeMarks,
           subject,
+          section_type: q.question_type,
           chapter: chapterName,
-        };
+        });
       }
+    };
+
+    if (test?.test_type === "pdf") {
+      console.log("[submit-test] Test type is pdf");
+      await gradeSectionBased();
+    } else {
+      await gradeRegular();
     }
 
     const { data: allAttempts } = await supabaseAdmin
@@ -304,12 +391,12 @@ serve(async (req) => {
 
     let rank = 1;
     let percentile = 100;
-    
+
     if (allAttempts && allAttempts.length > 0) {
-      const scoresWithCurrent = [...allAttempts.map(a => a.score ?? 0), score].sort((a, b) => b - a);
+      const scoresWithCurrent = [...allAttempts.map((a) => a.score ?? 0), score].sort((a, b) => b - a);
       rank = scoresWithCurrent.indexOf(score) + 1;
-      
-      const scoresBelow = scoresWithCurrent.filter(s => s < score).length;
+
+      const scoresBelow = scoresWithCurrent.filter((s) => s < score).length;
       percentile = Math.round((scoresBelow / scoresWithCurrent.length) * 100 * 10) / 10;
     }
 
@@ -327,18 +414,18 @@ serve(async (req) => {
       .eq("id", attempt_id);
 
     if (updateError) {
-      console.error("Failed to update attempt:", updateError);
+      console.error("[submit-test] Failed to update attempt:", updateError);
       throw new Error("Failed to save results");
     }
 
     if (allAttempts && allAttempts.length > 0) {
       const updatedAttempts = [...allAttempts, { id: attempt_id, score }]
         .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-      
+
       for (let i = 0; i < updatedAttempts.length; i++) {
         const newRank = i + 1;
         const newPercentile = Math.round(((updatedAttempts.length - newRank) / updatedAttempts.length) * 100 * 10) / 10;
-        
+
         await supabaseAdmin
           .from("test_attempts")
           .update({ rank: newRank, percentile: newPercentile })
@@ -346,7 +433,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Test ${attempt_id} submitted. Score: ${score}/${totalMarks}, Rank: ${rank}, Percentile: ${percentile}`);
+    console.log(`[submit-test] Completed attempt=${attempt_id} score=${score}/${totalMarks} rank=${rank} percentile=${percentile}`);
 
     return new Response(
       JSON.stringify({
@@ -361,13 +448,13 @@ serve(async (req) => {
         subject_scores: subjectScores,
         time_taken_seconds,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: any) {
-    console.error("Error in submit-test:", error);
+    console.error("[submit-test] Error:", error);
     return new Response(
       JSON.stringify({ error: error?.message || "Unknown error" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
