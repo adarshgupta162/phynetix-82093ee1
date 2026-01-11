@@ -32,6 +32,9 @@ interface SubjectScore {
 
 interface QuestionResult {
   question_number?: number;
+  question_text?: string | null;
+  options?: any;
+  image_url?: string | null;
   correct_answer: string | number | string[];
   user_answer: string | number | string[] | null;
   is_correct: boolean;
@@ -62,15 +65,16 @@ interface Question {
   id: string;
   question_text: string;
   options: string[];
-  correct_answer: string;
+  correct_answer: any;
   marks: number;
   negative_marks: number;
   subject: string;
-  user_answer?: string;
+  user_answer?: any;
   is_correct?: boolean;
   marks_obtained?: number;
   section_type?: string;
   question_number?: number;
+  image_url?: string | null;
 }
 
 export default function NormalTestAnalysis() {
