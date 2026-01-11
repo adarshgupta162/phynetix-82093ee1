@@ -35,6 +35,15 @@ type QuestionResult = {
   chapter?: string;
 };
 
+// Helper to convert user answer index (0, 1, 2, 3) to letter (A, B, C, D)
+const indexToLetter = (index: any): string => {
+  const num = parseInt(String(index));
+  if (!isNaN(num) && num >= 0 && num <= 25) {
+    return String.fromCharCode(65 + num); // 0 -> A, 1 -> B, etc.
+  }
+  return String(index).toUpperCase();
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -199,8 +208,14 @@ serve(async (req) => {
           subjectScores[subject].skipped++;
         } else {
           if (sectionType === "multiple_choice") {
-            const correctArr = Array.isArray(correctAnswer) ? [...correctAnswer].sort() : [correctAnswer];
-            const userArr = Array.isArray(userAnswer) ? [...userAnswer].sort() : [userAnswer];
+            // Convert correct answers to uppercase letters
+            const correctArr = (Array.isArray(correctAnswer) ? [...correctAnswer] : [correctAnswer])
+              .map((a: any) => String(a).toUpperCase())
+              .sort();
+            // Convert user answers from indices to letters
+            const userArr = (Array.isArray(userAnswer) ? [...userAnswer] : [userAnswer])
+              .map((a: any) => indexToLetter(a))
+              .sort();
 
             if (JSON.stringify(correctArr) === JSON.stringify(userArr)) {
               isCorrect = true;
@@ -258,7 +273,11 @@ serve(async (req) => {
               subjectScores[subject].marks -= negativeMarks;
             }
           } else {
-            if (String(userAnswer) === String(correctAnswer)) {
+            // Single choice: user answer is index (0, 1, 2), correct answer is letter (A, B, C)
+            const userLetter = indexToLetter(userAnswer);
+            const correctLetter = String(correctAnswer).toUpperCase();
+            
+            if (userLetter === correctLetter) {
               isCorrect = true;
               correct++;
               score += marks;
