@@ -77,8 +77,8 @@ export default function NormalTestAnalysis() {
   const { testId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  
+  const { user, isLoading: authLoading } = useAuth();
+
   const [results, setResults] = useState<Results | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
@@ -90,41 +90,55 @@ export default function NormalTestAnalysis() {
   const testName = location.state?.testName || "Test Analysis";
 
   useEffect(() => {
-    if (location.state?.results) {
-      // Results passed from submit
-      const passedResults = location.state.results as Results;
+    if (authLoading) return;
+
+    const passedResults = location.state?.results as Results | undefined;
+    if (passedResults) {
       setResults(passedResults);
-      
-      // Build questions from question_results if available
-      if (passedResults.question_results) {
-        const questionList: Question[] = Object.entries(passedResults.question_results).map(([id, qr]) => ({
-          id,
-          question_text: "",
-          options: [],
-          correct_answer: String(qr.correct_answer),
-          marks: qr.marks || 4,
-          negative_marks: qr.negative_marks || 1,
-          subject: qr.subject || "General",
-          user_answer: qr.user_answer !== null ? String(qr.user_answer) : undefined,
-          is_correct: qr.is_correct,
-          marks_obtained: qr.marks_obtained,
-          section_type: qr.section_type,
-          question_number: qr.question_number,
-        }));
-        
-        // Sort by question number
+
+      const qr = passedResults.question_results;
+      if (qr && Object.keys(qr).length > 0) {
+        const questionList: Question[] = Object.entries(qr).map(([id, r]) => {
+          const rawOptions = r.options;
+          const options = Array.isArray(rawOptions)
+            ? rawOptions.map(String)
+            : rawOptions
+              ? Object.values(rawOptions as any).map(String)
+              : [];
+
+          return {
+            id,
+            question_text: String(r.question_text ?? ""),
+            options,
+            correct_answer: r.correct_answer,
+            marks: r.marks ?? 4,
+            negative_marks: r.negative_marks ?? 1,
+            subject: r.subject || "General",
+            user_answer: r.user_answer,
+            is_correct: r.is_correct,
+            marks_obtained: r.marks_obtained,
+            section_type: r.section_type,
+            question_number: r.question_number,
+            image_url: r.image_url ?? null,
+          };
+        });
+
         questionList.sort((a, b) => (a.question_number || 0) - (b.question_number || 0));
         setQuestions(questionList);
       }
-      
+
       fetchTestType();
       setLoading(false);
-    } else if (testId && user) {
-      fetchAttemptData();
-    } else {
-      navigate("/tests");
+      return;
     }
-  }, [location.state, testId, user, navigate]);
+
+    if (testId && user) {
+      fetchAttemptData();
+      return;
+    }
+
+    navigate("/tests");
+  }, [location.state, testId, user, navigate, authLoading]);
 
   const fetchTestType = async () => {
     if (!testId) return;
@@ -296,6 +310,7 @@ export default function NormalTestAnalysis() {
   };
 
   const fetchNormalTestQuestions = async (userAnswers: Record<string, string>, attempt: any) => {
+    // First, try regular test_questions -> questions
     const { data: testQuestions } = await supabase
       .from("test_questions")
       .select(`
@@ -309,6 +324,7 @@ export default function NormalTestAnalysis() {
           marks,
           negative_marks,
           question_type,
+          image_url,
           chapters(
             name,
             courses(name)
@@ -318,7 +334,106 @@ export default function NormalTestAnalysis() {
       .eq("test_id", testId)
       .order("order_index");
 
-    if (!testQuestions || testQuestions.length === 0) {
+    if (testQuestions && testQuestions.length > 0) {
+      const processedQuestions: Question[] = [];
+      const subjectScores: Record<string, SubjectScore> = {};
+      let totalCorrect = 0, totalIncorrect = 0, totalSkipped = 0;
+      let totalScore = 0, totalMaxMarks = 0;
+
+      for (const tq of testQuestions) {
+        const q = tq.questions as any;
+        if (!q) continue;
+
+        const subject = q.chapters?.courses?.name || "General";
+        const userAnswer = userAnswers[q.id];
+        const correctAnswer = q.correct_answer;
+        const marks = q.marks || 4;
+        const negativeMarks = q.negative_marks || 1;
+
+        totalMaxMarks += marks;
+
+        if (!subjectScores[subject]) {
+          subjectScores[subject] = { correct: 0, incorrect: 0, skipped: 0, total: 0, marks: 0, totalMarks: 0 };
+        }
+        subjectScores[subject].total++;
+        subjectScores[subject].totalMarks = (subjectScores[subject].totalMarks || 0) + marks;
+
+        const isCorrect = userAnswer !== undefined && String(userAnswer) === String(correctAnswer);
+        const isSkipped = userAnswer === undefined;
+        let marksObtained = 0;
+
+        if (isSkipped) {
+          totalSkipped++;
+          subjectScores[subject].skipped++;
+        } else if (isCorrect) {
+          totalCorrect++;
+          totalScore += marks;
+          marksObtained = marks;
+          subjectScores[subject].correct++;
+          subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marks;
+        } else {
+          totalIncorrect++;
+          totalScore -= negativeMarks;
+          marksObtained = -negativeMarks;
+          subjectScores[subject].incorrect++;
+          subjectScores[subject].marks = (subjectScores[subject].marks || 0) - negativeMarks;
+        }
+
+        processedQuestions.push({
+          id: q.id,
+          question_text: q.question_text || "",
+          options: Array.isArray(q.options) ? q.options.map(String) : (q.options ? Object.values(q.options).map(String) : []),
+          correct_answer: correctAnswer,
+          marks,
+          negative_marks: negativeMarks,
+          subject,
+          user_answer: userAnswer,
+          is_correct: isCorrect,
+          marks_obtained: marksObtained,
+          section_type: q.question_type,
+          question_number: tq.order_index ?? undefined,
+          image_url: q.image_url ?? null,
+        });
+      }
+
+      setQuestions(processedQuestions);
+      setResults({
+        score: attempt.score ?? totalScore,
+        total_marks: (attempt.total_marks ?? 0) === 0 && totalMaxMarks > 0 ? totalMaxMarks : (attempt.total_marks ?? totalMaxMarks),
+        correct: totalCorrect,
+        incorrect: totalIncorrect,
+        skipped: totalSkipped,
+        percentile: attempt.percentile ?? 0,
+        rank: attempt.rank,
+        subject_scores: subjectScores,
+        time_taken_seconds: attempt.time_taken_seconds ?? 0,
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Fallback: section-based (test_section_questions)
+    const { data: sectionQuestions } = await supabase
+      .from("test_section_questions")
+      .select(`
+        id,
+        question_number,
+        correct_answer,
+        marks,
+        negative_marks,
+        question_text,
+        options,
+        image_url,
+        test_sections!inner (
+          section_type,
+          name,
+          test_subjects!inner (name)
+        )
+      `)
+      .eq("test_id", testId)
+      .order("question_number");
+
+    if (!sectionQuestions || sectionQuestions.length === 0) {
       setLoading(false);
       return;
     }
@@ -328,15 +443,14 @@ export default function NormalTestAnalysis() {
     let totalCorrect = 0, totalIncorrect = 0, totalSkipped = 0;
     let totalScore = 0, totalMaxMarks = 0;
 
-    for (const tq of testQuestions) {
-      const q = tq.questions as any;
-      if (!q) continue;
-
-      const subject = q.chapters?.courses?.name || "General";
-      const userAnswer = userAnswers[q.id];
-      const correctAnswer = q.correct_answer;
-      const marks = q.marks || 4;
-      const negativeMarks = q.negative_marks || 1;
+    for (const sq of sectionQuestions) {
+      const section = sq.test_sections as any;
+      const subject = section?.test_subjects?.name || "General";
+      const sectionType = section?.section_type || "single_choice";
+      const userAnswer = userAnswers[sq.id];
+      const correctAnswer = sq.correct_answer;
+      const marks = sq.marks || 4;
+      const negativeMarks = sq.negative_marks || 1;
 
       totalMaxMarks += marks;
 
@@ -346,46 +460,64 @@ export default function NormalTestAnalysis() {
       subjectScores[subject].total++;
       subjectScores[subject].totalMarks = (subjectScores[subject].totalMarks || 0) + marks;
 
-      const isCorrect = userAnswer !== undefined && String(userAnswer) === String(correctAnswer);
-      const isSkipped = userAnswer === undefined;
+      let isCorrect = false;
       let marksObtained = 0;
 
-      if (isSkipped) {
+      if (userAnswer === undefined || userAnswer === null || userAnswer === '') {
         totalSkipped++;
         subjectScores[subject].skipped++;
-      } else if (isCorrect) {
-        totalCorrect++;
-        totalScore += marks;
-        marksObtained = marks;
-        subjectScores[subject].correct++;
-        subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marks;
       } else {
-        totalIncorrect++;
-        totalScore -= negativeMarks;
-        marksObtained = -negativeMarks;
-        subjectScores[subject].incorrect++;
-        subjectScores[subject].marks = (subjectScores[subject].marks || 0) - negativeMarks;
+        if (sectionType === 'integer') {
+          const correctNum = parseFloat(String(correctAnswer));
+          const userNum = parseFloat(String(userAnswer));
+          isCorrect = !isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01;
+        } else if (sectionType === 'multiple_choice') {
+          const correctArr = Array.isArray(correctAnswer) ? correctAnswer.sort() : [correctAnswer];
+          const userArr = Array.isArray(userAnswer) ? (userAnswer as any).sort() : [userAnswer];
+          isCorrect = JSON.stringify(correctArr) === JSON.stringify(userArr);
+        } else {
+          isCorrect = String(userAnswer) === String(correctAnswer);
+        }
+
+        if (isCorrect) {
+          totalCorrect++;
+          totalScore += marks;
+          marksObtained = marks;
+          subjectScores[subject].correct++;
+          subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marks;
+        } else {
+          totalIncorrect++;
+          totalScore -= negativeMarks;
+          marksObtained = -negativeMarks;
+          subjectScores[subject].incorrect++;
+          subjectScores[subject].marks = (subjectScores[subject].marks || 0) - negativeMarks;
+        }
       }
 
       processedQuestions.push({
-        id: q.id,
-        question_text: q.question_text || "",
-        options: Array.isArray(q.options) ? q.options : (q.options ? Object.values(q.options) : []),
-        correct_answer: correctAnswer,
+        id: sq.id,
+        question_text: sq.question_text || "",
+        options: Array.isArray(sq.options) ? sq.options.map(String) : [],
+        correct_answer: correctAnswer as any,
         marks,
         negative_marks: negativeMarks,
         subject,
         user_answer: userAnswer,
         is_correct: isCorrect,
         marks_obtained: marksObtained,
-        section_type: q.question_type,
+        section_type: sectionType,
+        question_number: sq.question_number,
+        image_url: (sq as any).image_url ?? null,
       });
     }
 
     setQuestions(processedQuestions);
+    const computedLooksValid = totalMaxMarks > 0;
+    const useComputed = (attempt.total_marks ?? 0) === 0 && computedLooksValid;
+
     setResults({
-      score: attempt.score ?? totalScore,
-      total_marks: attempt.total_marks ?? totalMaxMarks,
+      score: useComputed ? totalScore : (attempt.score ?? totalScore),
+      total_marks: useComputed ? totalMaxMarks : (attempt.total_marks ?? totalMaxMarks),
       correct: totalCorrect,
       incorrect: totalIncorrect,
       skipped: totalSkipped,

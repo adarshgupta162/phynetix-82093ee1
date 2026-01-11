@@ -150,20 +150,58 @@ export default function QuestionWiseAnalysis() {
         .eq("test_id", testId)
         .order("order_index");
 
-      if (testQuestions) {
-        const formattedQuestions = testQuestions.map((tq: any, idx: number) => ({
-          id: tq.questions.id,
-          question_number: idx + 1,
-          correct_answer: tq.questions.correct_answer,
-          marks: tq.questions.marks || 4,
-          negative_marks: tq.questions.negative_marks || 1,
-          section_type: tq.questions.question_type || "single_choice",
-          subject_name: tq.questions.chapters?.courses?.name || "General",
-          question_text: tq.questions.question_text,
-          options: tq.questions.options,
-          image_url: tq.questions.image_url,
-        }));
+      if (testQuestions && testQuestions.length > 0) {
+        const formattedQuestions = testQuestions
+          .filter((tq: any) => !!tq.questions)
+          .map((tq: any, idx: number) => ({
+            id: tq.questions.id,
+            question_number: idx + 1,
+            correct_answer: tq.questions.correct_answer,
+            marks: tq.questions.marks || 4,
+            negative_marks: tq.questions.negative_marks || 1,
+            section_type: tq.questions.question_type || "single_choice",
+            subject_name: tq.questions.chapters?.courses?.name || "General",
+            question_text: tq.questions.question_text,
+            options: tq.questions.options,
+            image_url: tq.questions.image_url,
+          }));
         setQuestions(formattedQuestions);
+      } else {
+        // Fallback: section-based structure (test_section_questions)
+        const { data: sectionQuestions } = await supabase
+          .from("test_section_questions")
+          .select(`
+            id,
+            question_number,
+            correct_answer,
+            marks,
+            negative_marks,
+            question_text,
+            options,
+            image_url,
+            test_sections!inner (
+              section_type,
+              test_subjects!inner (name)
+            )
+          `)
+          .eq("test_id", testId)
+          .order("question_number");
+
+        if (sectionQuestions) {
+          const formatted = sectionQuestions.map((q: any) => ({
+            id: q.id,
+            question_number: q.question_number,
+            correct_answer: q.correct_answer,
+            marks: q.marks || 4,
+            negative_marks: q.negative_marks || 1,
+            section_type: q.test_sections?.section_type || "single_choice",
+            subject_name: q.test_sections?.test_subjects?.name || "General",
+            question_text: q.question_text,
+            options: q.options,
+            image_url: q.image_url,
+          }));
+          setQuestions(formatted);
+        }
       }
     }
 
