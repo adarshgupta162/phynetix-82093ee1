@@ -208,6 +208,16 @@ export default function QuestionWiseAnalysis() {
     setLoading(false);
   };
 
+  // Helper to convert user answer (index) to letter for comparison
+  const userAnswerToLetter = (answer: any): string => {
+    if (answer === undefined || answer === null || answer === '') return '';
+    const num = parseInt(String(answer));
+    if (!isNaN(num) && num >= 0 && num <= 25) {
+      return String.fromCharCode(65 + num); // 0 -> A, 1 -> B, etc.
+    }
+    return String(answer).toUpperCase();
+  };
+
   const getQuestionStatus = (questionId: string) => {
     if (!attempt) return "skipped";
     const answer = attempt.answers[questionId];
@@ -227,12 +237,20 @@ export default function QuestionWiseAnalysis() {
     }
     
     if (question.section_type === "multiple_choice") {
-      const userAnswers = Array.isArray(answer) ? answer.sort() : [answer];
-      const correctAnswers = Array.isArray(correctAnswer) ? correctAnswer.sort() : [correctAnswer];
+      // Convert user indices to letters and compare with correct answer letters
+      const userAnswers = Array.isArray(answer) 
+        ? answer.map(a => userAnswerToLetter(a)).sort() 
+        : [userAnswerToLetter(answer)];
+      const correctAnswers = Array.isArray(correctAnswer) 
+        ? correctAnswer.map((a: any) => String(a).toUpperCase()).sort() 
+        : [String(correctAnswer).toUpperCase()];
       return JSON.stringify(userAnswers) === JSON.stringify(correctAnswers) ? "correct" : "incorrect";
     }
     
-    return String(answer) === String(correctAnswer) ? "correct" : "incorrect";
+    // Single choice - convert user index to letter and compare
+    const userLetter = userAnswerToLetter(answer);
+    const correctLetter = String(correctAnswer).toUpperCase();
+    return userLetter === correctLetter ? "correct" : "incorrect";
   };
 
   const formatAnswer = (answer: any, sectionType: string) => {
@@ -242,26 +260,20 @@ export default function QuestionWiseAnalysis() {
     if (sectionType === "integer") return String(answer);
     if (Array.isArray(answer)) {
       // Convert indices to letters for MCQ
-      return answer.map(a => String.fromCharCode(65 + parseInt(String(a)))).join(", ");
+      return answer.map(a => userAnswerToLetter(a)).join(", ");
     }
     // Single choice - convert index to letter
-    const num = parseInt(String(answer));
-    if (!isNaN(num)) {
-      return String.fromCharCode(65 + num);
-    }
-    return answer;
+    return userAnswerToLetter(answer);
   };
 
   const formatCorrectAnswer = (answer: any, sectionType: string) => {
+    if (answer === undefined || answer === null || answer === '') return "-";
     if (sectionType === "integer") return String(answer);
     if (Array.isArray(answer)) {
-      return answer.map(a => String.fromCharCode(65 + parseInt(String(a)))).join(", ");
+      return answer.map((a: any) => String(a).toUpperCase()).join(", ");
     }
-    const num = parseInt(String(answer));
-    if (!isNaN(num)) {
-      return String.fromCharCode(65 + num);
-    }
-    return answer;
+    // Correct answer is stored as letter (A, B, C, D) - just return it
+    return String(answer).toUpperCase();
   };
 
   const getMarksObtained = (questionId: string) => {
@@ -483,15 +495,28 @@ export default function QuestionWiseAnalysis() {
                     <div className="space-y-2 mb-6">
                       <div className="text-sm text-muted-foreground mb-2">Options:</div>
                       {currentQ.options.map((opt, idx) => {
-                        const optIdx = String(idx);
+                        const optLetter = String.fromCharCode(65 + idx); // A, B, C, D
+                        const correctAnswer = currentQ.correct_answer;
+                        
+                        // Check if this option is the correct one (correct_answer is stored as letter like "A", "B")
                         const isCorrect = currentQ.section_type === 'multiple_choice' 
-                          ? (Array.isArray(currentQ.correct_answer) ? currentQ.correct_answer.includes(optIdx) : currentQ.correct_answer === optIdx)
-                          : currentQ.correct_answer === optIdx;
+                          ? (Array.isArray(correctAnswer) 
+                              ? correctAnswer.map((a: any) => String(a).toUpperCase()).includes(optLetter) 
+                              : String(correctAnswer).toUpperCase() === optLetter)
+                          : String(correctAnswer).toUpperCase() === optLetter;
+                        
+                        // Check if user selected this option (user answer is stored as index like 0, 1, 2)
+                        const userAnswer = attempt.answers[currentQ.id];
                         const isUserAnswer = currentQ.section_type === 'multiple_choice'
-                          ? (Array.isArray(attempt.answers[currentQ.id]) 
-                              ? attempt.answers[currentQ.id].includes(optIdx) 
-                              : attempt.answers[currentQ.id] === optIdx)
-                          : attempt.answers[currentQ.id] === optIdx;
+                          ? (Array.isArray(userAnswer) 
+                              ? userAnswer.map((a: any) => parseInt(String(a))).includes(idx)
+                              : parseInt(String(userAnswer)) === idx)
+                          : parseInt(String(userAnswer)) === idx;
+
+                        // Get option text - handle both object format and string format
+                        const optionText = typeof opt === 'object' && opt !== null 
+                          ? (opt.text || opt.label || JSON.stringify(opt))
+                          : String(opt);
 
                         return (
                           <div 
@@ -509,9 +534,9 @@ export default function QuestionWiseAnalysis() {
                               isUserAnswer && !isCorrect && "bg-red-500 text-white",
                               !isCorrect && !isUserAnswer && "bg-secondary"
                             )}>
-                              {String.fromCharCode(65 + idx)}
+                              {optLetter}
                             </span>
-                            <span className="flex-1">{String(opt)}</span>
+                            <span className="flex-1">{optionText}</span>
                             {isCorrect && <CheckCircle2 className="w-4 h-4 text-green-500" />}
                             {isUserAnswer && !isCorrect && <XCircle className="w-4 h-4 text-red-500" />}
                           </div>
