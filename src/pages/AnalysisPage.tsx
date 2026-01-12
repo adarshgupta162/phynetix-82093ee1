@@ -45,8 +45,6 @@ type AnalysisData = {
   questions: AnalysisQuestion[];
 };
 
-type AnalysisApiResponse = AnalysisData | { data?: AnalysisData };
-
 type RawSubject = {
   name?: string;
   subject?: string;
@@ -121,11 +119,20 @@ const toNumber = (value: unknown, fallback = 0) => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const hasSubjectFields = (item: Record<string, unknown>) =>
-  "name" in item || "subject" in item || "score" in item || "marks" in item;
+const hasSubjectFields = (item: Record<string, unknown>) => {
+  const name = item["name"];
+  const subject = item["subject"];
+  const hasName = typeof name === "string" || typeof subject === "string";
+  const hasScore = "score" in item || "marks" in item || "marksObtained" in item;
+  return hasName && hasScore;
+};
 
-const hasQuestionFields = (item: Record<string, unknown>) =>
-  "questionNumber" in item || "question_number" in item || "status" in item || "outcome" in item || "subject" in item;
+const hasQuestionFields = (item: Record<string, unknown>) => {
+  const questionNumber = item["questionNumber"] ?? item["question_number"] ?? item["number"];
+  const hasIdentifier = typeof questionNumber === "number";
+  const hasStatus = "status" in item || "outcome" in item || typeof item["subject"] === "string";
+  return hasIdentifier && hasStatus;
+};
 
 const filterRawSubjects = (items: unknown[]): RawSubject[] =>
   items.filter((item): item is RawSubject => isRecord(item) && hasSubjectFields(item));
@@ -215,23 +222,25 @@ export default function AnalysisPage() {
   const { testId } = useParams();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { data, isLoading, isError } = useQuery<AnalysisApiResponse>({
+  const { data, isLoading, isError } = useQuery<Record<string, unknown>>({
     queryKey: ["test-analysis", testId],
     queryFn: async () => {
       const response = await fetch(`/api/tests/${testId}/analysis`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch analysis data: ${response.status} ${response.statusText}`);
+        console.error(`Failed to fetch analysis data: ${response.status} ${response.statusText}`);
+        throw new Error("Failed to fetch analysis data");
       }
-      return response.json();
+      const body = await response.json();
+      const unwrapped =
+        body && typeof body === "object" && "data" in body && isRecord((body as any).data) ? (body as any).data : body;
+      return isRecord(unwrapped) ? unwrapped : {};
     },
     enabled: Boolean(testId),
   });
 
   const analysisData = useMemo(() => {
-    if (!data) return null;
-    const payload = "data" in data && data.data ? data.data : data;
-    if (!isRecord(payload)) return null;
-    return transformAnalysisData(payload);
+    if (!data || Object.keys(data).length === 0) return null;
+    return transformAnalysisData(data);
   }, [data]);
 
   const timeProgress =
