@@ -45,7 +45,7 @@ type AnalysisData = {
   questions: AnalysisQuestion[];
 };
 
-type AnalysisApiResponse = AnalysisData | { data?: AnalysisData | Record<string, unknown> };
+type AnalysisApiResponse = AnalysisData | { data?: AnalysisData };
 
 type RawSubject = {
   name?: string;
@@ -121,20 +121,25 @@ const toNumber = (value: unknown, fallback = 0) => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const hasSubjectFields = (item: Record<string, unknown>) =>
+  "name" in item || "subject" in item || "score" in item || "marks" in item;
+
+const hasQuestionFields = (item: Record<string, unknown>) =>
+  "questionNumber" in item || "question_number" in item || "status" in item || "outcome" in item || "subject" in item;
+
 const filterRawSubjects = (items: unknown[]): RawSubject[] =>
-  items.filter((item): item is RawSubject => isRecord(item));
+  items.filter((item): item is RawSubject => isRecord(item) && hasSubjectFields(item));
 
 const filterRawQuestions = (items: unknown[]): RawQuestion[] =>
-  items.filter((item): item is RawQuestion => isRecord(item));
+  items.filter((item): item is RawQuestion => isRecord(item) && hasQuestionFields(item));
 
-const normalizeStatus = (question: RawQuestion | Record<string, unknown>): "correct" | "incorrect" | "skipped" => {
-  const q = question as RawQuestion;
-  const status = String(q?.status ?? q?.outcome ?? "").toLowerCase();
+const normalizeStatus = (question: RawQuestion): "correct" | "incorrect" | "skipped" => {
+  const status = String(question?.status ?? question?.outcome ?? "").toLowerCase();
   if (status === "correct") return "correct";
   if (status === "incorrect") return "incorrect";
   if (status === "skipped" || status === "unattempted") return "skipped";
-  if (q?.is_correct === true) return "correct";
-  if (q?.is_correct === false) return "incorrect";
+  if (question?.is_correct === true) return "correct";
+  if (question?.is_correct === false) return "incorrect";
   return "skipped";
 };
 
