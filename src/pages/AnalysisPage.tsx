@@ -45,6 +45,8 @@ type AnalysisData = {
   questions: AnalysisQuestion[];
 };
 
+type AnalysisApiResponse = AnalysisData | { data?: unknown };
+
 const formatTime = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
@@ -72,7 +74,7 @@ const formatDuration = (value: number | string | undefined) => {
   return String(value);
 };
 
-const toNumber = (value: any, fallback = 0) => {
+const toNumber = (value: unknown, fallback = 0) => {
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : fallback;
 };
@@ -87,22 +89,24 @@ const normalizeStatus = (question: any): "correct" | "incorrect" | "skipped" => 
   return "skipped";
 };
 
-const transformAnalysisData = (raw: any): AnalysisData => {
-  const subjects: AnalysisSubject[] = (raw?.subjects || raw?.subject_breakdown || raw?.subject_scores || []).map(
+const transformAnalysisData = (raw: Record<string, unknown>): AnalysisData => {
+  const source = raw as any;
+
+  const subjects: AnalysisSubject[] = (source?.subjects || source?.subject_breakdown || source?.subject_scores || []).map(
     (subject: any, index: number) => ({
       name: subject.name || subject.subject || `Subject ${index + 1}`,
       score: toNumber(subject.score ?? subject.marks ?? subject.marksObtained),
       total: toNumber(subject.total ?? subject.totalMarks ?? subject.total_marks),
       color: subject.color || defaultSubjectColors[index % defaultSubjectColors.length],
-      marksObtained: toNumber(subject.marksObtained ?? subject.marks ?? subject.correctMarks ?? subject.score),
+      marksObtained: toNumber(subject.marksObtained ?? subject.correctMarks ?? subject.score ?? subject.marks),
       negativeMarks: toNumber(subject.negativeMarks ?? subject.negative_marks ?? subject.penalty),
       unattempted: toNumber(subject.unattempted ?? subject.unattemptedQuestions ?? subject.unattempted_count),
-      totalQuestions: toNumber(subject.totalQuestions ?? subject.total_questions ?? subject.total),
+      totalQuestions: toNumber(subject.totalQuestions ?? subject.total_questions ?? subject.question_count),
       timeSpent: formatDuration(subject.timeSpent ?? subject.time_spent ?? subject.time_spent_seconds),
     })
   );
 
-  const questions: AnalysisQuestion[] = (raw?.questions || raw?.question_results || raw?.questionStats || []).map(
+  const questions: AnalysisQuestion[] = (source?.questions || source?.question_results || source?.questionStats || []).map(
     (question: any, index: number) => ({
       questionNumber: toNumber(question.questionNumber ?? question.question_number ?? question.number ?? index + 1),
       timeSpent: toNumber(question.timeSpent ?? question.time_spent ?? question.time_spent_seconds),
@@ -112,16 +116,18 @@ const transformAnalysisData = (raw: any): AnalysisData => {
   );
 
   return {
-    testName: raw?.testName || raw?.test_name || raw?.name || "Test Analysis",
-    score: toNumber(raw?.score ?? raw?.totalScore ?? raw?.obtained_marks),
-    totalMarks: toNumber(raw?.totalMarks ?? raw?.total_marks ?? raw?.maxScore),
+    testName: source?.testName || source?.test_name || source?.name || "Test Analysis",
+    score: toNumber(source?.score ?? source?.totalScore ?? source?.obtained_marks),
+    totalMarks: toNumber(source?.totalMarks ?? source?.total_marks ?? source?.maxScore),
     timeUsedSeconds: toNumber(
-      raw?.timeUsedSeconds ?? raw?.time_used_seconds ?? raw?.timeTakenSeconds ?? raw?.time_taken_seconds
+      source?.timeUsedSeconds ?? source?.time_used_seconds ?? source?.timeTakenSeconds ?? source?.time_taken_seconds
     ),
-    totalTimeSeconds: toNumber(raw?.totalTimeSeconds ?? raw?.total_time_seconds ?? raw?.totalTime ?? raw?.total_time),
-    accuracy: toNumber(raw?.accuracy ?? raw?.accuracy_percentage ?? raw?.accuracyPercent),
-    rank: raw?.rank ?? raw?.position,
-    totalStudents: raw?.totalStudents ?? raw?.total_students ?? raw?.totalParticipants,
+    totalTimeSeconds: toNumber(
+      source?.totalTimeSeconds ?? source?.total_time_seconds ?? source?.totalTime ?? source?.total_time
+    ),
+    accuracy: toNumber(source?.accuracy ?? source?.accuracy_percentage ?? source?.accuracyPercent),
+    rank: source?.rank ?? source?.position,
+    totalStudents: source?.totalStudents ?? source?.total_students ?? source?.totalParticipants,
     subjects,
     questions,
   };
@@ -132,7 +138,7 @@ export default function AnalysisPage() {
   const { testId } = useParams();
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError } = useQuery<AnalysisApiResponse>({
     queryKey: ["test-analysis", testId],
     queryFn: async () => {
       const response = await fetch(`/api/tests/${testId}/analysis`);
@@ -146,7 +152,8 @@ export default function AnalysisPage() {
 
   const analysisData = useMemo(() => {
     if (!data) return null;
-    return transformAnalysisData((data as any).data ?? data);
+    const payload = "data" in data && data.data ? data.data : data;
+    return transformAnalysisData(payload as Record<string, unknown>);
   }, [data]);
 
   const timeProgress =
