@@ -117,7 +117,7 @@ const toNumber = (value: unknown, fallback = 0) => {
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const hasSubjectFields = (item: Record<string, unknown>) => {
   const name = item["name"];
@@ -227,12 +227,14 @@ export default function AnalysisPage() {
     queryFn: async () => {
       const response = await fetch(`/api/tests/${testId}/analysis`);
       if (!response.ok) {
-        console.error(`Failed to fetch analysis data: ${response.status} ${response.statusText}`);
+        if (import.meta.env.DEV) {
+          console.error(`Failed to fetch analysis data: ${response.status} ${response.statusText}`);
+        }
         throw new Error("Failed to fetch analysis data");
       }
-      const body = await response.json();
+      const body: unknown = await response.json();
       const unwrapped =
-        body && typeof body === "object" && "data" in body && isRecord((body as any).data) ? (body as any).data : body;
+        isRecord(body) && "data" in body && isRecord(body.data) ? (body.data as Record<string, unknown>) : body;
       return isRecord(unwrapped) ? unwrapped : {};
     },
     enabled: Boolean(testId),
