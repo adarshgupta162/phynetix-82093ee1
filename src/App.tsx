@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import AnalysisPage from "./pages/AnalysisPage";
+import SolutionsPage from "./pages/SolutionsPage";
 import AdminRoute from "@/components/AdminRoute";
 import ProfileGuard from "@/components/ProfileGuard";
 import LandingPage from "./pages/LandingPage";
@@ -16,7 +18,6 @@ import NormalTestInterface from "./pages/NormalTestInterface";
 import PDFTestInterface from "./pages/PDFTestInterface";
 import NormalTestAnalysis from "./pages/NormalTestAnalysis";
 import DetailedAnalysis from "./pages/DetailedAnalysis";
-import QuestionWiseAnalysis from "./pages/QuestionWiseAnalysis";
 import MyAttempts from "./pages/MyAttempts";
 import Analytics from "./pages/Analytics";
 import SettingsPage from "./pages/SettingsPage";
@@ -61,12 +62,13 @@ const App = () => (
             <Route path="/question-bank" element={<QuestionBankPage />} />
             <Route path="/test/:testId" element={<NormalTestInterface />} />
             <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
-            <Route path="/test/:testId/analysis" element={<NormalTestAnalysis />} />
+            <Route path="/test/:testId/analysis" element={<AnalysisPage />} />
             <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/attempts" element={<MyAttempts />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/test/:testId/solutions" element={<SolutionsPage />} />
             {/* Admin Routes - All protected with AdminRoute */}
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="/admin/question-bank" element={<AdminRoute><AdminQuestionBank /></AdminRoute>} />
