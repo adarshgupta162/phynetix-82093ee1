@@ -76,12 +76,12 @@ export default function AnalysisPage() {
   const timeProgress = (mockTestData.timeUsedSeconds / mockTestData.totalTimeSeconds) * 100;
 
   const handleViewSolutions = () => {
-  navigate(`/test/${testId}/solutions`);
-};
+    navigate(`/solutions/${testId || "mock"}`);
+  };
 
-const handleReviewMistakes = (subject: string) => {
-  navigate(`/test/${testId}/solutions?subject=${subject}&filter=incorrect`);
-};
+  const handleReviewMistakes = (subject: string) => {
+    navigate(`/solutions/${testId || "mock"}?subject=${subject}&filter=incorrect`);
+  };
 
   return (
     <div className="min-h-screen bg-background">
