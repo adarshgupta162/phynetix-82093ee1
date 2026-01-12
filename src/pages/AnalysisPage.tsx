@@ -45,7 +45,45 @@ type AnalysisData = {
   questions: AnalysisQuestion[];
 };
 
-type AnalysisApiResponse = AnalysisData | { data?: unknown };
+type AnalysisApiResponse = AnalysisData | { data?: AnalysisData | Record<string, unknown> };
+
+type RawSubject = {
+  name?: string;
+  subject?: string;
+  score?: number;
+  marks?: number;
+  marksObtained?: number;
+  total?: number;
+  totalMarks?: number;
+  total_marks?: number;
+  color?: string;
+  correctMarks?: number;
+  negativeMarks?: number;
+  negative_marks?: number;
+  penalty?: number;
+  unattempted?: number;
+  unattemptedQuestions?: number;
+  unattempted_count?: number;
+  totalQuestions?: number;
+  total_questions?: number;
+  question_count?: number;
+  timeSpent?: number | string;
+  time_spent?: number | string;
+  time_spent_seconds?: number;
+};
+
+type RawQuestion = {
+  status?: string;
+  outcome?: string;
+  is_correct?: boolean;
+  questionNumber?: number;
+  question_number?: number;
+  number?: number;
+  timeSpent?: number;
+  time_spent?: number;
+  time_spent_seconds?: number;
+  subject?: string;
+};
 
 const formatTime = (seconds: number) => {
   const hours = Math.floor(seconds / 3600);
@@ -79,21 +117,30 @@ const toNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(num) ? num : fallback;
 };
 
-const normalizeStatus = (question: any): "correct" | "incorrect" | "skipped" => {
-  const status = (question?.status || question?.outcome || "").toString().toLowerCase();
+const normalizeStatus = (question: RawQuestion | Record<string, unknown>): "correct" | "incorrect" | "skipped" => {
+  const q = question as RawQuestion;
+  const status = String(q?.status ?? q?.outcome ?? "").toLowerCase();
   if (status === "correct") return "correct";
   if (status === "incorrect") return "incorrect";
   if (status === "skipped" || status === "unattempted") return "skipped";
-  if (question?.is_correct === true) return "correct";
-  if (question?.is_correct === false) return "incorrect";
+  if (q?.is_correct === true) return "correct";
+  if (q?.is_correct === false) return "incorrect";
   return "skipped";
 };
 
 const transformAnalysisData = (raw: Record<string, unknown>): AnalysisData => {
-  const source = raw as any;
+  const source = raw;
+  const getValue = <T,>(key: string): T | undefined => source[key] as T | undefined;
 
-  const subjects: AnalysisSubject[] = (source?.subjects || source?.subject_breakdown || source?.subject_scores || []).map(
-    (subject: any, index: number) => ({
+  const subjectCandidates =
+    getValue<unknown[]>("subjects") ??
+    getValue<unknown[]>("subject_breakdown") ??
+    getValue<unknown[]>("subject_scores") ??
+    [];
+  const subjectList = Array.isArray(subjectCandidates) ? subjectCandidates : [];
+
+  const subjects: AnalysisSubject[] = (subjectList as RawSubject[]).map(
+    (subject, index) => ({
       name: subject.name || subject.subject || `Subject ${index + 1}`,
       score: toNumber(subject.score ?? subject.marks ?? subject.marksObtained),
       total: toNumber(subject.total ?? subject.totalMarks ?? subject.total_marks),
@@ -106,8 +153,15 @@ const transformAnalysisData = (raw: Record<string, unknown>): AnalysisData => {
     })
   );
 
-  const questions: AnalysisQuestion[] = (source?.questions || source?.question_results || source?.questionStats || []).map(
-    (question: any, index: number) => ({
+  const questionCandidates =
+    getValue<unknown[]>("questions") ??
+    getValue<unknown[]>("question_results") ??
+    getValue<unknown[]>("questionStats") ??
+    [];
+  const questionList = Array.isArray(questionCandidates) ? questionCandidates : [];
+
+  const questions: AnalysisQuestion[] = (questionList as RawQuestion[]).map(
+    (question, index) => ({
       questionNumber: toNumber(question.questionNumber ?? question.question_number ?? question.number ?? index + 1),
       timeSpent: toNumber(question.timeSpent ?? question.time_spent ?? question.time_spent_seconds),
       subject: question.subject || "General",
@@ -116,18 +170,26 @@ const transformAnalysisData = (raw: Record<string, unknown>): AnalysisData => {
   );
 
   return {
-    testName: source?.testName || source?.test_name || source?.name || "Test Analysis",
-    score: toNumber(source?.score ?? source?.totalScore ?? source?.obtained_marks),
-    totalMarks: toNumber(source?.totalMarks ?? source?.total_marks ?? source?.maxScore),
+    testName: getValue<string>("testName") || getValue<string>("test_name") || getValue<string>("name") || "Test Analysis",
+    score: toNumber(getValue<number>("score") ?? getValue<number>("totalScore") ?? getValue<number>("obtained_marks")),
+    totalMarks: toNumber(getValue<number>("totalMarks") ?? getValue<number>("total_marks") ?? getValue<number>("maxScore")),
     timeUsedSeconds: toNumber(
-      source?.timeUsedSeconds ?? source?.time_used_seconds ?? source?.timeTakenSeconds ?? source?.time_taken_seconds
+      getValue<number>("timeUsedSeconds") ??
+        getValue<number>("time_used_seconds") ??
+        getValue<number>("timeTakenSeconds") ??
+        getValue<number>("time_taken_seconds")
     ),
     totalTimeSeconds: toNumber(
-      source?.totalTimeSeconds ?? source?.total_time_seconds ?? source?.totalTime ?? source?.total_time
+      getValue<number>("totalTimeSeconds") ??
+        getValue<number>("total_time_seconds") ??
+        getValue<number>("totalTime") ??
+        getValue<number>("total_time")
     ),
-    accuracy: toNumber(source?.accuracy ?? source?.accuracy_percentage ?? source?.accuracyPercent),
-    rank: source?.rank ?? source?.position,
-    totalStudents: source?.totalStudents ?? source?.total_students ?? source?.totalParticipants,
+    accuracy: toNumber(
+      getValue<number>("accuracy") ?? getValue<number>("accuracy_percentage") ?? getValue<number>("accuracyPercent")
+    ),
+    rank: getValue<number>("rank") ?? getValue<number>("position"),
+    totalStudents: getValue<number>("totalStudents") ?? getValue<number>("total_students") ?? getValue<number>("totalParticipants"),
     subjects,
     questions,
   };
@@ -143,7 +205,7 @@ export default function AnalysisPage() {
     queryFn: async () => {
       const response = await fetch(`/api/tests/${testId}/analysis`);
       if (!response.ok) {
-        throw new Error("Failed to fetch analysis data");
+        throw new Error(`Failed to fetch analysis data: ${response.status} ${response.statusText}`);
       }
       return response.json();
     },
