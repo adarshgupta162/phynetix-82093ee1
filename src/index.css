@@ -60,55 +60,60 @@
   }
 
   .dark {
-    --background: 222 47% 6%;
+    --background: 224 71% 7%;
     --foreground: 210 40% 98%;
 
-    --card: 222 47% 8%;
+    --card: 224 71% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 8%;
+    --popover: 224 71% 10%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 250 89% 64%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 172 66% 50%;
+    --primary-foreground: 224 71% 7%;
 
-    --secondary: 217 33% 17%;
+    --secondary: 224 50% 15%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 17%;
+    --muted: 224 50% 18%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 199 89% 48%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 172 66% 50%;
+    --accent-foreground: 224 71% 7%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 17%;
-    --ring: 250 89% 64%;
+    --border: 224 50% 18%;
+    --input: 224 50% 15%;
+    --ring: 172 66% 50%;
 
     /* Custom design tokens - Dark mode */
-    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 45%) 0%, hsl(270, 76%, 55%) 50%, hsl(280, 87%, 50%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(172, 66%, 50%) 0%, hsl(199, 89%, 48%) 100%);
     --gradient-secondary: linear-gradient(135deg, hsl(199, 89%, 48%) 0%, hsl(250, 89%, 64%) 100%);
-    --gradient-glass: linear-gradient(135deg, hsla(217, 91%, 60%, 0.1) 0%, hsla(270, 76%, 55%, 0.05) 100%);
-    --gradient-radial: radial-gradient(ellipse at top, hsla(250, 89%, 64%, 0.15) 0%, transparent 50%);
+    --gradient-glass: linear-gradient(135deg, hsla(172, 66%, 50%, 0.1) 0%, hsla(199, 89%, 48%, 0.05) 100%);
+    --gradient-radial: radial-gradient(ellipse at top, hsla(172, 66%, 50%, 0.08) 0%, transparent 50%);
     
-    --glass-bg: hsla(222, 47%, 11%, 0.7);
-    --glass-border: hsla(217, 91%, 60%, 0.2);
-    --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.3);
+    --glass-bg: hsla(224, 71%, 10%, 0.8);
+    --glass-border: hsla(172, 66%, 50%, 0.15);
+    --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.4);
     
-    --glow-primary: 0 0 40px hsla(250, 89%, 64%, 0.3);
+    --glow-primary: 0 0 40px hsla(172, 66%, 50%, 0.3);
     --glow-accent: 0 0 40px hsla(199, 89%, 48%, 0.3);
 
-    --sidebar-background: 222 47% 8%;
+    --sidebar-background: 224 71% 8%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 250 89% 64%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217 33% 17%;
+    --sidebar-primary: 172 66% 50%;
+    --sidebar-primary-foreground: 224 71% 7%;
+    --sidebar-accent: 224 50% 15%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 20%;
-    --sidebar-ring: 250 89% 64%;
+    --sidebar-border: 224 50% 18%;
+    --sidebar-ring: 172 66% 50%;
+
+    /* Subject colors */
+    --physics: 217 91% 60%;
+    --chemistry: 142 76% 45%;
+    --maths: 45 93% 50%;
   }
 }
 

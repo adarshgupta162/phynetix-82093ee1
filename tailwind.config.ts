@@ -69,6 +69,27 @@ export default {
           DEFAULT: "hsl(45, 93%, 47%)",
           foreground: "hsl(222, 47%, 6%)",
         },
+        physics: {
+          DEFAULT: "hsl(217, 91%, 60%)",
+          foreground: "hsl(210, 40%, 98%)",
+        },
+        chemistry: {
+          DEFAULT: "hsl(142, 76%, 45%)",
+          foreground: "hsl(210, 40%, 98%)",
+        },
+        maths: {
+          DEFAULT: "hsl(45, 93%, 50%)",
+          foreground: "hsl(222, 47%, 6%)",
+        },
+        navy: {
+          DEFAULT: "hsl(224, 71%, 7%)",
+          light: "hsl(224, 71%, 10%)",
+          border: "hsl(224, 50%, 18%)",
+        },
+        teal: {
+          DEFAULT: "hsl(172, 66%, 50%)",
+          glow: "hsla(172, 66%, 50%, 0.3)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
