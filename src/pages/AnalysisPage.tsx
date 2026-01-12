@@ -113,9 +113,19 @@ const formatDuration = (value: number | string | undefined) => {
 };
 
 const toNumber = (value: unknown, fallback = 0) => {
+  if (value === null || value === undefined) return fallback;
   const num = typeof value === "number" ? value : Number(value);
   return Number.isFinite(num) ? num : fallback;
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const filterRawSubjects = (items: unknown[]): RawSubject[] =>
+  items.filter((item): item is RawSubject => isRecord(item));
+
+const filterRawQuestions = (items: unknown[]): RawQuestion[] =>
+  items.filter((item): item is RawQuestion => isRecord(item));
 
 const normalizeStatus = (question: RawQuestion | Record<string, unknown>): "correct" | "incorrect" | "skipped" => {
   const q = question as RawQuestion;
@@ -139,7 +149,7 @@ const transformAnalysisData = (raw: Record<string, unknown>): AnalysisData => {
     [];
   const subjectList = Array.isArray(subjectCandidates) ? subjectCandidates : [];
 
-  const subjects: AnalysisSubject[] = (subjectList as RawSubject[]).map(
+  const subjects: AnalysisSubject[] = filterRawSubjects(subjectList).map(
     (subject, index) => ({
       name: subject.name || subject.subject || `Subject ${index + 1}`,
       score: toNumber(subject.score ?? subject.marks ?? subject.marksObtained),
@@ -160,7 +170,7 @@ const transformAnalysisData = (raw: Record<string, unknown>): AnalysisData => {
     [];
   const questionList = Array.isArray(questionCandidates) ? questionCandidates : [];
 
-  const questions: AnalysisQuestion[] = (questionList as RawQuestion[]).map(
+  const questions: AnalysisQuestion[] = filterRawQuestions(questionList).map(
     (question, index) => ({
       questionNumber: toNumber(question.questionNumber ?? question.question_number ?? question.number ?? index + 1),
       timeSpent: toNumber(question.timeSpent ?? question.time_spent ?? question.time_spent_seconds),
@@ -215,7 +225,8 @@ export default function AnalysisPage() {
   const analysisData = useMemo(() => {
     if (!data) return null;
     const payload = "data" in data && data.data ? data.data : data;
-    return transformAnalysisData(payload as Record<string, unknown>);
+    if (!isRecord(payload)) return null;
+    return transformAnalysisData(payload);
   }, [data]);
 
   const timeProgress =
