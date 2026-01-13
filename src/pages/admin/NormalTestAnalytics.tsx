@@ -13,13 +13,26 @@ import {
   ChevronUp,
   Eye,
   Download,
-  Search
+  Search,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import AdminLayout from "@/components/layout/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 interface TestAttempt {
   id: string;
@@ -71,6 +84,8 @@ export default function NormalTestAnalytics() {
   const [sortBy, setSortBy] = useState<"rank" | "score" | "time">("rank");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedStudent, setSelectedStudent] = useState<TestAttempt | null>(null);
+  const [clearingAttempt, setClearingAttempt] = useState<TestAttempt | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     if (testId) {
@@ -80,49 +95,93 @@ export default function NormalTestAnalytics() {
 
   const fetchData = async () => {
     try {
+      setLoading(true);
+      
       // Fetch test details
-      const { data: test } = await supabase
+      const { data: test, error: testError } = await supabase
         .from("tests")
         .select("name")
         .eq("id", testId)
         .single();
       
+      if (testError) {
+        console.error("Error fetching test:", testError);
+      }
+      
       if (test) setTestName(test.name);
 
-      // Fetch all attempts with profiles
-      const { data: attemptsData } = await supabase
+      // Fetch all attempts - using separate queries to avoid join issues
+      const { data: attemptsData, error: attemptsError } = await supabase
         .from("test_attempts")
-        .select(`
-          id,
-          user_id,
-          score,
-          total_marks,
-          percentile,
-          rank,
-          time_taken_seconds,
-          completed_at,
-          answers,
-          profiles!inner(full_name, roll_number)
-        `)
+        .select("id, user_id, score, total_marks, percentile, rank, time_taken_seconds, completed_at, answers")
         .eq("test_id", testId)
         .not("completed_at", "is", null)
         .order("rank", { ascending: true });
 
-      if (attemptsData) {
+      if (attemptsError) {
+        console.error("Error fetching attempts:", attemptsError);
+        setLoading(false);
+        return;
+      }
+
+      if (attemptsData && attemptsData.length > 0) {
+        // Fetch profiles separately
+        const userIds = [...new Set(attemptsData.map(a => a.user_id))];
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, full_name, roll_number")
+          .in("id", userIds);
+
+        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+        
         const formattedAttempts = attemptsData.map((a: any) => ({
           ...a,
-          profile: a.profiles,
+          profile: profilesMap.get(a.user_id) || { full_name: null, roll_number: null },
           answers: a.answers as Record<string, string>
         }));
         setAttempts(formattedAttempts);
 
         // Calculate question stats
         await calculateQuestionStats(formattedAttempts);
+      } else {
+        setAttempts([]);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClearAttempt = async () => {
+    if (!clearingAttempt) return;
+    
+    setIsClearing(true);
+    try {
+      const { error } = await supabase
+        .from("test_attempts")
+        .delete()
+        .eq("id", clearingAttempt.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Attempt Cleared",
+        description: `Attempt for ${clearingAttempt.profile?.full_name || "Unknown"} has been cleared. They can now retake the test.`,
+      });
+
+      // Refresh data
+      setClearingAttempt(null);
+      fetchData();
+    } catch (error: any) {
+      console.error("Error clearing attempt:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to clear attempt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -388,14 +447,24 @@ export default function NormalTestAnalytics() {
                       <td className="px-4 py-3">{attempt.percentile?.toFixed(1) || 0}%</td>
                       <td className="px-4 py-3">{Math.round((attempt.time_taken_seconds || 0) / 60)} min</td>
                       <td className="px-4 py-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedStudent(attempt)}
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedStudent(attempt)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setClearingAttempt(attempt)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -510,6 +579,33 @@ export default function NormalTestAnalytics() {
             </motion.div>
           </div>
         )}
+
+        {/* Clear Attempt Confirmation Dialog */}
+        <AlertDialog open={!!clearingAttempt} onOpenChange={(open) => !open && setClearingAttempt(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+                Clear Test Attempt
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to clear the test attempt for <strong>{clearingAttempt?.profile?.full_name || "this student"}</strong>?
+                <br /><br />
+                This will permanently delete their submission and allow them to retake the test. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleClearAttempt}
+                disabled={isClearing}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isClearing ? "Clearing..." : "Clear Attempt"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );

@@ -38,14 +38,50 @@ serve(async (req) => {
     // Check if user has already attempted this test
     const { data: existingAttempt, error: existingError } = await supabaseClient
       .from("test_attempts")
-      .select("id, completed_at")
+      .select("id, completed_at, started_at, fullscreen_exit_count, answers")
       .eq("test_id", test_id)
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (existingAttempt) {
-      console.log(`User ${user.id} already attempted test ${test_id}`);
-      throw new Error("You have already attempted this test. Each test can only be attempted once.");
+    // If there's an existing attempt that's not completed, return it for resume
+    if (existingAttempt && !existingAttempt.completed_at) {
+      console.log(`User ${user.id} resuming test ${test_id}, attempt: ${existingAttempt.id}`);
+      
+      // Get test info
+      const { data: test } = await supabaseClient
+        .from("tests")
+        .select("id, name, duration_minutes")
+        .eq("id", test_id)
+        .single();
+
+      if (!test) {
+        throw new Error("Test not found");
+      }
+
+      // Calculate remaining time
+      const startedAt = new Date(existingAttempt.started_at).getTime();
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - startedAt) / 1000);
+      const totalSeconds = test.duration_minutes * 60;
+      const remainingMinutes = Math.max(0, Math.ceil((totalSeconds - elapsedSeconds) / 60));
+
+      return new Response(
+        JSON.stringify({
+          attempt_id: existingAttempt.id,
+          test_name: test.name,
+          duration_minutes: remainingMinutes,
+          fullscreen_exit_count: existingAttempt.fullscreen_exit_count || 0,
+          existing_answers: existingAttempt.answers || {},
+          is_resume: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If attempt is completed, don't allow re-attempt
+    if (existingAttempt && existingAttempt.completed_at) {
+      console.log(`User ${user.id} already completed test ${test_id}`);
+      throw new Error("You have already completed this test. Each test can only be attempted once.");
     }
 
     const { data: test, error: testError } = await supabaseClient
@@ -83,6 +119,7 @@ serve(async (req) => {
         attempt_id: attempt.id,
         test_name: test.name,
         duration_minutes: test.duration_minutes,
+        is_resume: false,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
