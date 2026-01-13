@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Settings, Atom, FlaskConical, Calculator } from "lucide-react";
+import { ArrowLeft, Settings, Atom, FlaskConical, Calculator, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -17,65 +17,49 @@ import { QuestionDisplay } from "@/components/analysis/QuestionDisplay";
 import { SolutionSection } from "@/components/analysis/SolutionSection";
 import { QuestionPalettePanel } from "@/components/analysis/QuestionPalettePanel";
 import { BottomNavigation } from "@/components/analysis/BottomNavigation";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
-// Mock data for demonstration
-const generateMockQuestions = () => {
-  const subjects = ["Physics", "Chemistry", "Mathematics"];
-  const difficulties = ["easy", "medium", "tough"] as const;
-  
-  return Array.from({ length: 75 }, (_, i) => {
-    const subjectIndex = Math.floor(i / 25);
-    const subject = subjects[subjectIndex];
-    const status = Math.random() > 0.3 ? (Math.random() > 0.3 ? "correct" : "incorrect") : "skipped" as const;
-    const correctOption = ["A", "B", "C", "D"][Math.floor(Math.random() * 4)];
-    const userOption = status === "skipped" ? "" : 
-      status === "correct" ? correctOption : 
-      ["A", "B", "C", "D"].filter(o => o !== correctOption)[Math.floor(Math.random() * 3)];
-    
-    return {
-      id: `q-${i + 1}`,
-      number: i + 1,
-      subject,
-      status,
-      difficulty: difficulties[Math.floor(Math.random() * 3)],
-      questionText: `This is a sample question ${i + 1} for ${subject}. Given the conditions described, calculate the required value using the appropriate formula.`,
-      imageUrl: undefined,
-      marks: 4,
-      userMarks: status === "correct" ? 4 : status === "incorrect" ? -1 : 0,
-      correctAnswer: correctOption,
-      userAnswer: userOption,
-      totalAttempts: Math.floor(Math.random() * 25000) + 5000,
-      options: ["A", "B", "C", "D"].map((label, idx) => ({
-        label,
-        value: `Option ${label} for question ${i + 1}`,
-        percentage: Math.floor(Math.random() * 40) + 10,
-        studentCount: Math.floor(Math.random() * 8000) + 2000,
-        isUserAnswer: label === userOption,
-        isCorrect: label === correctOption,
-      })),
-      solution: {
-        text: "Given information and initial setup for the problem...",
-        steps: [
-          "First, identify the known variables and the formula required.",
-          "Substitute the values into the formula.",
-          "Simplify and calculate the intermediate values.",
-          "Apply the final calculation to get the answer.",
-        ],
-        finalAnswer: `The answer is option ${correctOption}`,
-        chapter: `Chapter ${Math.floor(Math.random() * 10) + 1}`,
-        topic: `Topic ${Math.floor(Math.random() * 20) + 1}`,
-      },
-    };
-  });
-};
+interface QuestionOption {
+  label: string;
+  value: string;
+  percentage: number;
+  studentCount: number;
+  isUserAnswer: boolean;
+  isCorrect: boolean;
+}
 
-const mockQuestions = generateMockQuestions();
+interface QuestionSolution {
+  text: string;
+  steps: string[];
+  finalAnswer: string;
+  chapter: string;
+  topic: string;
+}
+
+interface Question {
+  id: string;
+  number: number;
+  subject: string;
+  status: "correct" | "incorrect" | "skipped";
+  difficulty: "easy" | "medium" | "tough";
+  questionText: string;
+  imageUrl?: string;
+  marks: number;
+  userMarks: number;
+  correctAnswer: string;
+  userAnswer: string;
+  totalAttempts: number;
+  options: QuestionOption[];
+  solution: QuestionSolution;
+}
 
 const subjectIcons: Record<string, React.ElementType> = {
   Physics: Atom,
   Chemistry: FlaskConical,
   Mathematics: Calculator,
+  Maths: Calculator,
+  Math: Calculator,
 };
 
 export default function SolutionsPage() {
@@ -91,22 +75,200 @@ export default function SolutionsPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [attemptMode, setAttemptMode] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [testName, setTestName] = useState("");
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [subjects, setSubjects] = useState<string[]>(["all"]);
 
-  const subjects = ["all", "Physics", "Chemistry", "Mathematics"];
+  useEffect(() => {
+    if (testId) {
+      fetchSolutionsData();
+    }
+  }, [testId]);
+
+  const fetchSolutionsData = async () => {
+    try {
+      setLoading(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate("/auth");
+        return;
+      }
+
+      // Fetch test details
+      const { data: test } = await supabase
+        .from("tests")
+        .select("name")
+        .eq("id", testId)
+        .single();
+
+      if (test) {
+        setTestName(test.name);
+      }
+
+      // Fetch user's attempt
+      const { data: attempt } = await supabase
+        .from("test_attempts")
+        .select("answers")
+        .eq("test_id", testId)
+        .eq("user_id", user.id)
+        .single();
+
+      const userAnswers = attempt?.answers || {};
+
+      // Fetch all attempts for stats
+      const { data: allAttempts } = await supabase
+        .from("test_attempts")
+        .select("answers")
+        .eq("test_id", testId)
+        .not("completed_at", "is", null);
+
+      // Fetch questions - try test_section_questions first
+      let questionsData: Question[] = [];
+      
+      const { data: sectionQuestions } = await supabase
+        .from("test_section_questions")
+        .select(`
+          id,
+          question_number,
+          question_text,
+          correct_answer,
+          marks,
+          negative_marks,
+          options,
+          image_url,
+          solution_text,
+          solution_image_url,
+          difficulty,
+          section_id,
+          test_sections!inner(name, test_subjects!inner(name))
+        `)
+        .eq("test_id", testId)
+        .order("order_index");
+
+      if (sectionQuestions && sectionQuestions.length > 0) {
+        const subjectSet = new Set<string>(["all"]);
+        
+        questionsData = sectionQuestions.map((q: any, idx: number) => {
+          const subject = q.test_sections?.test_subjects?.name || "General";
+          subjectSet.add(subject);
+          
+          const userAnswer = userAnswers[q.id];
+          const correctAnswer = typeof q.correct_answer === 'object' 
+            ? (q.correct_answer as any)?.answer || String(q.correct_answer)
+            : String(q.correct_answer || "");
+          
+          // Convert index to letter if needed
+          const normalizedUserAnswer = typeof userAnswer === 'number'
+            ? String.fromCharCode(65 + userAnswer)
+            : userAnswer || "";
+
+          let status: "correct" | "incorrect" | "skipped" = "skipped";
+          let userMarks = 0;
+          
+          if (!userAnswer && userAnswer !== 0) {
+            status = "skipped";
+            userMarks = 0;
+          } else if (normalizedUserAnswer === correctAnswer) {
+            status = "correct";
+            userMarks = q.marks || 4;
+          } else {
+            status = "incorrect";
+            userMarks = -(q.negative_marks || 1);
+          }
+
+          // Calculate option stats from all attempts
+          const optionStats = new Map<string, number>();
+          allAttempts?.forEach((att: any) => {
+            const ans = att.answers?.[q.id];
+            if (ans !== undefined && ans !== null) {
+              const normalizedAns = typeof ans === 'number' 
+                ? String.fromCharCode(65 + ans) 
+                : String(ans);
+              optionStats.set(normalizedAns, (optionStats.get(normalizedAns) || 0) + 1);
+            }
+          });
+
+          const totalResponses = Array.from(optionStats.values()).reduce((a, b) => a + b, 0);
+
+          // Parse options
+          let parsedOptions: QuestionOption[] = [];
+          if (q.options && Array.isArray(q.options)) {
+            parsedOptions = q.options.map((opt: any, optIdx: number) => {
+              const label = String.fromCharCode(65 + optIdx);
+              const text = typeof opt === 'object' ? (opt.text || opt.label || '') : String(opt);
+              const count = optionStats.get(label) || 0;
+              
+              return {
+                label,
+                value: text,
+                percentage: totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0,
+                studentCount: count,
+                isUserAnswer: normalizedUserAnswer === label,
+                isCorrect: correctAnswer === label,
+              };
+            });
+          } else {
+            // Default 4 options if not available
+            parsedOptions = ["A", "B", "C", "D"].map((label) => ({
+              label,
+              value: `Option ${label}`,
+              percentage: totalResponses > 0 ? Math.round(((optionStats.get(label) || 0) / totalResponses) * 100) : 0,
+              studentCount: optionStats.get(label) || 0,
+              isUserAnswer: normalizedUserAnswer === label,
+              isCorrect: correctAnswer === label,
+            }));
+          }
+
+          return {
+            id: q.id,
+            number: q.question_number || idx + 1,
+            subject,
+            status,
+            difficulty: (q.difficulty as any) || "medium",
+            questionText: q.question_text || "",
+            imageUrl: q.image_url,
+            marks: q.marks || 4,
+            userMarks,
+            correctAnswer,
+            userAnswer: normalizedUserAnswer,
+            totalAttempts: allAttempts?.length || 0,
+            options: parsedOptions,
+            solution: {
+              text: q.solution_text || "Solution not available",
+              steps: q.solution_text ? [q.solution_text] : [],
+              finalAnswer: `The correct answer is ${correctAnswer}`,
+              chapter: q.test_sections?.name || "Chapter",
+              topic: subject,
+            },
+          };
+        });
+
+        setSubjects(Array.from(subjectSet));
+      }
+
+      setQuestions(questionsData);
+    } catch (error) {
+      console.error("Error fetching solutions:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredQuestions = useMemo(() => {
-    let questions = mockQuestions;
+    let filtered = questions;
     
     if (activeSubject !== "all") {
-      questions = questions.filter((q) => q.subject === activeSubject);
+      filtered = filtered.filter((q) => q.subject === activeSubject);
     }
     
     if (filter !== "all") {
-      questions = questions.filter((q) => q.status === filter);
+      filtered = filtered.filter((q) => q.status === filter);
     }
     
-    return questions;
-  }, [activeSubject, filter]);
+    return filtered;
+  }, [questions, activeSubject, filter]);
 
   const currentQuestion = filteredQuestions[currentIndex];
 
@@ -129,6 +291,17 @@ export default function SolutionsPage() {
     setShowSolution(false);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading solutions...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -138,12 +311,12 @@ export default function SolutionsPage() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/analysis/${testId || "mock"}`)}
+              onClick={() => navigate(`/analysis/${testId}`)}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-semibold font-display">JEE Main 2024 - Mock Test 1</h1>
+              <h1 className="text-lg font-semibold font-display">{testName || "Test Solutions"}</h1>
               <p className="text-sm text-muted-foreground">Solutions & Analysis</p>
             </div>
           </div>
@@ -176,8 +349,8 @@ export default function SolutionsPage() {
         </div>
 
         {/* Subject Tabs */}
-        <div className="px-4 pb-4">
-          <Tabs value={activeSubject} onValueChange={setActiveSubject}>
+        <div className="px-4 pb-4 overflow-x-auto">
+          <Tabs value={activeSubject} onValueChange={(val) => { setActiveSubject(val); setCurrentIndex(0); }}>
             <TabsList className="bg-secondary/50 p-1">
               {subjects.map((subject) => {
                 const Icon = subject !== "all" ? subjectIcons[subject] : null;
@@ -249,7 +422,7 @@ export default function SolutionsPage() {
                 questions={filteredQuestions.map((q) => ({
                   id: q.id,
                   number: q.number,
-                  status: q.status as "correct" | "incorrect" | "skipped",
+                  status: q.status,
                   subject: q.subject,
                 }))}
                 currentIndex={currentIndex}
@@ -267,7 +440,7 @@ export default function SolutionsPage() {
         questions={filteredQuestions.map((q) => ({
           id: q.id,
           number: q.number,
-          status: q.status as "correct" | "incorrect" | "skipped",
+          status: q.status,
           subject: q.subject,
         }))}
         currentIndex={currentIndex}

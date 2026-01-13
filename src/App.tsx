@@ -22,6 +22,8 @@ import Analytics from "./pages/Analytics";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 import QuestionBankPage from "./pages/QuestionBankPage";
+import AnalysisPage from "./pages/AnalysisPage";
+import SolutionsPage from "./pages/SolutionsPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminQuestionBank from "./pages/admin/AdminQuestionBank";
 import AdminTests from "./pages/admin/AdminTests";
@@ -55,34 +57,35 @@ const App = () => (
               <Route path="/signup" element={<AuthPage />} />
               <Route path="/staff-login" element={<StaffAuthPage />} />
               <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/tests" element={<TestLibrary />} />
-            <Route path="/pdf-tests" element={<PDFTestLibrary />} />
-            <Route path="/question-bank" element={<QuestionBankPage />} />
-            <Route path="/test/:testId" element={<NormalTestInterface />} />
-            <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
-            <Route path="/test/:testId/analysis" element={<NormalTestAnalysis />} />
-            <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/attempts" element={<MyAttempts />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            {/* Admin Routes - All protected with AdminRoute */}
-            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-            <Route path="/admin/question-bank" element={<AdminRoute><AdminQuestionBank /></AdminRoute>} />
-            <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
-            <Route path="/admin/test-creator" element={<AdminRoute><TestCreator /></AdminRoute>} />
-            <Route path="/admin/test-editor/:testId" element={<AdminRoute><TestEditor /></AdminRoute>} />
-            <Route path="/admin/test-analytics/:testId" element={<AdminRoute><NormalTestAnalytics /></AdminRoute>} />
-            <Route path="/admin/pdf-tests" element={<AdminRoute><PDFTestList /></AdminRoute>} />
-            <Route path="/admin/pdf-tests/create" element={<AdminRoute><PDFTestCreate /></AdminRoute>} />
-            <Route path="/admin/pdf-tests/:testId/edit" element={<AdminRoute><PDFTestEditor /></AdminRoute>} />
-            <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-            <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-            <Route path="/admin/community" element={<AdminRoute><StaffCommunity /></AdminRoute>} />
-            <Route path="/admin/audit-logs" element={<AdminRoute><AuditLogs /></AdminRoute>} />
-            <Route path="/admin/requests" element={<AdminRoute><StaffRequests /></AdminRoute>} />
-            <Route path="*" element={<NotFound />} />
+              <Route path="/tests" element={<TestLibrary />} />
+              <Route path="/pdf-tests" element={<PDFTestLibrary />} />
+              <Route path="/question-bank" element={<QuestionBankPage />} />
+              <Route path="/test/:testId" element={<NormalTestInterface />} />
+              <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
+              <Route path="/test/:testId/analysis" element={<NormalTestAnalysis />} />
+              <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
+              <Route path="/analysis/:testId" element={<AnalysisPage />} />
+              <Route path="/solutions/:testId" element={<SolutionsPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/attempts" element={<MyAttempts />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              {/* Admin Routes - All protected with AdminRoute */}
+              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/question-bank" element={<AdminRoute><AdminQuestionBank /></AdminRoute>} />
+              <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
+              <Route path="/admin/test-creator" element={<AdminRoute><TestCreator /></AdminRoute>} />
+              <Route path="/admin/test-editor/:testId" element={<AdminRoute><TestEditor /></AdminRoute>} />
+              <Route path="/admin/test-analytics/:testId" element={<AdminRoute><NormalTestAnalytics /></AdminRoute>} />
+              <Route path="/admin/pdf-tests" element={<AdminRoute><PDFTestList /></AdminRoute>} />
+              <Route path="/admin/pdf-tests/create" element={<AdminRoute><PDFTestCreate /></AdminRoute>} />
+              <Route path="/admin/pdf-tests/:testId/edit" element={<AdminRoute><PDFTestEditor /></AdminRoute>} />
+              <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+              <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+              <Route path="/admin/community" element={<AdminRoute><StaffCommunity /></AdminRoute>} />
+              <Route path="/admin/audit-logs" element={<AdminRoute><AuditLogs /></AdminRoute>} />
+              <Route path="/admin/requests" element={<AdminRoute><StaffRequests /></AdminRoute>} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </ProfileGuard>
         </BrowserRouter>

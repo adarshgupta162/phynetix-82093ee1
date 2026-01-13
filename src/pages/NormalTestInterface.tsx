@@ -165,6 +165,11 @@ export default function NormalTestInterface() {
         setFullscreenExitCount(startData.fullscreen_exit_count);
       }
 
+      // Restore existing answers if resuming
+      if (startData.is_resume && startData.existing_answers) {
+        setAnswers(startData.existing_answers);
+      }
+
       const { data: questionsData, error: questionsError } = await supabase.functions.invoke("get-test-questions", {
         body: { test_id: testId },
       });
@@ -201,9 +206,14 @@ export default function NormalTestInterface() {
         setActiveSection(sectionsList[0].id);
       }
 
-      // Mark first question as visited
+      // Mark first question as visited (or all answered questions if resuming)
       if (allQuestions.length > 0) {
-        setVisitedQuestions(new Set([allQuestions[0].id]));
+        if (startData.is_resume && startData.existing_answers) {
+          const visitedIds = new Set([allQuestions[0].id, ...Object.keys(startData.existing_answers)]);
+          setVisitedQuestions(visitedIds);
+        } else {
+          setVisitedQuestions(new Set([allQuestions[0].id]));
+        }
       }
 
       setLoading(false);
@@ -595,7 +605,7 @@ export default function NormalTestInterface() {
   const statusCounts = getStatusCounts();
 
   const testContent = (
-    <div className="min-h-screen bg-[#0a1628] flex flex-col">
+    <div className="min-h-screen bg-[#0a1628] flex flex-col pb-14 md:pb-16">
       {/* Header */}
       <header className="bg-[#1e3a5f] text-white px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -814,34 +824,37 @@ export default function NormalTestInterface() {
         </aside>
       </div>
 
-      {/* Bottom Action Bar */}
-      <div className="bg-[#e8e8e8] border-t border-gray-300 px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      {/* Bottom Action Bar - Fixed to bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-[#e8e8e8] border-t border-gray-300 px-4 md:px-6 py-2 md:py-3 flex items-center justify-between z-40">
+        <div className="flex items-center gap-2 md:gap-3">
           <Button
             variant="outline"
             onClick={markForReviewAndNext}
-            className="bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+            className="bg-white border-gray-300 text-gray-700 hover:bg-gray-100 text-xs md:text-sm px-2 md:px-4"
           >
-            Mark for Review & Next
+            <span className="hidden sm:inline">Mark for Review & Next</span>
+            <span className="sm:hidden">Review</span>
           </Button>
           <Button
             variant="outline"
             onClick={clearResponse}
-            className="bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+            className="bg-white border-gray-300 text-gray-700 hover:bg-gray-100 text-xs md:text-sm px-2 md:px-4"
           >
-            Clear Response
+            <span className="hidden sm:inline">Clear Response</span>
+            <span className="sm:hidden">Clear</span>
           </Button>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <Button
             onClick={saveAndNext}
-            className="bg-[#1a73e8] hover:bg-[#1557b0] text-white"
+            className="bg-[#1a73e8] hover:bg-[#1557b0] text-white text-xs md:text-sm px-2 md:px-4"
           >
-            Save & Next
+            <span className="hidden sm:inline">Save & Next</span>
+            <span className="sm:hidden">Save</span>
           </Button>
           <Button
             onClick={() => setShowSubmitModal(true)}
-            className="bg-[#34a853] hover:bg-[#2d8f47] text-white"
+            className="bg-[#34a853] hover:bg-[#2d8f47] text-white text-xs md:text-sm px-2 md:px-4"
             disabled={submitting}
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
