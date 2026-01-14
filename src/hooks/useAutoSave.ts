@@ -24,7 +24,10 @@ export function useAutoSave<T>({ data, onSave, interval = 7000, enabled = true }
     timeoutRef.current = setTimeout(async () => {
       if (!enabled) return;
       
-      // Check if data has actually changed
+      // Deep comparison using JSON.stringify is acceptable here because:
+      // 1. It only runs once per interval (7 seconds by default)
+      // 2. Question objects are relatively small
+      // 3. We need to detect nested changes in options/arrays
       const currentData = JSON.stringify(data);
       const previousData = JSON.stringify(previousDataRef.current);
       
@@ -57,13 +60,4 @@ export function useAutoSave<T>({ data, onSave, interval = 7000, enabled = true }
       }
     };
   }, [data, enabled, scheduleSave]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
 }
