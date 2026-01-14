@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LatexRenderer } from "@/components/ui/latex-renderer";
 
 interface SolutionSectionProps {
   solutionText?: string;
@@ -91,10 +90,9 @@ export function SolutionSection({
             {/* Given/Setup info */}
             {solutionText && (
               <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
-                <LatexRenderer 
-                  content={solutionText} 
-                  className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap"
-                />
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  {solutionText}
+                </p>
               </div>
             )}
 
@@ -106,10 +104,9 @@ export function SolutionSection({
                     <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-semibold flex-shrink-0">
                       {index + 1}
                     </div>
-                    <LatexRenderer 
-                      content={step} 
-                      className="text-sm text-foreground leading-relaxed pt-0.5"
-                    />
+                    <p className="text-sm text-foreground leading-relaxed pt-0.5">
+                      {step}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -118,10 +115,9 @@ export function SolutionSection({
             {/* Final Answer */}
             {finalAnswer && (
               <div className="p-4 rounded-lg bg-success/10 border border-success/30">
-                <LatexRenderer 
-                  content={`∴ ${finalAnswer}`}
-                  className="text-sm font-medium text-success"
-                />
+                <p className="text-sm font-medium text-success">
+                  ∴ {finalAnswer}
+                </p>
               </div>
             )}
           </motion.div>
