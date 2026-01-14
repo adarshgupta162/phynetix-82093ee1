@@ -251,7 +251,7 @@ export default function NormalTestInterface() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [loading, timeLeft]);
+  }, [loading, timeLeft, handleSubmit]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
