@@ -831,9 +831,7 @@ export default function NormalTestInterface() {
                       {String.fromCharCode(65 + index)}
                     </span>
                     <div className="flex-1">
-                      {option.text && (
-                        <span className="text-gray-700 block mb-2">{option.text}</span>
-                      )}
+                      <span className="text-gray-700 block">{option.text}</span>
                       {option.image_url && (
                         <img 
                           src={option.image_url} 
