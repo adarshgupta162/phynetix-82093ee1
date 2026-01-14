@@ -7,7 +7,7 @@ import { OverviewCard } from "@/components/analysis/OverviewCard";
 import { SubjectCard } from "@/components/analysis/SubjectCard";
 import { TimeOutcomeChart } from "@/components/analysis/TimeOutcomeChart";
 import { RankCompare } from "@/components/analysis/RankCompare";
-import { ScorePotential } from "@/components/analysis/ScorePotential";
+import { TimeAnalysis } from "@/components/analysis/TimeAnalysis";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SubjectData {
@@ -486,18 +486,15 @@ export default function AnalysisPage() {
             />
           )}
 
-          {activeTab === "potential" && (
-            <ScorePotential
-              currentScore={testData.score}
-              totalMarks={testData.totalMarks}
-              positiveScore={testData.positiveScore}
-              marksLost={testData.marksLost}
-              subjects={testData.subjects}
+          {activeTab === "time" && (
+            <TimeAnalysis
               questions={testData.questions}
+              totalTimeSeconds={testData.totalTimeSeconds}
+              hasTimeData={testData.hasTimeData}
             />
           )}
 
-          {activeTab !== "overview" && activeTab !== "rank" && activeTab !== "potential" && (
+          {activeTab !== "overview" && activeTab !== "rank" && activeTab !== "time" && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

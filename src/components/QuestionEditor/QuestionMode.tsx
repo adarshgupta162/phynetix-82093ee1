@@ -27,7 +27,7 @@ export function QuestionMode({ question, sectionType, onChange }: QuestionModePr
       {/* Question Text */}
       <div className="space-y-2">
         <Label className="text-sm font-medium">
-          Question Text (supports LaTeX: $x^2$ for inline, $$...$$ for display)
+          Question Text (supports LaTeX: $x^2$ for inline, $$...$$$ for display)
         </Label>
         <Textarea
           value={question.question_text || ''}
