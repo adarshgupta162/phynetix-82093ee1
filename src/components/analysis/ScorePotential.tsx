@@ -66,7 +66,21 @@ export function ScorePotential({
   // Calculate potential scores for different error reduction scenarios
   const calculateScenarios = () => {
     const incorrectQuestions = questions.filter((q) => q.status === "incorrect");
-    const marksPerIncorrect = marksLost / incorrectQuestions.length || 1.33; // Approx 1 negative + 4 positive = 5.33 gain per fix
+    
+    // Guard against division by zero
+    if (incorrectQuestions.length === 0) {
+      return [
+        { label: "Current Score", score: currentScore, gain: 0, realistic: false },
+      ];
+    }
+    
+    const marksPerIncorrect = marksLost / incorrectQuestions.length || 1;
+    // Gain per fixed error = negative removed + positive gained (assuming 4 marks positive, 1 negative)
+    const gainMultiplier = 1.33; // Approximate gain when fixing an error: 4 marks + 1 negative mark removed = 5.33 / 4 = 1.33x
+    
+    const calculateGain = (reductionPercent: number): number => {
+      return Math.round(marksPerIncorrect * incorrectQuestions.length * reductionPercent * gainMultiplier);
+    };
     
     return [
       {
@@ -77,26 +91,26 @@ export function ScorePotential({
       },
       {
         label: "25% Fewer Errors",
-        score: Math.round(currentScore + marksPerIncorrect * incorrectQuestions.length * 0.25 * 1.33),
-        gain: Math.round(marksPerIncorrect * incorrectQuestions.length * 0.25 * 1.33),
+        score: currentScore + calculateGain(0.25),
+        gain: calculateGain(0.25),
         realistic: true,
       },
       {
         label: "50% Fewer Errors",
-        score: Math.round(currentScore + marksPerIncorrect * incorrectQuestions.length * 0.5 * 1.33),
-        gain: Math.round(marksPerIncorrect * incorrectQuestions.length * 0.5 * 1.33),
+        score: currentScore + calculateGain(0.5),
+        gain: calculateGain(0.5),
         realistic: true,
       },
       {
         label: "75% Fewer Errors",
-        score: Math.round(currentScore + marksPerIncorrect * incorrectQuestions.length * 0.75 * 1.33),
-        gain: Math.round(marksPerIncorrect * incorrectQuestions.length * 0.75 * 1.33),
+        score: currentScore + calculateGain(0.75),
+        gain: calculateGain(0.75),
         realistic: false,
       },
       {
         label: "100% Fewer Errors",
-        score: Math.round(currentScore + marksPerIncorrect * incorrectQuestions.length * 1.33),
-        gain: Math.round(marksPerIncorrect * incorrectQuestions.length * 1.33),
+        score: currentScore + calculateGain(1.0),
+        gain: calculateGain(1.0),
         realistic: false,
       },
     ];
@@ -191,10 +205,9 @@ export function ScorePotential({
   };
 
   const errorTypes = calculateErrorTypes();
-  const topErrorType = errorTypes.reduce(
-    (max, curr) => (curr.marksLost > max.marksLost ? curr : max),
-    errorTypes[0] || { type: "None", marksLost: 0, percentage: 0, color: "" }
-  );
+  const topErrorType = errorTypes.length > 0 
+    ? errorTypes.reduce((max, curr) => (curr.marksLost > max.marksLost ? curr : max))
+    : null;
 
   // Generate actionable strategies
   const generateStrategies = (): string[] => {
@@ -225,6 +238,11 @@ export function ScorePotential({
   };
 
   const strategies = generateStrategies();
+
+  // Chart tooltip formatter
+  const formatTooltip = (value: number, _name: string, props: { payload: { gain: number } }) => [
+    `Score: ${value}${props.payload.gain > 0 ? ` (+${props.payload.gain})` : ""}`,
+  ];
 
   return (
     <div className="space-y-6">
@@ -317,9 +335,7 @@ export function ScorePotential({
                     border: "1px solid hsl(var(--border))",
                     borderRadius: "8px",
                   }}
-                  formatter={(value: number, _name: string, props: { payload: { gain: number } }) => [
-                    `Score: ${value}${props.payload.gain > 0 ? ` (+${props.payload.gain})` : ""}`,
-                  ]}
+                  formatter={formatTooltip}
                 />
                 <Bar dataKey="score" radius={[8, 8, 0, 0]}>
                   {scenarios.map((entry, index) => (
