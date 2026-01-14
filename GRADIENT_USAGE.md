@@ -51,8 +51,8 @@ For SVG elements that need gradient fill, use the `gradient-fill` class on the S
 
 All gradient effects automatically adapt to light and dark modes using CSS variables:
 
-- **Light mode**: Blue → Purple → Fuchsia gradient
-- **Dark mode**: Cyan → Teal gradient
+- **Light mode**: Blue → Purple → Fuchsia gradient (hsl(217, 91%, 45%) → hsl(270, 76%, 55%) → hsl(280, 87%, 50%))
+- **Dark mode**: Teal → Blue gradient (hsl(172, 66%, 50%) → hsl(199, 89%, 48%))
 
 ## CSS Variables
 
