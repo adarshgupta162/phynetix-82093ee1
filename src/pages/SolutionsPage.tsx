@@ -52,6 +52,7 @@ interface Question {
   totalAttempts: number;
   options: QuestionOption[];
   solution: QuestionSolution;
+  sectionType: string;
 }
 
 const subjectIcons: Record<string, React.ElementType> = {
@@ -60,6 +61,25 @@ const subjectIcons: Record<string, React.ElementType> = {
   Mathematics: Calculator,
   Maths: Calculator,
   Math: Calculator,
+};
+
+// Convert index (0,1,2,3) to letter (A,B,C,D)
+const indexToLetter = (index: number | string | null | undefined): string => {
+  if (index === null || index === undefined || index === "") return "";
+  if (typeof index === 'string') {
+    // If it's already a letter, return it
+    if (/^[A-D]$/i.test(index)) return index.toUpperCase();
+    // If it's a numeric string, convert
+    const num = parseInt(index, 10);
+    if (!isNaN(num) && num >= 0 && num <= 3) {
+      return String.fromCharCode(65 + num);
+    }
+    return index; // Return as-is for integer type answers
+  }
+  if (typeof index === 'number' && index >= 0 && index <= 3) {
+    return String.fromCharCode(65 + index);
+  }
+  return String(index); // Return as string for integer type answers
 };
 
 export default function SolutionsPage() {
@@ -115,7 +135,7 @@ export default function SolutionsPage() {
         .eq("user_id", user.id)
         .single();
 
-      const userAnswers = attempt?.answers || {};
+      const userAnswers = (attempt?.answers as Record<string, any>) || {};
 
       // Fetch all attempts for stats
       const { data: allAttempts } = await supabase
@@ -124,7 +144,7 @@ export default function SolutionsPage() {
         .eq("test_id", testId)
         .not("completed_at", "is", null);
 
-      // Fetch questions - try test_section_questions first
+      // Fetch questions - order by question_number to maintain proper order
       let questionsData: Question[] = [];
       
       const { data: sectionQuestions } = await supabase
@@ -142,32 +162,46 @@ export default function SolutionsPage() {
           solution_image_url,
           difficulty,
           section_id,
-          test_sections!inner(name, test_subjects!inner(name))
+          test_sections!inner(name, section_type, test_subjects!inner(name))
         `)
         .eq("test_id", testId)
-        .order("order_index");
+        .order("question_number");
 
       if (sectionQuestions && sectionQuestions.length > 0) {
         const subjectSet = new Set<string>(["all"]);
         
-        questionsData = sectionQuestions.map((q: any, idx: number) => {
+        questionsData = sectionQuestions.map((q: any) => {
           const subject = q.test_sections?.test_subjects?.name || "General";
+          const sectionType = q.test_sections?.section_type || "single_choice";
           subjectSet.add(subject);
           
-          const userAnswer = userAnswers[q.id];
-          const correctAnswer = typeof q.correct_answer === 'object' 
-            ? (q.correct_answer as any)?.answer || String(q.correct_answer)
-            : String(q.correct_answer || "");
+          // Get correct answer - handle both object and string formats
+          let correctAnswer: string;
+          if (typeof q.correct_answer === 'object' && q.correct_answer !== null) {
+            correctAnswer = (q.correct_answer as any)?.answer || String(q.correct_answer);
+          } else {
+            correctAnswer = String(q.correct_answer || "");
+          }
           
-          // Convert index to letter if needed
-          const normalizedUserAnswer = typeof userAnswer === 'number'
-            ? String.fromCharCode(65 + userAnswer)
-            : userAnswer || "";
+          // Get user's answer and normalize it
+          const rawUserAnswer = userAnswers[q.id];
+          const isIntegerType = sectionType === 'integer' || sectionType === 'numerical';
+          
+          // For MCQ: convert index to letter, for integer: keep as is
+          let normalizedUserAnswer: string;
+          if (isIntegerType) {
+            normalizedUserAnswer = rawUserAnswer !== undefined && rawUserAnswer !== null && rawUserAnswer !== "" 
+              ? String(rawUserAnswer) 
+              : "";
+          } else {
+            normalizedUserAnswer = indexToLetter(rawUserAnswer);
+          }
 
+          // Determine status
           let status: "correct" | "incorrect" | "skipped" = "skipped";
           let userMarks = 0;
           
-          if (!userAnswer && userAnswer !== 0) {
+          if (rawUserAnswer === undefined || rawUserAnswer === null || rawUserAnswer === "") {
             status = "skipped";
             userMarks = 0;
           } else if (normalizedUserAnswer === correctAnswer) {
@@ -180,21 +214,21 @@ export default function SolutionsPage() {
 
           // Calculate option stats from all attempts
           const optionStats = new Map<string, number>();
+          let totalResponses = 0;
+          
           allAttempts?.forEach((att: any) => {
-            const ans = att.answers?.[q.id];
-            if (ans !== undefined && ans !== null) {
-              const normalizedAns = typeof ans === 'number' 
-                ? String.fromCharCode(65 + ans) 
-                : String(ans);
+            const answers = att.answers as Record<string, any>;
+            const ans = answers?.[q.id];
+            if (ans !== undefined && ans !== null && ans !== "") {
+              totalResponses++;
+              const normalizedAns = isIntegerType ? String(ans) : indexToLetter(ans);
               optionStats.set(normalizedAns, (optionStats.get(normalizedAns) || 0) + 1);
             }
           });
 
-          const totalResponses = Array.from(optionStats.values()).reduce((a, b) => a + b, 0);
-
-          // Parse options
+          // Parse options - only for MCQ types
           let parsedOptions: QuestionOption[] = [];
-          if (q.options && Array.isArray(q.options)) {
+          if (!isIntegerType && q.options && Array.isArray(q.options)) {
             parsedOptions = q.options.map((opt: any, optIdx: number) => {
               const label = String.fromCharCode(65 + optIdx);
               const text = typeof opt === 'object' ? (opt.text || opt.label || '') : String(opt);
@@ -209,21 +243,11 @@ export default function SolutionsPage() {
                 isCorrect: correctAnswer === label,
               };
             });
-          } else {
-            // Default 4 options if not available
-            parsedOptions = ["A", "B", "C", "D"].map((label) => ({
-              label,
-              value: `Option ${label}`,
-              percentage: totalResponses > 0 ? Math.round(((optionStats.get(label) || 0) / totalResponses) * 100) : 0,
-              studentCount: optionStats.get(label) || 0,
-              isUserAnswer: normalizedUserAnswer === label,
-              isCorrect: correctAnswer === label,
-            }));
           }
 
           return {
             id: q.id,
-            number: q.question_number || idx + 1,
+            number: q.question_number,
             subject,
             status,
             difficulty: (q.difficulty as any) || "medium",
@@ -233,8 +257,9 @@ export default function SolutionsPage() {
             userMarks,
             correctAnswer,
             userAnswer: normalizedUserAnswer,
-            totalAttempts: allAttempts?.length || 0,
+            totalAttempts: totalResponses,
             options: parsedOptions,
+            sectionType,
             solution: {
               text: q.solution_text || "Solution not available",
               steps: q.solution_text ? [q.solution_text] : [],
@@ -303,7 +328,7 @@ export default function SolutionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-16">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-card/90 backdrop-blur-xl border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -392,6 +417,8 @@ export default function SolutionsPage() {
                   userAnswer={currentQuestion.userAnswer}
                   totalAttempts={currentQuestion.totalAttempts}
                   subject={currentQuestion.subject}
+                  sectionType={currentQuestion.sectionType}
+                  status={currentQuestion.status}
                 />
 
                 <SolutionSection
