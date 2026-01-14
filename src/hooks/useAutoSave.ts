@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-interface UseAutoSaveOptions {
-  data: any;
-  onSave: (data: any) => Promise<void>;
+interface UseAutoSaveOptions<T> {
+  data: T;
+  onSave: (data: T) => Promise<void>;
   interval?: number; // milliseconds, default 7000 (7 seconds)
   enabled?: boolean;
 }
@@ -11,8 +11,8 @@ interface UseAutoSaveOptions {
  * Hook for automatic saving with debouncing
  * Saves data at regular intervals if changes are detected
  */
-export function useAutoSave({ data, onSave, interval = 7000, enabled = true }: UseAutoSaveOptions) {
-  const previousDataRef = useRef<any>(data);
+export function useAutoSave<T>({ data, onSave, interval = 7000, enabled = true }: UseAutoSaveOptions<T>) {
+  const previousDataRef = useRef<T>(data);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isFirstRenderRef = useRef(true);
 
