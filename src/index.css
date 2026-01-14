@@ -127,23 +127,19 @@
     font-family: 'Inter', sans-serif;
     background-image: var(--gradient-radial);
     background-attachment: fixed;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
-  }
-
-  /* Disable text selection on all pages except admin pages */
-  body {
+    /* Disable text selection on all pages except admin pages */
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
   }
 
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+
   /* Enable text selection for admin pages */
-  .admin-layout,
-  .admin-layout * {
+  .admin-layout {
     -webkit-user-select: text;
     -moz-user-select: text;
     -ms-user-select: text;
