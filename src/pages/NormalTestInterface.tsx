@@ -661,22 +661,35 @@ export default function NormalTestInterface() {
   const isIntegerQuestion = currentQuestion?.question_type === 'integer' || 
                             currentQuestion?.question_type === 'numerical';
   
-  // Parse options - handle both array and object formats
+  // Parse options - handle both array and object formats, preserving image URLs
   const options = Array.isArray(currentQuestion?.options) 
     ? currentQuestion.options.map((opt: any) => {
-        // If option is an object with text/label properties
+        // If option is an object with text/label/image_url properties
         if (typeof opt === 'object' && opt !== null) {
-          return opt.text || opt.label || '';
+          return {
+            text: opt.text || opt.label || '',
+            image_url: opt.image_url || null
+          };
         }
-        return opt;
-      }).filter((opt: string) => opt && opt.trim() !== '') // Filter out empty options
+        // If option is a simple string
+        return {
+          text: opt,
+          image_url: null
+        };
+      }).filter((opt: any) => opt.text && opt.text.trim() !== '') // Filter out empty options
     : typeof currentQuestion?.options === 'object' && currentQuestion?.options !== null
       ? Object.values(currentQuestion.options as Record<string, any>).map((opt: any) => {
           if (typeof opt === 'object' && opt !== null) {
-            return opt.text || opt.label || '';
+            return {
+              text: opt.text || opt.label || '',
+              image_url: opt.image_url || null
+            };
           }
-          return opt;
-        }).filter((opt: string) => opt && opt.trim() !== '')
+          return {
+            text: opt,
+            image_url: null
+          };
+        }).filter((opt: any) => opt.text && opt.text.trim() !== '')
       : [];
 
   const statusCounts = getStatusCounts();
@@ -801,7 +814,7 @@ export default function NormalTestInterface() {
                   <label
                     key={index}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-all",
+                      "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all",
                       currentQuestion && answers[currentQuestion.id] === String(index)
                         ? "border-[#1a73e8] bg-blue-50" 
                         : "border-gray-200 hover:bg-gray-50"
@@ -812,12 +825,27 @@ export default function NormalTestInterface() {
                       name="answer"
                       checked={currentQuestion && answers[currentQuestion.id] === String(index)}
                       onChange={() => handleAnswer(index)}
-                      className="w-4 h-4 text-[#1a73e8] border-gray-300 focus:ring-[#1a73e8]"
+                      className="w-4 h-4 text-[#1a73e8] border-gray-300 focus:ring-[#1a73e8] mt-1"
                     />
-                    <span className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gray-100 text-gray-700">
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gray-100 text-gray-700 flex-shrink-0">
                       {String.fromCharCode(65 + index)}
                     </span>
-                    <span className="text-gray-700">{String(option)}</span>
+                    <div className="flex-1">
+                      {option.text && (
+                        <span className="text-gray-700 block mb-2">{option.text}</span>
+                      )}
+                      {option.image_url && (
+                        <img 
+                          src={option.image_url} 
+                          alt={`Option ${String.fromCharCode(65 + index)}`} 
+                          className="max-w-full h-auto rounded-lg border border-gray-200 mt-2"
+                          onError={(e) => {
+                            console.error('Option image failed to load:', option.image_url);
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                    </div>
                   </label>
                 ))}
               </div>
