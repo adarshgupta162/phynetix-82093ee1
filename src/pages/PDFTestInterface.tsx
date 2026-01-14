@@ -414,7 +414,7 @@ export default function PDFTestInterface() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [phase, timeLeft]);
+  }, [phase, timeLeft, handleSubmit]);
 
   const handleAnswerChange = useCallback((questionId: string, answer: string | string[]) => {
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
