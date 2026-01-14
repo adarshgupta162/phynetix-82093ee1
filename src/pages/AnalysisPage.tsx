@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { AnalysisSidebar } from "@/components/analysis/AnalysisSidebar";
 import { OverviewCard } from "@/components/analysis/OverviewCard";
 import { SubjectCard } from "@/components/analysis/SubjectCard";
 import { TimeOutcomeChart } from "@/components/analysis/TimeOutcomeChart";
+import { RankCompare } from "@/components/analysis/RankCompare";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SubjectData {
@@ -18,6 +19,8 @@ interface SubjectData {
   unattempted: number;
   totalQuestions: number;
   timeSpent: string;
+  correct: number;
+  incorrect: number;
 }
 
 interface QuestionData {
@@ -36,8 +39,26 @@ interface TestData {
   accuracy: number;
   rank: number;
   totalStudents: number;
+  percentile: number;
   subjects: SubjectData[];
   questions: QuestionData[];
+  hasTimeData: boolean;
+  attempted: number;
+  totalQuestions: number;
+  positiveScore: number;
+  marksLost: number;
+}
+
+interface RankData {
+  rank: number;
+  totalStudents: number;
+  percentile: number;
+  score: number;
+  topperScore: number;
+  averageScore: number;
+  subjectRanks: { name: string; rank: number; total: number; percentile: number }[];
+  scoreDistribution: { range: string; count: number; isUser: boolean }[];
+  recentAttempts: { name: string; score: number; rank: number; percentile: number; date: string }[];
 }
 
 const subjectColors: Record<string, string> = {
@@ -59,17 +80,34 @@ const formatTime = (seconds: number) => {
 
 const formatTimeShort = (seconds: number) => {
   const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
+  const secs = Math.floor(seconds % 60);
   return `${minutes}m ${secs}s`;
+};
+
+// Convert index (0,1,2,3) to letter (A,B,C,D)
+const indexToLetter = (index: number | string | null | undefined): string => {
+  if (index === null || index === undefined || index === "") return "";
+  if (typeof index === 'string') {
+    if (/^[A-D]$/i.test(index)) return index.toUpperCase();
+    const num = parseInt(index, 10);
+    if (!isNaN(num) && num >= 0 && num <= 3) {
+      return String.fromCharCode(65 + num);
+    }
+    return index;
+  }
+  if (typeof index === 'number' && index >= 0 && index <= 3) {
+    return String.fromCharCode(65 + index);
+  }
+  return String(index);
 };
 
 export default function AnalysisPage() {
   const navigate = useNavigate();
   const { testId } = useParams();
-  const location = useLocation();
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [testData, setTestData] = useState<TestData | null>(null);
+  const [rankData, setRankData] = useState<RankData | null>(null);
 
   useEffect(() => {
     if (testId) {
@@ -114,15 +152,19 @@ export default function AnalysisPage() {
 
       // Parse time_per_question from attempt
       const timePerQuestion: Record<string, number> = (attempt as any).time_per_question || {};
+      const hasTimeData = Object.keys(timePerQuestion).length > 0;
 
       // Fetch all attempts for ranking
-      const { count: totalStudents } = await supabase
+      const { data: allAttempts } = await supabase
         .from("test_attempts")
-        .select("*", { count: "exact", head: true })
+        .select("score, rank, percentile, user_id")
         .eq("test_id", testId)
-        .not("completed_at", "is", null);
+        .not("completed_at", "is", null)
+        .order("score", { ascending: false });
 
-      // Fetch questions - try test_section_questions first, then test_questions
+      const totalStudents = allAttempts?.length || 1;
+
+      // Fetch questions - order by question_number
       let questionsData: any[] = [];
       
       const { data: sectionQuestions } = await supabase
@@ -130,54 +172,31 @@ export default function AnalysisPage() {
         .select(`
           id,
           question_number,
-          question_text,
           correct_answer,
           marks,
           negative_marks,
-          time_seconds,
           section_id,
-          test_sections!inner(name, test_subjects!inner(name))
+          test_sections!inner(name, section_type, test_subjects!inner(name))
         `)
         .eq("test_id", testId)
-        .order("order_index");
+        .order("question_number");
 
       if (sectionQuestions && sectionQuestions.length > 0) {
         questionsData = sectionQuestions.map((q: any) => ({
           id: q.id,
           question_number: q.question_number,
-          correct_answer: q.correct_answer,
+          correct_answer: typeof q.correct_answer === 'object' 
+            ? (q.correct_answer as any)?.answer || String(q.correct_answer)
+            : String(q.correct_answer || ""),
           marks: q.marks || 4,
           negative_marks: q.negative_marks || 1,
-          time_seconds: q.time_seconds || 60,
           subject: q.test_sections?.test_subjects?.name || "General",
+          sectionType: q.test_sections?.section_type || "single_choice",
         }));
-      } else {
-        // Fallback to test_questions
-        const { data: tqData } = await supabase
-          .from("test_questions")
-          .select(`
-            question_id,
-            order_index,
-            questions!inner(id, question_text, correct_answer, marks, negative_marks, chapter_id, chapters!inner(course_id, courses!inner(name)))
-          `)
-          .eq("test_id", testId)
-          .order("order_index");
-
-        if (tqData) {
-          questionsData = tqData.map((tq: any, idx: number) => ({
-            id: tq.questions.id,
-            question_number: idx + 1,
-            correct_answer: tq.questions.correct_answer,
-            marks: tq.questions.marks || 4,
-            negative_marks: tq.questions.negative_marks || 1,
-            time_seconds: 60,
-            subject: tq.questions.chapters?.courses?.name || "General",
-          }));
-        }
       }
 
       // Parse user answers
-      const userAnswers = attempt.answers || {};
+      const userAnswers = (attempt.answers as Record<string, any>) || {};
 
       // Calculate subject-wise stats
       const subjectStats = new Map<string, { 
@@ -192,8 +211,12 @@ export default function AnalysisPage() {
       }>();
 
       const questionResults: QuestionData[] = [];
+      let totalCorrect = 0;
+      let totalIncorrect = 0;
+      let totalPositiveScore = 0;
+      let totalNegativeScore = 0;
       
-      questionsData.forEach((q, idx) => {
+      questionsData.forEach((q) => {
         const subject = q.subject || "General";
         if (!subjectStats.has(subject)) {
           subjectStats.set(subject, {
@@ -212,26 +235,36 @@ export default function AnalysisPage() {
         stats.totalQuestions++;
         stats.totalMarks += q.marks;
 
-        const userAnswer = userAnswers[q.id];
+        const rawUserAnswer = userAnswers[q.id];
         const correctAnswer = q.correct_answer;
+        const isIntegerType = q.sectionType === 'integer' || q.sectionType === 'numerical';
         
-        // Convert index to letter if needed
-        const normalizedUserAnswer = typeof userAnswer === 'number' 
-          ? String.fromCharCode(65 + userAnswer)
-          : userAnswer;
+        // Normalize answers for comparison
+        let normalizedUserAnswer: string;
+        if (isIntegerType) {
+          normalizedUserAnswer = rawUserAnswer !== undefined && rawUserAnswer !== null && rawUserAnswer !== "" 
+            ? String(rawUserAnswer) 
+            : "";
+        } else {
+          normalizedUserAnswer = indexToLetter(rawUserAnswer);
+        }
 
         let status: "correct" | "incorrect" | "skipped" = "skipped";
         
-        if (userAnswer === undefined || userAnswer === null || userAnswer === "") {
+        if (rawUserAnswer === undefined || rawUserAnswer === null || rawUserAnswer === "") {
           stats.unattempted++;
           status = "skipped";
         } else if (normalizedUserAnswer === correctAnswer) {
           stats.correct++;
           stats.marksObtained += q.marks;
+          totalCorrect++;
+          totalPositiveScore += q.marks;
           status = "correct";
         } else {
           stats.incorrect++;
           stats.negativeMarks += q.negative_marks;
+          totalIncorrect++;
+          totalNegativeScore += q.negative_marks;
           status = "incorrect";
         }
 
@@ -240,8 +273,8 @@ export default function AnalysisPage() {
         stats.timeSeconds += actualTimeSpent;
 
         questionResults.push({
-          questionNumber: idx + 1,
-          timeSpent: actualTimeSpent > 0 ? actualTimeSpent : Math.floor(Math.random() * 120) + 30,
+          questionNumber: q.question_number,
+          timeSpent: actualTimeSpent,
           subject,
           status,
         });
@@ -258,30 +291,79 @@ export default function AnalysisPage() {
         unattempted: stats.unattempted,
         totalQuestions: stats.totalQuestions,
         timeSpent: formatTimeShort(stats.timeSeconds),
+        correct: stats.correct,
+        incorrect: stats.incorrect,
       }));
 
       // Calculate overall stats
-      const totalCorrect = Array.from(subjectStats.values()).reduce((sum, s) => sum + s.correct, 0);
       const totalQuestions = questionsData.length;
-      const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+      const attempted = totalCorrect + totalIncorrect;
+      const accuracy = attempted > 0 ? Math.round((totalCorrect / attempted) * 100) : 0;
+
+      // Calculate score from database or recalculate
+      const calculatedScore = totalPositiveScore - totalNegativeScore;
+      const totalMarks = questionsData.reduce((sum, q) => sum + q.marks, 0);
+
+      // Rank data
+      const topperScore = allAttempts?.[0]?.score || calculatedScore;
+      const averageScore = allAttempts && allAttempts.length > 0
+        ? Math.round(allAttempts.reduce((sum, a) => sum + (a.score || 0), 0) / allAttempts.length)
+        : calculatedScore;
+
+      // Score distribution for rank page
+      const scoreDistribution = calculateScoreDistribution(allAttempts || [], calculatedScore);
+
+      // Subject ranks (simplified - would need more complex query for real implementation)
+      const subjectRanks = subjects.map(s => ({
+        name: s.name,
+        rank: attempt.rank || 1,
+        total: totalStudents,
+        percentile: attempt.percentile || 100,
+      }));
+
+      setRankData({
+        rank: attempt.rank || 1,
+        totalStudents,
+        percentile: attempt.percentile || 100,
+        score: calculatedScore,
+        topperScore,
+        averageScore,
+        subjectRanks,
+        scoreDistribution,
+        recentAttempts: [],
+      });
 
       setTestData({
         testName: test.name,
-        score: attempt.score || 0,
-        totalMarks: attempt.total_marks || 300,
+        score: calculatedScore,
+        totalMarks,
         timeUsedSeconds: attempt.time_taken_seconds || 0,
         totalTimeSeconds: test.duration_minutes * 60,
         accuracy,
         rank: attempt.rank || 1,
-        totalStudents: totalStudents || 1,
+        totalStudents,
+        percentile: attempt.percentile || 100,
         subjects,
         questions: questionResults,
+        hasTimeData,
+        attempted,
+        totalQuestions,
+        positiveScore: totalPositiveScore,
+        marksLost: totalNegativeScore,
       });
 
     } catch (error) {
       console.error("Error fetching analysis:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTabChange = (tab: string) => {
+    if (tab === "solutions") {
+      navigate(`/solutions/${testId}`);
+    } else {
+      setActiveTab(tab);
     }
   };
 
@@ -322,7 +404,7 @@ export default function AnalysisPage() {
     <div className="min-h-screen bg-background">
       <AnalysisSidebar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         testName={testData.testName}
         onBack={() => navigate("/tests")}
       />
@@ -373,6 +455,8 @@ export default function AnalysisPage() {
                     totalQuestions={subject.totalQuestions}
                     timeSpent={subject.timeSpent}
                     color={subject.color}
+                    correct={subject.correct}
+                    incorrect={subject.incorrect}
                     onReviewMistakes={() => handleReviewMistakes(subject.name)}
                     delay={index}
                   />
@@ -380,27 +464,28 @@ export default function AnalysisPage() {
               </div>
 
               {/* Time vs Outcome Chart */}
-              <TimeOutcomeChart data={testData.questions} />
+              <TimeOutcomeChart 
+                data={testData.questions} 
+                hasTimeData={testData.hasTimeData}
+              />
             </>
           )}
 
-          {activeTab === "solutions" && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center py-12"
-            >
-              <p className="text-muted-foreground mb-4">View detailed solutions for all questions</p>
-              <button
-                onClick={handleViewSolutions}
-                className="btn-gradient"
-              >
-                Go to Solutions Page
-              </button>
-            </motion.div>
+          {activeTab === "rank" && rankData && (
+            <RankCompare
+              rank={rankData.rank}
+              totalStudents={rankData.totalStudents}
+              percentile={rankData.percentile}
+              score={rankData.score}
+              topperScore={rankData.topperScore}
+              averageScore={rankData.averageScore}
+              totalMarks={testData.totalMarks}
+              subjectRanks={rankData.subjectRanks}
+              scoreDistribution={rankData.scoreDistribution}
+            />
           )}
 
-          {activeTab !== "overview" && activeTab !== "solutions" && (
+          {activeTab !== "overview" && activeTab !== "rank" && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -415,4 +500,34 @@ export default function AnalysisPage() {
       </main>
     </div>
   );
+}
+
+function calculateScoreDistribution(
+  attempts: { score: number | null; user_id: string }[], 
+  userScore: number
+): { range: string; count: number; isUser: boolean }[] {
+  if (!attempts.length) return [];
+  
+  const scores = attempts.map(a => a.score || 0);
+  const maxScore = Math.max(...scores);
+  const minScore = Math.min(...scores);
+  
+  // Create 10 buckets
+  const bucketSize = Math.max(Math.ceil((maxScore - minScore) / 10), 10);
+  const buckets: { range: string; count: number; isUser: boolean }[] = [];
+  
+  for (let i = 0; i < 10; i++) {
+    const rangeStart = minScore + (i * bucketSize);
+    const rangeEnd = rangeStart + bucketSize - 1;
+    const count = scores.filter(s => s >= rangeStart && s <= rangeEnd).length;
+    const isUser = userScore >= rangeStart && userScore <= rangeEnd;
+    
+    buckets.push({
+      range: `${rangeStart}-${rangeEnd}`,
+      count,
+      isUser,
+    });
+  }
+  
+  return buckets.filter(b => b.count > 0);
 }

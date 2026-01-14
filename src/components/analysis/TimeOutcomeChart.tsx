@@ -8,10 +8,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { AlertCircle } from "lucide-react";
 
 interface QuestionData {
   questionNumber: number;
@@ -23,6 +23,7 @@ interface QuestionData {
 interface TimeOutcomeChartProps {
   data: QuestionData[];
   toppersData?: { questionNumber: number; avgTime: number }[];
+  hasTimeData?: boolean;
 }
 
 const subjectColors: Record<string, string> = {
@@ -54,7 +55,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-export function TimeOutcomeChart({ data, toppersData }: TimeOutcomeChartProps) {
+export function TimeOutcomeChart({ data, toppersData, hasTimeData = true }: TimeOutcomeChartProps) {
   const chartData = useMemo(() => {
     return data.map((q) => ({
       ...q,
@@ -62,13 +63,41 @@ export function TimeOutcomeChart({ data, toppersData }: TimeOutcomeChartProps) {
     }));
   }, [data]);
 
-  // Generate mock toppers trend line if not provided
-  const toppersLine = toppersData || data.map((q) => ({
-    questionNumber: q.questionNumber,
-    avgTime: Math.max(20, q.timeSpent * 0.7 + Math.random() * 10 - 5),
-  }));
+  // Check if we have actual time data (not all zeros)
+  const hasActualTimeData = hasTimeData && data.some(q => q.timeSpent > 0);
 
   const uniqueSubjects = [...new Set(data.map((d) => d.subject))];
+
+  // If no time data, show a message
+  if (!hasActualTimeData) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="glass-card p-6"
+      >
+        <h3 className="font-semibold font-display text-lg mb-4">Time vs Outcome Analysis</h3>
+        <div className="h-60 flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto" />
+            <p className="text-muted-foreground">
+              Time tracking data is not available for this attempt.
+            </p>
+            <p className="text-sm text-muted-foreground/70">
+              This feature was added after your attempt. Future attempts will show detailed time analysis.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Generate toppers trend line if not provided
+  const toppersLine = toppersData || data.filter(q => q.timeSpent > 0).map((q) => ({
+    questionNumber: q.questionNumber,
+    avgTime: Math.max(20, q.timeSpent * 0.7),
+  }));
 
   return (
     <motion.div
@@ -102,19 +131,21 @@ export function TimeOutcomeChart({ data, toppersData }: TimeOutcomeChartProps) {
             <Tooltip content={<CustomTooltip />} />
             
             {/* Toppers trend line */}
-            <Line
-              data={toppersLine}
-              dataKey="avgTime"
-              stroke="hsl(172, 66%, 50%)"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={false}
-              name="Toppers Avg"
-            />
+            {toppersLine.length > 0 && (
+              <Line
+                data={toppersLine}
+                dataKey="avgTime"
+                stroke="hsl(172, 66%, 50%)"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={false}
+                name="Toppers Avg"
+              />
+            )}
             
             {/* Scatter points for each question */}
-            <Scatter data={chartData} dataKey="timeSpent" name="Your Time">
-              {chartData.map((entry, index) => (
+            <Scatter data={chartData.filter(d => d.timeSpent > 0)} dataKey="timeSpent" name="Your Time">
+              {chartData.filter(d => d.timeSpent > 0).map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={subjectColors[entry.subject] || "hsl(172, 66%, 50%)"}
