@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -8,7 +8,6 @@ import {
   Users,
   Settings,
   LogOut,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
   Shield,
@@ -23,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
+import { AtomIcon } from "@/components/icons/AtomIcon";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
@@ -118,26 +118,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: collapsed ? 80 : 260 }}
+        animate={{ width: collapsed ? 72 : 240 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="fixed left-0 top-0 h-screen border-r border-border bg-card/50 backdrop-blur-xl z-50"
       >
         <div className="flex flex-col h-full p-4">
           {/* Logo */}
           <Link to="/admin" className="flex items-center gap-3 mb-8 px-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-fuchsia-600 flex items-center justify-center flex-shrink-0">
-              <Shield className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-teal flex items-center justify-center flex-shrink-0">
+              <AtomIcon className="w-6 h-6 text-white" />
             </div>
-            {!collapsed && (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-xl font-bold font-display gradient-text"
-              >
-                PhyNetix Admin
-              </motion.span>
-            )}
+            <AnimatePresence mode="wait">
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="text-[19px] font-bold tracking-wider uppercase text-teal"
+                  style={{ fontWeight: 700, letterSpacing: '0.1em' }}
+                >
+                  PhyNetix
+                </motion.span>
+              )}
+            </AnimatePresence>
           </Link>
 
           {/* Navigation */}
@@ -163,16 +167,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />
                     )}
                   </div>
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="font-medium flex-1"
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
+                  <AnimatePresence mode="wait">
+                    {!collapsed && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="font-medium flex-1"
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                   {!collapsed && hasNotification && (
                     <span className="bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
                       {unreadRequests}
@@ -191,8 +198,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             }}
             className="flex items-center gap-3 px-3 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors mb-2"
           >
-            <Sparkles className="w-5 h-5 flex-shrink-0" />
-            {!collapsed && <span className="font-medium">Student View</span>}
+            <Shield className="w-5 h-5 flex-shrink-0" />
+            <AnimatePresence mode="wait">
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="font-medium"
+                >
+                  Student View
+                </motion.span>
+              )}
+            </AnimatePresence>
           </button>
 
           {/* Theme Toggle */}
@@ -217,7 +236,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             className="flex items-center gap-3 px-3 py-3 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors mt-2"
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
-            {!collapsed && <span className="font-medium">Logout</span>}
+            <AnimatePresence mode="wait">
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="font-medium"
+                >
+                  Logout
+                </motion.span>
+              )}
+            </AnimatePresence>
           </button>
         </div>
       </motion.aside>
@@ -226,7 +257,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <main
         className={cn(
           "flex-1 transition-all duration-300",
-          collapsed ? "ml-20" : "ml-[260px]"
+          collapsed ? "ml-[72px]" : "ml-[240px]"
         )}
       >
         {children}
