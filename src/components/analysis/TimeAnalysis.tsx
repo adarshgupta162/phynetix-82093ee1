@@ -21,8 +21,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  PieChart,
-  Pie,
 } from "recharts";
 
 interface QuestionData {
@@ -163,7 +161,8 @@ export function TimeAnalysis({ questions, totalTimeSeconds, hasTimeData }: TimeA
           total: 0,
           accuracy: 0,
           idealTime: 0,
-        } as any;
+          difference: 0,
+        };
       }
       
       stats[q.subject].timeSpent += q.timeSpent;
