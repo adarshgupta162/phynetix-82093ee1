@@ -135,8 +135,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="text-[19px] font-bold tracking-wider uppercase text-teal"
-                  style={{ fontWeight: 700, letterSpacing: '0.1em' }}
+                  className="text-[19px] font-bold tracking-[0.1em] uppercase text-teal"
                 >
                   PhyNetix
                 </motion.span>
