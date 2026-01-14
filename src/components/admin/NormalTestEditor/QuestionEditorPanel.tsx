@@ -179,6 +179,14 @@ export function QuestionEditorPanel({
               Bonus
             </span>
           )}
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => window.location.href = `/admin/custom-question-editor/${localQuestion.test_id}/${localQuestion.id}`}
+            className="text-xs text-primary"
+          >
+            Open in Custom Editor
+          </Button>
         </div>
         
         <div className="flex items-center gap-2">

@@ -38,6 +38,7 @@ import NormalTestAnalytics from "./pages/admin/NormalTestAnalytics";
 import StaffCommunity from "./pages/admin/StaffCommunity";
 import AuditLogs from "./pages/admin/AuditLogs";
 import StaffRequests from "./pages/admin/StaffRequests";
+import QuestionEditor from "./components/QuestionEditor/QuestionEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
               <Route path="/admin/test-creator" element={<AdminRoute><TestCreator /></AdminRoute>} />
               <Route path="/admin/test-editor/:testId" element={<AdminRoute><TestEditor /></AdminRoute>} />
+              <Route path="/admin/custom-question-editor/:testId/:questionId" element={<AdminRoute><QuestionEditor /></AdminRoute>} />
               <Route path="/admin/test-analytics/:testId" element={<AdminRoute><NormalTestAnalytics /></AdminRoute>} />
               <Route path="/admin/pdf-tests" element={<AdminRoute><PDFTestList /></AdminRoute>} />
               <Route path="/admin/pdf-tests/create" element={<AdminRoute><PDFTestCreate /></AdminRoute>} />
