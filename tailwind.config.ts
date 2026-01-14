@@ -122,8 +122,8 @@ export default {
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-primary": "linear-gradient(135deg, hsl(217, 91%, 45%) 0%, hsl(270, 76%, 55%) 50%, hsl(280, 87%, 50%) 100%)",
-        "gradient-secondary": "linear-gradient(135deg, hsl(199, 89%, 48%) 0%, hsl(250, 89%, 64%) 100%)",
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-secondary": "var(--gradient-secondary)",
       },
     },
   },

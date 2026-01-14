@@ -186,7 +186,12 @@
 
   .btn-gradient:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 60px hsla(250, 89%, 64%, 0.5);
+    box-shadow: var(--glow-primary), 0 8px 24px hsla(0, 0%, 0%, 0.15);
+    filter: brightness(1.1);
+  }
+
+  .btn-gradient:active {
+    transform: translateY(0);
   }
 
   .btn-glass {
@@ -197,8 +202,37 @@
   }
 
   .btn-glass:hover {
-    background: hsla(217, 91%, 60%, 0.15);
-    border-color: hsla(217, 91%, 60%, 0.4);
+    background: var(--gradient-glass);
+    border-color: var(--glass-border);
+    box-shadow: var(--glow-primary);
+  }
+
+  /* Gradient classes for logos and icons */
+  .gradient-logo {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-icon svg,
+  .gradient-icon {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* For SVG elements that need gradient fill */
+  svg.gradient-fill path,
+  svg.gradient-fill circle,
+  svg.gradient-fill rect,
+  svg.gradient-fill polygon {
+    fill: url(#gradient-primary);
+  }
+
+  /* Add gradient definition for SVG - to be used inline */
+  .gradient-svg-defs {
+    position: absolute;
+    width: 0;
+    height: 0;
   }
 
   .stat-card {
