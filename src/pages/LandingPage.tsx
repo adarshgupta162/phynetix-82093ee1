@@ -957,7 +957,7 @@ export default function LandingPage() {
                     <p className="font-medium text-foreground">Governing Law:</p>
                     <ul className="list-disc list-inside space-y-1 ml-2">
                       <li>These terms are governed by the laws of India</li>
-                      <li>Any disputes will be subject to the exclusive jurisdiction of courts in [City], India</li>
+                      <li>Any disputes will be subject to the exclusive jurisdiction of courts in New Delhi, India</li>
                     </ul>
                   </div>
                   <div className="space-y-2">
