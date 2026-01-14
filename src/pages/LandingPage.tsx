@@ -509,7 +509,9 @@ export default function LandingPage() {
             <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
               Privacy <span className="gradient-text">Policy</span>
             </h2>
-          
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Effective Date: January 14, 2026
+            </p>
           </div>
 
           <motion.div
@@ -614,6 +616,33 @@ export default function LandingPage() {
                 </AccordionContent>
               </AccordionItem>
 
+              <AccordionItem 
+                value="user-rights"
+                className="glass-card border border-border/50 rounded-xl px-6 data-[state=open]:bg-muted/30"
+              >
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  <div className="flex items-center gap-3">
+                    <UserCheck className="w-5 h-5 text-primary" />
+                    <span>Your Rights Regarding Your Data</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5 space-y-3">
+                  <p>
+                    You have comprehensive rights over your personal data:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li><strong>Access:</strong> Request a copy of all personal data we hold about you</li>
+                    <li><strong>Rectification:</strong> Update or correct inaccurate information</li>
+                    <li><strong>Erasure:</strong> Request deletion of your account and associated data</li>
+                    <li><strong>Portability:</strong> Export your test data and performance history</li>
+                    <li><strong>Objection:</strong> Opt-out of certain data processing activities</li>
+                    <li><strong>Restriction:</strong> Limit how we process your information</li>
+                  </ul>
+                  <p>
+                    To exercise any of these rights, please contact us at <a href="mailto:privacy@phynetix.me" className="text-primary hover:underline">privacy@phynetix.me</a>. We will respond to your request within 30 days.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
 
               <AccordionItem 
                 value="compliance"
@@ -642,7 +671,29 @@ export default function LandingPage() {
                 </AccordionContent>
               </AccordionItem>
 
-
+              <AccordionItem 
+                value="contact-privacy"
+                className="glass-card border border-border/50 rounded-xl px-6 data-[state=open]:bg-muted/30"
+              >
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-5 h-5 text-primary" />
+                    <span>Contact Information for Privacy Concerns</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5 space-y-3">
+                  <p>
+                    If you have any questions, concerns, or requests regarding your privacy or this Privacy Policy, please contact us:
+                  </p>
+                  <div className="space-y-2 ml-2">
+                    <p><strong>Email:</strong> <a href="mailto:privacy@phynetix.me" className="text-primary hover:underline">privacy@phynetix.me</a></p>
+                    <p><strong>Support:</strong> <a href="mailto:contact@phynetix.me" className="text-primary hover:underline">contact@phynetix.me</a></p>
+                  </div>
+                  <p>
+                    We will make every effort to address your concerns promptly and transparently. This Privacy Policy may be updated periodically, and we will notify users of significant changes via email or platform notifications.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </motion.div>
         </div>
@@ -665,7 +716,9 @@ export default function LandingPage() {
             <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
               Terms & <span className="gradient-text">Conditions</span>
             </h2>
-           
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Effective Date: January 14, 2026
+            </p>
           </div>
 
           <motion.div
@@ -886,7 +939,63 @@ export default function LandingPage() {
                 </AccordionContent>
               </AccordionItem>
 
-             
+              <AccordionItem 
+                value="governing-law"
+                className="glass-card border border-border/50 rounded-xl px-6 data-[state=open]:bg-muted/30"
+              >
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  <div className="flex items-center gap-3">
+                    <Scale className="w-5 h-5 text-primary" />
+                    <span>Governing Law and Dispute Resolution</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5 space-y-3">
+                  <p>
+                    These Terms and Conditions are governed by the following provisions:
+                  </p>
+                  <div className="space-y-2">
+                    <p className="font-medium text-foreground">Governing Law:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>These terms are governed by the laws of India</li>
+                      <li>Any disputes will be subject to the exclusive jurisdiction of courts in New Delhi, India</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-medium text-foreground">Dispute Resolution:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li><strong>Informal Resolution:</strong> Contact us first at <a href="mailto:support@phynetix.me" className="text-primary hover:underline">support@phynetix.me</a> to resolve disputes informally</li>
+                      <li><strong>Mediation:</strong> If informal resolution fails, we agree to attempt mediation before litigation</li>
+                      <li><strong>Arbitration:</strong> Disputes may be resolved through binding arbitration as per Indian Arbitration and Conciliation Act</li>
+                      <li><strong>Class Action Waiver:</strong> You agree to resolve disputes individually and waive participation in class actions</li>
+                    </ul>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem 
+                value="contact-terms"
+                className="glass-card border border-border/50 rounded-xl px-6 data-[state=open]:bg-muted/30"
+              >
+                <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-5 h-5 text-primary" />
+                    <span>Contact Information</span>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground pb-5 space-y-3">
+                  <p>
+                    For questions, concerns, or support regarding these Terms and Conditions, please contact us:
+                  </p>
+                  <div className="space-y-2 ml-2">
+                    <p><strong>General Inquiries:</strong> <a href="mailto:contact@phynetix.me" className="text-primary hover:underline">contact@phynetix.me</a></p>
+                    <p><strong>Technical Support:</strong> <a href="mailto:support@phynetix.me" className="text-primary hover:underline">support@phynetix.me</a></p>
+                    <p><strong>Legal Questions:</strong> <a href="mailto:legal@phynetix.me" className="text-primary hover:underline">legal@phynetix.me</a></p>
+                  </div>
+                  <p>
+                    We are committed to addressing your concerns promptly and maintaining transparent communication with our users.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
             </Accordion>
           </motion.div>
         </div>
