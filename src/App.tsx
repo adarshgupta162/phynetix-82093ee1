@@ -62,7 +62,7 @@ const App = () => (
               <Route path="/question-bank" element={<QuestionBankPage />} />
               <Route path="/test/:testId" element={<NormalTestInterface />} />
               <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
-              <Route path="/test/:testId/analysis" element={<NormalTestAnalysis />} />
+              <Route path="/test/:testId/analysis" element={<AnalysisPage />} />
               <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
               <Route path="/analysis/:testId" element={<AnalysisPage />} />
               <Route path="/solutions/:testId" element={<SolutionsPage />} />

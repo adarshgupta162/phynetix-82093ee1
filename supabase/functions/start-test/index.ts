@@ -38,7 +38,7 @@ serve(async (req) => {
     // Check if user has already attempted this test
     const { data: existingAttempt, error: existingError } = await supabaseClient
       .from("test_attempts")
-      .select("id, completed_at, started_at, fullscreen_exit_count, answers")
+      .select("id, completed_at, started_at, fullscreen_exit_count, answers, time_per_question")
       .eq("test_id", test_id)
       .eq("user_id", user.id)
       .maybeSingle();
@@ -72,6 +72,7 @@ serve(async (req) => {
           duration_minutes: remainingMinutes,
           fullscreen_exit_count: existingAttempt.fullscreen_exit_count || 0,
           existing_answers: existingAttempt.answers || {},
+          existing_time_per_question: existingAttempt.time_per_question || {},
           is_resume: true,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }

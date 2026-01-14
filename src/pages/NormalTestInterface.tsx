@@ -67,6 +67,11 @@ export default function NormalTestInterface() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [testDuration, setTestDuration] = useState(0);
   const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
+  
+  // Time tracking per question
+  const [timePerQuestion, setTimePerQuestion] = useState<Record<string, number>>({});
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (testId) {
@@ -165,9 +170,12 @@ export default function NormalTestInterface() {
         setFullscreenExitCount(startData.fullscreen_exit_count);
       }
 
-      // Restore existing answers if resuming
+      // Restore existing answers and time per question if resuming
       if (startData.is_resume && startData.existing_answers) {
         setAnswers(startData.existing_answers);
+      }
+      if (startData.is_resume && startData.existing_time_per_question) {
+        setTimePerQuestion(startData.existing_time_per_question);
       }
 
       const { data: questionsData, error: questionsError } = await supabase.functions.invoke("get-test-questions", {
@@ -276,16 +284,85 @@ export default function NormalTestInterface() {
     }
   };
 
-  const markForReviewAndNext = () => {
+  // Save current question time when changing questions
+  const updateTimeForCurrentQuestion = useCallback(() => {
+    if (currentQuestion) {
+      const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
+      setTimePerQuestion(prev => ({
+        ...prev,
+        [currentQuestion.id]: (prev[currentQuestion.id] || 0) + timeSpent
+      }));
+    }
+  }, [currentQuestion, questionStartTime]);
+
+  // Auto-save answers and time to database
+  const saveProgress = useCallback(async () => {
+    if (!attemptId || isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      // Update time for current question before saving
+      const currentTimeSpent = currentQuestion 
+        ? Math.floor((Date.now() - questionStartTime) / 1000)
+        : 0;
+      
+      const updatedTimePerQuestion = currentQuestion 
+        ? {
+            ...timePerQuestion,
+            [currentQuestion.id]: (timePerQuestion[currentQuestion.id] || 0) + currentTimeSpent
+          }
+        : timePerQuestion;
+
+      const { error } = await supabase
+        .from("test_attempts")
+        .update({ 
+          answers,
+          time_per_question: updatedTimePerQuestion
+        })
+        .eq("id", attemptId);
+      
+      if (error) {
+        console.error("Failed to auto-save:", error);
+      } else {
+        console.log("Progress auto-saved");
+      }
+    } catch (error) {
+      console.error("Error saving progress:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [attemptId, answers, timePerQuestion, currentQuestion, questionStartTime, isSaving]);
+
+  const saveAndNext = async () => {
+    // Update time for current question
+    updateTimeForCurrentQuestion();
+    
+    // Reset timer for next question
+    setQuestionStartTime(Date.now());
+    
+    // Save progress to database
+    await saveProgress();
+    
+    // Move to next question
+    goToNextQuestion();
+  };
+
+  const markForReviewAndNext = async () => {
     if (currentQuestion) {
       const newMarked = new Set(markedForReview);
       newMarked.add(currentQuestion.id);
       setMarkedForReview(newMarked);
     }
-    goToNextQuestion();
-  };
-
-  const saveAndNext = () => {
+    
+    // Update time for current question
+    updateTimeForCurrentQuestion();
+    
+    // Reset timer for next question
+    setQuestionStartTime(Date.now());
+    
+    // Save progress to database
+    await saveProgress();
+    
     goToNextQuestion();
   };
 
