@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, AlertCircle, Target, Zap, BookOpen } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -13,6 +14,17 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+
+// Configuration constants
+const MARKS_PER_CORRECT = 4;
+const NEGATIVE_MARKS_PER_INCORRECT = 1;
+const DOABLE_UNATTEMPTED_RATIO = 0.5;
+const GAIN_MULTIPLIER = 1.25; // When fixing an error: +4 marks gained + 1 negative removed = 5 total gain per error
+const TIME_THRESHOLD_HIGH = 1.2; // For conceptual errors
+const TIME_THRESHOLD_LOW = 0.5; // For silly mistakes
+const MIN_POTENTIAL_GAIN_FOR_STRATEGY = 15;
+const INCORRECT_TO_SKIPPED_RATIO_THRESHOLD = 1.5;
+const MIN_SCENARIO_GAIN_FOR_STRATEGY = 20;
 
 interface SubjectPotential {
   name: string;
@@ -63,8 +75,8 @@ export function ScorePotential({
   subjects,
   questions,
 }: ScorePotentialProps) {
-  // Calculate potential scores for different error reduction scenarios
-  const calculateScenarios = () => {
+  // Memoize expensive calculations
+  const scenarios = useMemo(() => {
     const incorrectQuestions = questions.filter((q) => q.status === "incorrect");
     
     // Guard against division by zero
@@ -75,11 +87,9 @@ export function ScorePotential({
     }
     
     const marksPerIncorrect = marksLost / incorrectQuestions.length || 1;
-    // Gain per fixed error = negative removed + positive gained (assuming 4 marks positive, 1 negative)
-    const gainMultiplier = 1.33; // Approximate gain when fixing an error: 4 marks + 1 negative mark removed = 5.33 / 4 = 1.33x
     
     const calculateGain = (reductionPercent: number): number => {
-      return Math.round(marksPerIncorrect * incorrectQuestions.length * reductionPercent * gainMultiplier);
+      return Math.round(marksPerIncorrect * incorrectQuestions.length * reductionPercent * GAIN_MULTIPLIER);
     };
     
     return [
@@ -114,24 +124,22 @@ export function ScorePotential({
         realistic: false,
       },
     ];
-  };
-
-  const scenarios = calculateScenarios();
+  }, [questions, currentScore, marksLost]);
   const maxPotentialScore = scenarios[scenarios.length - 1].score;
   const maxGain = maxPotentialScore - currentScore;
 
-  // Calculate subject-wise potential
-  const calculateSubjectPotential = (): SubjectPotential[] => {
+  // Memoize subject-wise potential calculation
+  const subjectPotentials = useMemo((): SubjectPotential[] => {
     return subjects.map((subject) => {
       // Marks lost to incorrect answers (negative marks)
       const incorrectMarks = subject.negativeMarks;
       
       // Potential marks from incorrect (if fixed): negative removed + positive gained
-      const incorrectPotential = subject.incorrect * 4 + incorrectMarks;
+      const incorrectPotential = subject.incorrect * MARKS_PER_CORRECT + incorrectMarks;
       
-      // Assuming 50% of unattempted are doable
-      const doableUnattempted = Math.floor(subject.unattempted * 0.5);
-      const unattemptedPotential = doableUnattempted * 4;
+      // Conservative estimate: 50% of unattempted are doable
+      const doableUnattempted = Math.floor(subject.unattempted * DOABLE_UNATTEMPTED_RATIO);
+      const unattemptedPotential = doableUnattempted * MARKS_PER_CORRECT;
       
       return {
         name: subject.name,
@@ -142,24 +150,22 @@ export function ScorePotential({
         color: subject.color,
       };
     });
-  };
+  }, [subjects]);
 
-  const subjectPotentials = calculateSubjectPotential();
-  const bestSubject = subjectPotentials.reduce((max, curr) =>
-    curr.potentialGain > max.potentialGain ? curr : max
-  );
+  const bestSubject = useMemo(() => {
+    if (subjectPotentials.length === 0) return null;
+    return subjectPotentials.reduce((max, curr) =>
+      curr.potentialGain > max.potentialGain ? curr : max
+    );
+  }, [subjectPotentials]);
 
-  // Classify errors by type (simplified heuristic)
-  const calculateErrorTypes = (): ErrorTypeData[] => {
+  // Memoize error type classification
+  const errorTypes = useMemo((): ErrorTypeData[] => {
     const incorrectQuestions = questions.filter((q) => q.status === "incorrect");
     const total = incorrectQuestions.length;
     
     if (total === 0) {
-      return [
-        { type: "Conceptual Errors", marksLost: 0, percentage: 0, color: "hsl(217, 91%, 60%)" },
-        { type: "Calculation Mistakes", marksLost: 0, percentage: 0, color: "hsl(142, 76%, 45%)" },
-        { type: "Silly Mistakes", marksLost: 0, percentage: 0, color: "hsl(45, 93%, 50%)" },
-      ];
+      return [];
     }
 
     // Heuristic: Questions with high time spent are likely conceptual
@@ -171,9 +177,9 @@ export function ScorePotential({
     let silly = 0;
     
     incorrectQuestions.forEach((q) => {
-      if (q.timeSpent > avgTime * 1.2) {
+      if (q.timeSpent > avgTime * TIME_THRESHOLD_HIGH) {
         conceptual++;
-      } else if (q.timeSpent > avgTime * 0.5) {
+      } else if (q.timeSpent > avgTime * TIME_THRESHOLD_LOW) {
         calculation++;
       } else {
         silly++;
@@ -202,42 +208,41 @@ export function ScorePotential({
         color: "hsl(45, 93%, 50%)",
       },
     ].filter((e) => e.marksLost > 0);
-  };
+  }, [questions, marksLost]);
 
-  const errorTypes = calculateErrorTypes();
-  const topErrorType = errorTypes.length > 0 
-    ? errorTypes.reduce((max, curr) => (curr.marksLost > max.marksLost ? curr : max))
-    : null;
+  const topErrorType = useMemo(() => {
+    if (errorTypes.length === 0) return null;
+    return errorTypes.reduce((max, curr) => (curr.marksLost > max.marksLost ? curr : max));
+  }, [errorTypes]);
 
-  // Generate actionable strategies
-  const generateStrategies = (): string[] => {
-    const strategies: string[] = [];
+  // Memoize strategy generation
+  const strategies = useMemo((): string[] => {
+    const result: string[] = [];
     
     if (topErrorType && topErrorType.marksLost > 0) {
-      strategies.push(
-        `Focus on reducing ${topErrorType.type.toLowerCase()} first (+${Math.round(topErrorType.marksLost * 1.33)} marks potential)`
+      result.push(
+        `Focus on reducing ${topErrorType.type.toLowerCase()} first (+${Math.round(topErrorType.marksLost * GAIN_MULTIPLIER)} marks potential)`
       );
     }
     
-    if (bestSubject && bestSubject.potentialGain > 15) {
-      strategies.push(`${bestSubject.name} offers fastest score improvement`);
+    if (bestSubject && bestSubject.potentialGain > MIN_POTENTIAL_GAIN_FOR_STRATEGY) {
+      result.push(`${bestSubject.name} offers fastest score improvement`);
     }
     
     const incorrectCount = questions.filter((q) => q.status === "incorrect").length;
     const skippedCount = questions.filter((q) => q.status === "skipped").length;
     
-    if (incorrectCount > skippedCount * 1.5) {
-      strategies.push("Avoid risky guesses; they reduce net score potential");
+    if (incorrectCount > skippedCount * INCORRECT_TO_SKIPPED_RATIO_THRESHOLD) {
+      result.push("Avoid risky guesses; they reduce net score potential");
     }
     
-    if (scenarios[1].gain > 20) {
-      strategies.push(`Even 25% error reduction can add ${scenarios[1].gain} marks`);
+    // Check if scenarios array has enough elements before accessing index
+    if (scenarios.length > 1 && scenarios[1].gain > MIN_SCENARIO_GAIN_FOR_STRATEGY) {
+      result.push(`Even 25% error reduction can add ${scenarios[1].gain} marks`);
     }
 
-    return strategies.length > 0 ? strategies : ["Keep practicing to identify improvement areas"];
-  };
-
-  const strategies = generateStrategies();
+    return result.length > 0 ? result : ["Keep practicing to identify improvement areas"];
+  }, [topErrorType, bestSubject, questions, scenarios]);
 
   // Chart tooltip formatter
   const formatTooltip = (value: number, _name: string, props: { payload: { gain: number } }) => [
@@ -355,17 +360,19 @@ export function ScorePotential({
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-4 text-sm">
-            {scenarios.slice(1, 3).map((scenario) => (
-              <div key={scenario.label} className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-primary" />
-                <span className="text-muted-foreground">
-                  {scenario.label}: <span className="font-semibold">{scenario.score}</span>{" "}
-                  <span className="text-success">(+{scenario.gain})</span>
-                </span>
-              </div>
-            ))}
-          </div>
+          {scenarios.length > 2 && (
+            <div className="mt-4 flex flex-wrap gap-4 text-sm">
+              {scenarios.slice(1, 3).map((scenario) => (
+                <div key={scenario.label} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-primary" />
+                  <span className="text-muted-foreground">
+                    {scenario.label}: <span className="font-semibold">{scenario.score}</span>{" "}
+                    <span className="text-success">(+{scenario.gain})</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       </motion.div>
 
@@ -389,59 +396,73 @@ export function ScorePotential({
           </div>
 
           <div className="space-y-4">
-            {subjectPotentials.map((subject, index) => (
-              <motion.div
-                key={subject.name}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 + index * 0.1 }}
-                className={cn(
-                  "p-4 rounded-lg border transition-all",
-                  subject.name === bestSubject.name
-                    ? "bg-primary/10 border-primary/30"
-                    : "bg-secondary/30 border-border"
-                )}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: subject.color }}
-                    />
-                    <h4 className="font-semibold">{subject.name}</h4>
-                    {subject.name === bestSubject.name && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-primary/20 text-primary font-medium">
-                        Best ROI
-                      </span>
+            {subjectPotentials.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No subject data available for analysis
+              </p>
+            ) : (
+              subjectPotentials.map((subject, index) => {
+                // Calculate progress value safely to avoid NaN
+                const totalScore = subject.potentialGain + subject.currentScore;
+                const progressValue = totalScore > 0 
+                  ? (subject.potentialGain / totalScore) * 100 
+                  : 0;
+                
+                return (
+                  <motion.div
+                    key={subject.name}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + index * 0.1 }}
+                    className={cn(
+                      "p-4 rounded-lg border transition-all",
+                      bestSubject && subject.name === bestSubject.name
+                        ? "bg-primary/10 border-primary/30"
+                        : "bg-secondary/30 border-border"
                     )}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary">+{subject.potentialGain}</p>
-                    <p className="text-xs text-muted-foreground">potential marks</p>
-                  </div>
-                </div>
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: subject.color }}
+                        />
+                        <h4 className="font-semibold">{subject.name}</h4>
+                        {bestSubject && subject.name === bestSubject.name && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-primary/20 text-primary font-medium">
+                            Best ROI
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-primary">+{subject.potentialGain}</p>
+                        <p className="text-xs text-muted-foreground">potential marks</p>
+                      </div>
+                    </div>
 
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground mb-1">Current Score</p>
-                    <p className="font-semibold">{subject.currentScore}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Lost to Errors</p>
-                    <p className="font-semibold text-destructive">-{subject.incorrectMarks}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground mb-1">Doable Unattempted</p>
-                    <p className="font-semibold">{subject.unattemptedDoable} qs</p>
-                  </div>
-                </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-muted-foreground mb-1">Current Score</p>
+                        <p className="font-semibold">{subject.currentScore}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground mb-1">Lost to Errors</p>
+                        <p className="font-semibold text-destructive">-{subject.incorrectMarks}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground mb-1">Doable Unattempted</p>
+                        <p className="font-semibold">{subject.unattemptedDoable} questions</p>
+                      </div>
+                    </div>
 
-                <Progress
-                  value={(subject.potentialGain / (subject.potentialGain + subject.currentScore)) * 100}
-                  className="mt-3 h-2"
-                />
-              </motion.div>
-            ))}
+                    <Progress
+                      value={progressValue}
+                      className="mt-3 h-2"
+                    />
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         </Card>
       </motion.div>
