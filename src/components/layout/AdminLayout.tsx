@@ -114,7 +114,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex admin-layout">
       {/* Sidebar */}
       <motion.aside
         initial={false}
