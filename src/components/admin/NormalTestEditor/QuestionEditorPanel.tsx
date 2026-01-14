@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   GripVertical, Plus, Trash2, Copy, MoveUp, MoveDown, 
   Save, X, Check, Image as ImageIcon, ToggleLeft, ToggleRight 
@@ -67,6 +68,7 @@ export function QuestionEditorPanel({
   chapters = [],
   courses = []
 }: QuestionEditorPanelProps) {
+  const navigate = useNavigate();
   const [localQuestion, setLocalQuestion] = useState<Question | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -179,6 +181,14 @@ export function QuestionEditorPanel({
               Bonus
             </span>
           )}
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => navigate(`/admin/custom-question-editor/${localQuestion.test_id}/${localQuestion.id}`)}
+            className="text-xs text-primary"
+          >
+            Open in Custom Editor
+          </Button>
         </div>
         
         <div className="flex items-center gap-2">
