@@ -112,6 +112,9 @@ export default function AnalysisPage() {
         return;
       }
 
+      // Parse time_per_question from attempt
+      const timePerQuestion: Record<string, number> = (attempt as any).time_per_question || {};
+
       // Fetch all attempts for ranking
       const { count: totalStudents } = await supabase
         .from("test_attempts")
@@ -208,7 +211,6 @@ export default function AnalysisPage() {
         const stats = subjectStats.get(subject)!;
         stats.totalQuestions++;
         stats.totalMarks += q.marks;
-        stats.timeSeconds += q.time_seconds;
 
         const userAnswer = userAnswers[q.id];
         const correctAnswer = q.correct_answer;
@@ -233,9 +235,13 @@ export default function AnalysisPage() {
           status = "incorrect";
         }
 
+        // Get actual time spent on this question from tracking data
+        const actualTimeSpent = timePerQuestion[q.id] || 0;
+        stats.timeSeconds += actualTimeSpent;
+
         questionResults.push({
           questionNumber: idx + 1,
-          timeSpent: q.time_seconds || Math.floor(Math.random() * 120) + 30,
+          timeSpent: actualTimeSpent > 0 ? actualTimeSpent : Math.floor(Math.random() * 120) + 30,
           subject,
           status,
         });

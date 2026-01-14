@@ -589,6 +589,7 @@ export type Database = {
           score: number | null
           started_at: string
           test_id: string
+          time_per_question: Json | null
           time_taken_seconds: number | null
           total_marks: number | null
           user_id: string
@@ -605,6 +606,7 @@ export type Database = {
           score?: number | null
           started_at?: string
           test_id: string
+          time_per_question?: Json | null
           time_taken_seconds?: number | null
           total_marks?: number | null
           user_id: string
@@ -621,6 +623,7 @@ export type Database = {
           score?: number | null
           started_at?: string
           test_id?: string
+          time_per_question?: Json | null
           time_taken_seconds?: number | null
           total_marks?: number | null
           user_id?: string
