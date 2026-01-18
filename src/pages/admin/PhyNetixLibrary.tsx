@@ -28,8 +28,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
-import { QuestionImageUpload } from "@/components/admin/QuestionImageUpload";
 import { cn } from "@/lib/utils";
+import { getSubjects, getChaptersForSubject, getTopicsForChapter } from "@/lib/jeeData";
 
 interface LibraryQuestion {
   id: string;
@@ -60,7 +60,7 @@ const DEFAULT_OPTIONS = [
   { label: 'D', text: '', image_url: null }
 ];
 
-const SUBJECTS = ['Physics', 'Chemistry', 'Mathematics'];
+const SUBJECTS = getSubjects();
 const DIFFICULTIES = ['easy', 'medium', 'hard'];
 const QUESTION_TYPES = [
   { value: 'single_choice', label: 'Single Choice' },
@@ -103,6 +103,13 @@ export default function PhyNetixLibrary() {
     tags: [] as string[]
   });
 
+  // Available chapters and topics based on selection
+  const availableChapters = getChaptersForSubject(formData.subject);
+  const availableTopics = formData.chapter ? getTopicsForChapter(formData.subject, formData.chapter) : [];
+
+  // Image upload state
+  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+
   const fetchQuestions = useCallback(async () => {
     setLoading(true);
     try {
@@ -135,6 +142,18 @@ export default function PhyNetixLibrary() {
   useEffect(() => {
     fetchQuestions();
   }, [fetchQuestions]);
+
+  // Reset chapter and topic when subject changes
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, chapter: '', topic: '' }));
+  }, [formData.subject]);
+
+  // Reset topic when chapter changes
+  useEffect(() => {
+    if (!availableTopics.includes(formData.topic)) {
+      setFormData(prev => ({ ...prev, topic: '' }));
+    }
+  }, [formData.chapter, availableTopics, formData.topic]);
 
   const filteredQuestions = questions.filter(q => {
     if (!searchQuery) return true;
@@ -289,6 +308,122 @@ export default function PhyNetixLibrary() {
     toast({ title: "Library ID copied!" });
   };
 
+  // Image upload handler
+  const handleImageUpload = async (file: File, type: 'question' | 'solution' | 'option', optionIndex?: number) => {
+    const uploadKey = type === 'option' ? `option-${optionIndex}` : type;
+    setUploadingImage(uploadKey);
+
+    try {
+      if (!file.type.startsWith("image/")) {
+        toast({ title: "Invalid file type", description: "Please upload an image file", variant: "destructive" });
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: "File too large", description: "Maximum file size is 5MB", variant: "destructive" });
+        return;
+      }
+
+      const fileName = `question-images/${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      
+      const { data, error } = await supabase.storage
+        .from("test-pdfs")
+        .upload(fileName, file, { cacheControl: "3600", upsert: false });
+
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage
+        .from("test-pdfs")
+        .getPublicUrl(data.path);
+
+      const publicUrl = urlData.publicUrl;
+
+      if (type === 'question') {
+        setFormData(prev => ({ ...prev, question_image_url: publicUrl }));
+      } else if (type === 'solution') {
+        setFormData(prev => ({ ...prev, solution_image_url: publicUrl }));
+      } else if (type === 'option' && optionIndex !== undefined) {
+        handleOptionChange(optionIndex, 'image_url', publicUrl);
+      }
+
+      toast({ title: "Image uploaded!" });
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploadingImage(null);
+    }
+  };
+
+  const ImageUploadButton = ({ 
+    type, 
+    optionIndex, 
+    currentUrl,
+    onRemove
+  }: { 
+    type: 'question' | 'solution' | 'option';
+    optionIndex?: number;
+    currentUrl: string | null;
+    onRemove: () => void;
+  }) => {
+    const uploadKey = type === 'option' ? `option-${optionIndex}` : type;
+    const isUploading = uploadingImage === uploadKey;
+
+    return (
+      <div className="space-y-2">
+        {currentUrl ? (
+          <div className="relative inline-block">
+            <img
+              src={currentUrl}
+              alt="Uploaded"
+              className="max-w-full h-auto max-h-32 rounded-lg border border-border object-contain bg-muted"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon"
+              className="absolute -top-2 -right-2 h-6 w-6"
+              onClick={onRemove}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        ) : (
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleImageUpload(file, type, optionIndex);
+                e.target.value = '';
+              }}
+              disabled={isUploading}
+            />
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-2 border border-dashed rounded-lg hover:bg-muted/50 transition-colors",
+              isUploading && "opacity-50 pointer-events-none"
+            )}>
+              {isUploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              )}
+              <span className="text-sm text-muted-foreground">
+                {isUploading ? "Uploading..." : "Add Image"}
+              </span>
+            </div>
+          </label>
+        )}
+      </div>
+    );
+  };
+
   return (
     <AdminLayout>
       <div className="h-[calc(100vh-2rem)] flex flex-col">
@@ -423,7 +558,11 @@ export default function PhyNetixLibrary() {
                       <img
                         src={q.question_image_url}
                         alt="Question"
-                        className="w-full h-24 object-cover rounded-lg mb-2"
+                        className="w-full h-24 object-cover rounded-lg mb-2 bg-muted"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
                       />
                     ) : null}
                     <p className="text-sm line-clamp-2">
@@ -458,22 +597,25 @@ export default function PhyNetixLibrary() {
           )}
         </ScrollArea>
 
-        {/* Editor Dialog */}
+        {/* Editor Dialog - Full height scrollable */}
         <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <DialogHeader>
+          <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+            <DialogHeader className="px-6 py-4 border-b shrink-0">
               <DialogTitle>
                 {editingQuestion ? 'Edit Question' : 'Add New Question'}
               </DialogTitle>
             </DialogHeader>
 
-            <ScrollArea className="flex-1 pr-4">
+            <div className="flex-1 overflow-y-auto px-6">
               <div className="space-y-6 py-4">
                 {/* Metadata Row */}
                 <div className="grid grid-cols-4 gap-4">
                   <div>
                     <Label>Subject *</Label>
-                    <Select value={formData.subject} onValueChange={(v) => setFormData({ ...formData, subject: v })}>
+                    <Select 
+                      value={formData.subject} 
+                      onValueChange={(v) => setFormData({ ...formData, subject: v, chapter: '', topic: '' })}
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {SUBJECTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -482,23 +624,43 @@ export default function PhyNetixLibrary() {
                   </div>
                   <div>
                     <Label>Chapter</Label>
-                    <Input
-                      value={formData.chapter}
-                      onChange={(e) => setFormData({ ...formData, chapter: e.target.value })}
-                      placeholder="e.g., Mechanics"
-                    />
+                    <Select 
+                      value={formData.chapter} 
+                      onValueChange={(v) => setFormData({ ...formData, chapter: v, topic: '' })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select chapter" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {availableChapters.map(c => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label>Topic</Label>
-                    <Input
-                      value={formData.topic}
-                      onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                      placeholder="e.g., Newton's Laws"
-                    />
+                    <Select 
+                      value={formData.topic} 
+                      onValueChange={(v) => setFormData({ ...formData, topic: v })}
+                      disabled={!formData.chapter}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={formData.chapter ? "Select topic" : "Select chapter first"} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        {availableTopics.map(t => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label>Question Type</Label>
-                    <Select value={formData.question_type} onValueChange={(v) => setFormData({ ...formData, question_type: v, correct_answer: v === 'multiple_choice' ? [] : '' })}>
+                    <Select 
+                      value={formData.question_type} 
+                      onValueChange={(v) => setFormData({ ...formData, question_type: v, correct_answer: v === 'multiple_choice' ? [] : '' })}
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {QUESTION_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
@@ -557,16 +719,25 @@ export default function PhyNetixLibrary() {
                       placeholder="Enter question text..."
                       className="min-h-[120px] font-mono"
                     />
-                    <QuestionImageUpload
-                      value={formData.question_image_url}
-                      onChange={(url) => setFormData({ ...formData, question_image_url: url })}
+                    <ImageUploadButton
+                      type="question"
+                      currentUrl={formData.question_image_url}
+                      onRemove={() => setFormData({ ...formData, question_image_url: null })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Preview</Label>
                     <div className="min-h-[120px] p-4 bg-secondary/50 rounded-lg border">
                       {formData.question_image_url && (
-                        <img src={formData.question_image_url} alt="Question" className="max-h-32 mb-2 rounded" />
+                        <img 
+                          src={formData.question_image_url} 
+                          alt="Question" 
+                          className="max-h-32 mb-2 rounded bg-muted object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
                       )}
                       {formData.question_text ? (
                         <LatexRenderer content={formData.question_text} className="text-sm" />
@@ -609,10 +780,11 @@ export default function PhyNetixLibrary() {
                             onChange={(e) => handleOptionChange(index, 'text', e.target.value)}
                             placeholder={`Option ${option.label}...`}
                           />
-                          <QuestionImageUpload
-                            value={option.image_url}
-                            onChange={(url) => handleOptionChange(index, 'image_url', url)}
-                            compact
+                          <ImageUploadButton
+                            type="option"
+                            optionIndex={index}
+                            currentUrl={option.image_url}
+                            onRemove={() => handleOptionChange(index, 'image_url', null)}
                           />
                         </div>
                       </div>
@@ -644,16 +816,25 @@ export default function PhyNetixLibrary() {
                       placeholder="Enter solution explanation..."
                       className="min-h-[100px] font-mono"
                     />
-                    <QuestionImageUpload
-                      value={formData.solution_image_url}
-                      onChange={(url) => setFormData({ ...formData, solution_image_url: url })}
+                    <ImageUploadButton
+                      type="solution"
+                      currentUrl={formData.solution_image_url}
+                      onRemove={() => setFormData({ ...formData, solution_image_url: null })}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Solution Preview</Label>
                     <div className="min-h-[100px] p-4 bg-secondary/50 rounded-lg border">
                       {formData.solution_image_url && (
-                        <img src={formData.solution_image_url} alt="Solution" className="max-h-24 mb-2 rounded" />
+                        <img 
+                          src={formData.solution_image_url} 
+                          alt="Solution" 
+                          className="max-h-24 mb-2 rounded bg-muted object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
                       )}
                       {formData.solution_text ? (
                         <LatexRenderer content={formData.solution_text} className="text-sm" />
@@ -664,9 +845,9 @@ export default function PhyNetixLibrary() {
                   </div>
                 </div>
               </div>
-            </ScrollArea>
+            </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
+            <div className="flex justify-end gap-2 px-6 py-4 border-t shrink-0">
               <Button variant="outline" onClick={() => setIsEditorOpen(false)}>Cancel</Button>
               <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
@@ -678,7 +859,7 @@ export default function PhyNetixLibrary() {
 
         {/* View Question Dialog */}
         <Dialog open={!!viewQuestion} onOpenChange={() => setViewQuestion(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <span className="font-mono text-primary">{viewQuestion?.library_id}</span>
@@ -688,7 +869,7 @@ export default function PhyNetixLibrary() {
             
             {viewQuestion && (
               <div className="space-y-4">
-                <div className="flex gap-2 text-sm">
+                <div className="flex gap-2 text-sm flex-wrap">
                   <Badge>{viewQuestion.subject}</Badge>
                   {viewQuestion.chapter && <Badge variant="secondary">{viewQuestion.chapter}</Badge>}
                   {viewQuestion.topic && <Badge variant="outline">{viewQuestion.topic}</Badge>}
@@ -702,7 +883,15 @@ export default function PhyNetixLibrary() {
                 </div>
 
                 {viewQuestion.question_image_url && (
-                  <img src={viewQuestion.question_image_url} alt="Question" className="max-w-full rounded-lg" />
+                  <img 
+                    src={viewQuestion.question_image_url} 
+                    alt="Question" 
+                    className="max-w-full rounded-lg bg-muted"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
                 )}
                 
                 {viewQuestion.question_text && (
@@ -729,7 +918,17 @@ export default function PhyNetixLibrary() {
                             {opt.label}
                           </span>
                           <div className="flex-1">
-                            {opt.image_url && <img src={opt.image_url} alt="" className="max-h-16 mb-1 rounded" />}
+                            {opt.image_url && (
+                              <img 
+                                src={opt.image_url} 
+                                alt="" 
+                                className="max-h-16 mb-1 rounded bg-muted"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            )}
                             {opt.text && <LatexRenderer content={opt.text} className="text-sm" />}
                           </div>
                         </div>
@@ -749,7 +948,15 @@ export default function PhyNetixLibrary() {
                   <div className="pt-4 border-t">
                     <p className="text-sm font-medium mb-2">Solution</p>
                     {viewQuestion.solution_image_url && (
-                      <img src={viewQuestion.solution_image_url} alt="Solution" className="max-w-full rounded-lg mb-2" />
+                      <img 
+                        src={viewQuestion.solution_image_url} 
+                        alt="Solution" 
+                        className="max-w-full rounded-lg mb-2 bg-muted"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
                     )}
                     {viewQuestion.solution_text && (
                       <div className="p-4 bg-secondary/50 rounded-lg">
