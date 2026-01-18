@@ -37,23 +37,38 @@ export default function AuthPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signIn, signUp, user, isAdmin, isLoading: authLoading } = useAuth();
 
+  // Check if returning from OAuth callback
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    if (accessToken) {
+      setIsRedirecting(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (!authLoading && user) {
+      setIsRedirecting(true);
+      toast({
+        title: "Welcome!",
+        description: "Redirecting to your dashboard...",
+      });
       const timer = setTimeout(() => {
         if (isAdmin) {
           navigate("/admin");
         } else {
           navigate("/dashboard");
         }
-      }, 100);
+      }, 500);
       return () => clearTimeout(timer);
     }
-  }, [user, isAdmin, authLoading, navigate]);
+  }, [user, isAdmin, authLoading, navigate, toast]);
 
   const validateForm = () => {
     try {
@@ -174,6 +189,32 @@ export default function AuthPage() {
       default: return 'Enter your credentials to continue';
     }
   };
+
+  // Show full-page loading when redirecting after OAuth
+  if (isRedirecting || (authLoading && !user)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="floating-orb w-96 h-96 bg-primary/30 top-20 -left-48" />
+          <div className="floating-orb w-80 h-80 bg-accent/30 bottom-20 -right-40" style={{ animationDelay: '2s' }} />
+        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-6 z-10"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-r from-blue-600 via-purple-600 to-fuchsia-600 flex items-center justify-center">
+            <Sparkles className="w-9 h-9 text-white" />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-lg font-medium text-foreground">Signing you in...</p>
+            <p className="text-sm text-muted-foreground">Please wait while we set up your session</p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex relative overflow-hidden">
