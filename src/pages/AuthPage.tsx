@@ -8,9 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { getAuthRedirectTo } from "@/lib/canonical";
 import { z } from "zod";
-
-const PRODUCTION_URL = "https://phynetix.me";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -44,14 +43,6 @@ export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('rememberMe') === 'true';
   });
-
-  // Get the appropriate redirect URL based on environment
-  const getRedirectUrl = (path: string) => {
-    const isProduction = window.location.hostname === 'phynetix.me' || 
-                         window.location.hostname === 'www.phynetix.me' ||
-                         window.location.hostname === 'phynetix.lovable.app';
-    return isProduction ? `${PRODUCTION_URL}${path}` : `${window.location.origin}${path}`;
-  };
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -90,11 +81,11 @@ export default function AuthPage() {
       });
       const timer = setTimeout(() => {
         const redirectPath = isAdmin ? "/admin" : "/dashboard";
-        const fullUrl = getRedirectUrl(redirectPath);
-        
-        // If on production domain or should redirect to production
-        if (fullUrl.includes('phynetix.me')) {
-          window.location.href = fullUrl;
+        const destination = getAuthRedirectTo(redirectPath);
+
+        // Full redirect when forcing canonical domain (phynetix.me)
+        if (new URL(destination).origin !== window.location.origin) {
+          window.location.href = destination;
         } else {
           navigate(redirectPath);
         }
@@ -133,7 +124,7 @@ export default function AuthPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: getRedirectUrl('/dashboard'),
+          redirectTo: getAuthRedirectTo('/dashboard'),
         }
       });
       if (error) {
@@ -187,7 +178,7 @@ export default function AuthPage() {
         }
       } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth?mode=reset`,
+          redirectTo: getAuthRedirectTo('/auth?mode=reset'),
         });
         if (error) {
           toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -200,6 +191,7 @@ export default function AuthPage() {
       setIsLoading(false);
     }
   };
+
 
   const benefits = [
     "Access to 10,000+ practice questions",
