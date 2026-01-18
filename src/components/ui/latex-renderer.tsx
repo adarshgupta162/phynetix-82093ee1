@@ -12,7 +12,7 @@ interface LatexRendererProps {
  * Renders text with LaTeX math expressions
  * Supports:
  * - Inline math: $...$
- * - Display math: $$...$$
+ * - Display math: $$...$$, \[...\]
  * - Regular text mixed with math
  */
 export function LatexRenderer({ content, className = '', displayMode = false }: LatexRendererProps) {
@@ -20,8 +20,9 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
     if (!content) return '';
     
     try {
-      // Pattern to match display math ($$...$$) and inline math ($...$)
-      const mathPattern = /\$\$([\s\S]*?)\$\$|\$((?:[^$\\]|\\.)+?)\$/g;
+      // Pattern to match display math ($$...$$ or \[...\]) and inline math ($...$)
+      // Order matters: check $$ before $, and \[ before everything else
+      const mathPattern = /\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$((?:[^$\\]|\\.)+?)\$/g;
       
       let lastIndex = 0;
       const parts: string[] = [];
@@ -34,8 +35,9 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
         }
         
         // Determine if it's display or inline math
-        const isDisplayMath = match[1] !== undefined;
-        const mathContent = isDisplayMath ? match[1] : match[2];
+        // match[1] = \[...\], match[2] = $$...$$, match[3] = $...$
+        const isDisplayMath = match[1] !== undefined || match[2] !== undefined;
+        const mathContent = match[1] || match[2] || match[3];
         
         try {
           const rendered = katex.renderToString(mathContent.trim(), {
