@@ -21,7 +21,11 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
     
     try {
       // Pattern to match display math ($$...$$ or \[...\]) and inline math ($...$)
-      // Order matters: check $$ before $, and \[ before everything else
+      // Regex breakdown:
+      //   \\\[([\s\S]*?)\\\]  - Matches \[...\] (LaTeX display math, capture group 1)
+      //   \$\$([\s\S]*?)\$\$  - Matches $$...$$ (display math, capture group 2)
+      //   \$((?:[^$\\]|\\.)+?)\$ - Matches $...$ (inline math, capture group 3)
+      // Order matters: \[ is checked first, then $$, then $ to prevent mismatches
       const mathPattern = /\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$((?:[^$\\]|\\.)+?)\$/g;
       
       let lastIndex = 0;
