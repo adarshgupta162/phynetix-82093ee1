@@ -199,6 +199,81 @@ export type Database = {
         }
         Relationships: []
       }
+      phynetix_library: {
+        Row: {
+          chapter: string | null
+          correct_answer: Json
+          created_at: string
+          created_by: string | null
+          difficulty: string | null
+          id: string
+          is_active: boolean | null
+          library_id: string
+          marks: number | null
+          negative_marks: number | null
+          options: Json | null
+          question_image_url: string | null
+          question_text: string | null
+          question_type: string
+          solution_image_url: string | null
+          solution_text: string | null
+          subject: string
+          tags: string[] | null
+          time_seconds: number | null
+          topic: string | null
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          chapter?: string | null
+          correct_answer: Json
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string | null
+          id?: string
+          is_active?: boolean | null
+          library_id?: string
+          marks?: number | null
+          negative_marks?: number | null
+          options?: Json | null
+          question_image_url?: string | null
+          question_text?: string | null
+          question_type?: string
+          solution_image_url?: string | null
+          solution_text?: string | null
+          subject: string
+          tags?: string[] | null
+          time_seconds?: number | null
+          topic?: string | null
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          chapter?: string | null
+          correct_answer?: Json
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string | null
+          id?: string
+          is_active?: boolean | null
+          library_id?: string
+          marks?: number | null
+          negative_marks?: number | null
+          options?: Json | null
+          question_image_url?: string | null
+          question_text?: string | null
+          question_type?: string
+          solution_image_url?: string | null
+          solution_text?: string | null
+          subject?: string
+          tags?: string[] | null
+          time_seconds?: number | null
+          topic?: string | null
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           academic_status: string | null
@@ -676,12 +751,14 @@ export type Database = {
       }
       test_section_questions: {
         Row: {
+          chapter: string | null
           correct_answer: Json
           created_at: string
           difficulty: string | null
           id: string
           image_url: string | null
           is_bonus: boolean | null
+          library_question_id: string | null
           marks: number | null
           negative_marks: number | null
           options: Json | null
@@ -694,15 +771,18 @@ export type Database = {
           solution_text: string | null
           test_id: string
           time_seconds: number | null
+          topic: string | null
           updated_at: string
         }
         Insert: {
+          chapter?: string | null
           correct_answer: Json
           created_at?: string
           difficulty?: string | null
           id?: string
           image_url?: string | null
           is_bonus?: boolean | null
+          library_question_id?: string | null
           marks?: number | null
           negative_marks?: number | null
           options?: Json | null
@@ -715,15 +795,18 @@ export type Database = {
           solution_text?: string | null
           test_id: string
           time_seconds?: number | null
+          topic?: string | null
           updated_at?: string
         }
         Update: {
+          chapter?: string | null
           correct_answer?: Json
           created_at?: string
           difficulty?: string | null
           id?: string
           image_url?: string | null
           is_bonus?: boolean | null
+          library_question_id?: string | null
           marks?: number | null
           negative_marks?: number | null
           options?: Json | null
@@ -736,9 +819,17 @@ export type Database = {
           solution_text?: string | null
           test_id?: string
           time_seconds?: number | null
+          topic?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "test_section_questions_library_question_id_fkey"
+            columns: ["library_question_id"]
+            isOneToOne: false
+            referencedRelation: "phynetix_library"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "test_section_questions_section_id_fkey"
             columns: ["section_id"]
