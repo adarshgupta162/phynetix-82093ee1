@@ -38,6 +38,8 @@ import NormalTestAnalytics from "./pages/admin/NormalTestAnalytics";
 import StaffCommunity from "./pages/admin/StaffCommunity";
 import AuditLogs from "./pages/admin/AuditLogs";
 import StaffRequests from "./pages/admin/StaffRequests";
+import PhyNetixLibrary from "./pages/admin/PhyNetixLibrary";
+import FullscreenTestEditor from "./pages/admin/FullscreenTestEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -85,6 +87,8 @@ const App = () => (
               <Route path="/admin/community" element={<AdminRoute><StaffCommunity /></AdminRoute>} />
               <Route path="/admin/audit-logs" element={<AdminRoute><AuditLogs /></AdminRoute>} />
               <Route path="/admin/requests" element={<AdminRoute><StaffRequests /></AdminRoute>} />
+              <Route path="/admin/phynetix-library" element={<AdminRoute><PhyNetixLibrary /></AdminRoute>} />
+              <Route path="/admin/fullscreen-editor/:testId" element={<AdminRoute><FullscreenTestEditor /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ProfileGuard>

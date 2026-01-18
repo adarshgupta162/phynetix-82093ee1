@@ -15,7 +15,8 @@ import {
   MessageSquare,
   History,
   Send,
-  Bell
+  Bell,
+  Library
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const navItems = [
   { icon: FileText, label: "PDF Tests", path: "/admin/pdf-tests" },
   { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
   { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
+  { icon: Library, label: "PhyNetix Library", path: "/admin/phynetix-library" },
   { icon: Users, label: "Users", path: "/admin/users" },
   { icon: MessageSquare, label: "Community", path: "/admin/community" },
   { icon: Send, label: "Requests", path: "/admin/requests" },

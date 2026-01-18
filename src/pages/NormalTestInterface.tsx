@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import FullscreenGuard from "@/components/test/FullscreenGuard";
+import { LatexRenderer } from "@/components/ui/latex-renderer";
 
 interface Question {
   id: string;
@@ -788,9 +789,9 @@ export default function NormalTestInterface() {
             )}
             
             {currentQuestion?.question_text && (
-              <p className="text-base leading-relaxed text-gray-800 mb-6">
-                {currentQuestion.question_text}
-              </p>
+              <div className="text-base leading-relaxed text-gray-800 mb-6">
+                <LatexRenderer content={currentQuestion.question_text} />
+              </div>
             )}
 
             {/* Answer Input - Different for Integer vs MCQ */}
@@ -831,7 +832,9 @@ export default function NormalTestInterface() {
                       {String.fromCharCode(65 + index)}
                     </span>
                     <div className="flex-1">
-                      <span className="text-gray-700 block">{option.text}</span>
+                      <span className="text-gray-700 block">
+                        <LatexRenderer content={option.text} />
+                      </span>
                       {option.image_url && (
                         <img 
                           src={option.image_url} 
