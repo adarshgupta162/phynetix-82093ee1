@@ -4,10 +4,13 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, User, Sparkles, ArrowRight, CheckCircle2, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+
+const PRODUCTION_URL = "https://phynetix.me";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -38,6 +41,17 @@ export default function AuthPage() {
   const [message, setMessage] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('rememberMe') === 'true';
+  });
+
+  // Get the appropriate redirect URL based on environment
+  const getRedirectUrl = (path: string) => {
+    const isProduction = window.location.hostname === 'phynetix.me' || 
+                         window.location.hostname === 'www.phynetix.me' ||
+                         window.location.hostname === 'phynetix.lovable.app';
+    return isProduction ? `${PRODUCTION_URL}${path}` : `${window.location.origin}${path}`;
+  };
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -52,6 +66,21 @@ export default function AuthPage() {
     }
   }, []);
 
+  // Handle remember me - clear session on browser close if not checked
+  useEffect(() => {
+    localStorage.setItem('rememberMe', String(rememberMe));
+    
+    if (!rememberMe) {
+      const handleBeforeUnload = () => {
+        // Mark session for cleanup
+        sessionStorage.setItem('sessionActive', 'true');
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [rememberMe]);
+
   useEffect(() => {
     if (!authLoading && user) {
       setIsRedirecting(true);
@@ -60,10 +89,14 @@ export default function AuthPage() {
         description: "Redirecting to your dashboard...",
       });
       const timer = setTimeout(() => {
-        if (isAdmin) {
-          navigate("/admin");
+        const redirectPath = isAdmin ? "/admin" : "/dashboard";
+        const fullUrl = getRedirectUrl(redirectPath);
+        
+        // If on production domain or should redirect to production
+        if (fullUrl.includes('phynetix.me')) {
+          window.location.href = fullUrl;
         } else {
-          navigate("/dashboard");
+          navigate(redirectPath);
         }
       }, 500);
       return () => clearTimeout(timer);
@@ -95,11 +128,12 @@ export default function AuthPage() {
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
+    localStorage.setItem('rememberMe', String(rememberMe));
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: getRedirectUrl('/dashboard'),
         }
       });
       if (error) {
@@ -364,7 +398,20 @@ export default function AuthPage() {
               )}
 
               {mode === 'login' && (
-                <div className="flex justify-end">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="rememberMe"
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(checked === true)}
+                    />
+                    <label
+                      htmlFor="rememberMe"
+                      className="text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                    >
+                      Remember me
+                    </label>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setMode('forgot')}
