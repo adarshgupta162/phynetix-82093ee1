@@ -11,7 +11,7 @@ interface LatexRendererProps {
 /**
  * Renders text with LaTeX math expressions
  * Supports:
- * - Inline math: $...$
+ * - Inline math: $...$, \(...\)
  * - Display math: $$...$$, \[...\]
  * - Regular text mixed with math
  */
@@ -20,13 +20,14 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
     if (!content) return '';
     
     try {
-      // Pattern to match display math ($$...$$ or \[...\]) and inline math ($...$)
+      // Pattern to match display math and inline math with all standard LaTeX delimiters
       // Regex breakdown:
       //   \\\[([\s\S]*?)\\\]  - Matches \[...\] (LaTeX display math, capture group 1)
       //   \$\$([\s\S]*?)\$\$  - Matches $$...$$ (display math, capture group 2)
-      //   \$((?:[^$\\]|\\.)+?)\$ - Matches $...$ (inline math, capture group 3)
-      // Order matters: \[ is checked first, then $$, then $ to prevent mismatches
-      const mathPattern = /\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$((?:[^$\\]|\\.)+?)\$/g;
+      //   \\\(([\s\S]*?)\\\)  - Matches \(...\) (LaTeX inline math, capture group 3)
+      //   \$((?:[^$\\]|\\.)+?)\$ - Matches $...$ (inline math, capture group 4)
+      // Order matters: \[ and \( must be checked before $$, and $$ before $ to prevent mismatches
+      const mathPattern = /\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\\\(([\s\S]*?)\\\)|\$((?:[^$\\]|\\.)+?)\$/g;
       
       let lastIndex = 0;
       const parts: string[] = [];
@@ -39,9 +40,9 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
         }
         
         // Determine if it's display or inline math
-        // match[1] = \[...\], match[2] = $$...$$, match[3] = $...$
+        // match[1] = \[...\], match[2] = $$...$$, match[3] = \(...\), match[4] = $...$
         const isDisplayMath = match[1] !== undefined || match[2] !== undefined;
-        const mathContent = match[1] || match[2] || match[3];
+        const mathContent = match[1] || match[2] || match[3] || match[4];
         
         try {
           const rendered = katex.renderToString(mathContent.trim(), {
