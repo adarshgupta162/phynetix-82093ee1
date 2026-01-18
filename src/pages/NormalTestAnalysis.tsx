@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { LatexRenderer } from "@/components/ui/latex-renderer";
 
 interface SubjectScore {
   correct: number;
@@ -929,8 +930,24 @@ export default function NormalTestAnalysis() {
                     <div className="text-sm text-gray-400">{currentQuestion.subject}</div>
                   </div>
 
+                  {/* Question Image */}
+                  {currentQuestion.image_url && (
+                    <div className="mb-4">
+                      <img 
+                        src={currentQuestion.image_url} 
+                        alt="Question" 
+                        className="max-w-full h-auto rounded-lg border border-white/10"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+
                   {currentQuestion.question_text && (
-                    <p className="text-white mb-6">{currentQuestion.question_text}</p>
+                    <div className="text-white mb-6">
+                      <LatexRenderer content={currentQuestion.question_text} />
+                    </div>
                   )}
 
                   {/* For integer type, show answers differently */}
@@ -980,7 +997,9 @@ export default function NormalTestAnalysis() {
                             )}>
                               {String.fromCharCode(65 + index)}
                             </span>
-                            <span className="text-gray-300 flex-1">{option}</span>
+                            <span className="text-gray-300 flex-1">
+                              <LatexRenderer content={typeof option === 'string' ? option : String(option)} />
+                            </span>
                             {isCorrect && <CheckCircle2 className="w-5 h-5 text-green-400" />}
                             {isUserAnswer && !isCorrect && <XCircle className="w-5 h-5 text-red-400" />}
                           </div>

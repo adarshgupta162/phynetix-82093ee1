@@ -254,7 +254,7 @@ export default function AdminTests() {
                       Analytics
                     </Button>
                     <button
-                      onClick={() => window.location.href = `/admin/test-editor/${test.id}`}
+                      onClick={() => window.location.href = `/admin/fullscreen-editor/${test.id}`}
                       className="p-2 rounded-lg hover:bg-secondary transition-colors"
                       title="Edit test"
                     >
