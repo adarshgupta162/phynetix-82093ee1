@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import 'katex/dist/katex.min.css';
 import katex from 'katex';
+// Import mhchem extension for chemistry notation support
+import 'katex/dist/contrib/mhchem.mjs';
 
 interface LatexRendererProps {
   content: string;
@@ -9,10 +11,13 @@ interface LatexRendererProps {
 }
 
 /**
- * Renders text with LaTeX math expressions
+ * Renders text with LaTeX math expressions and chemistry notation
  * Supports:
  * - Inline math: $...$, \(...\)
  * - Display math: $$...$$, \[...\]
+ * - Chemistry notation: \ce{...} for chemical formulas and equations
+ * - Physical units: \pu{...} for units with proper formatting
+ * - Array environments: for creating tables
  * - Regular text mixed with math
  */
 export function LatexRenderer({ content, className = '', displayMode = false }: LatexRendererProps) {
@@ -50,6 +55,11 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
             displayMode: isDisplayMath || displayMode,
             trust: true,
             strict: false,
+            // Enable additional macros for better LaTeX support
+            macros: {
+              "\\ce": "\\ce",  // Chemistry notation (provided by mhchem)
+              "\\pu": "\\pu",  // Physical units (provided by mhchem)
+            },
           });
           parts.push(rendered);
         } catch (e) {
