@@ -55,11 +55,6 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
             displayMode: isDisplayMath || displayMode,
             trust: true,
             strict: false,
-            // Enable additional macros for better LaTeX support
-            macros: {
-              "\\ce": "\\ce",  // Chemistry notation (provided by mhchem)
-              "\\pu": "\\pu",  // Physical units (provided by mhchem)
-            },
           });
           parts.push(rendered);
         } catch (e) {
