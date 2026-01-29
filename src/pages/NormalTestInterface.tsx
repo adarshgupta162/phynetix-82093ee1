@@ -930,8 +930,8 @@ export default function NormalTestInterface() {
         </div>
         <div className="flex items-center gap-6">
           <div className={cn(
-            "flex items-center gap-2 px-4 py-1.5 rounded font-mono font-bold text-sm",
-            timeLeft < 300 ? "bg-red-500/20 text-red-300" : "bg-white/10"
+            "flex items-center gap-2 px-4 py-2 rounded font-mono font-bold text-sm",
+            timeLeft < 300 ? "bg-[#ef4444] text-white" : "bg-white text-black"
           )}>
             <Clock className="w-4 h-4" />
             Time Left: {formatTime(timeLeft)}
@@ -978,29 +978,31 @@ export default function NormalTestInterface() {
         {/* Main Question Area */}
         <main className="flex-1 bg-white p-6 overflow-y-auto">
           {/* Section Instructions */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-gray-700">
+          <div className="mb-6 p-4 bg-[#dbeafe] border border-[#3b82f6] rounded-lg text-sm text-gray-700">
             <ul className="list-disc ml-4 space-y-1">
               <li>This section contains <strong>{currentSection?.questions.length || 0}</strong> questions.</li>
               {isIntegerQuestion ? (
                 <>
                   <li>Enter your answer as a numerical value (integer only).</li>
-                  <li>Full Marks: +{currentQuestion?.marks || 4} if the correct answer is entered</li>
-                  <li>Zero Marks: 0 if no answer is entered</li>
-                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect answer</li>
+                  <li>Full Marks: +{currentQuestion?.marks || 4} if correct</li>
+                  <li>Zero Marks: 0 if none chosen</li>
+                  {currentQuestion?.negative_marks && currentQuestion.negative_marks > 0 && (
+                    <li>Negative Marks: -{currentQuestion.negative_marks} for incorrect</li>
+                  )}
                 </>
               ) : isMultipleChoice ? (
                 <>
                   <li>Each question has FOUR options. ONE OR MORE may be correct.</li>
-                  <li>Full Marks: +{currentQuestion?.marks || 4} if ALL correct options are chosen</li>
-                  <li>Partial Marks: May apply for partially correct answers</li>
-                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect answers</li>
+                  <li>Full Marks: +{currentQuestion?.marks || 4} if correct</li>
+                  <li>Zero Marks: 0 if none chosen</li>
+                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect</li>
                 </>
               ) : (
                 <>
                   <li>Each question has FOUR options. ONLY ONE is correct.</li>
-                  <li>Full Marks: +{currentQuestion?.marks || 4} if ONLY the correct option is chosen</li>
-                  <li>Zero Marks: 0 if none of the options is chosen</li>
-                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} in all other cases</li>
+                  <li>Full Marks: +{currentQuestion?.marks || 4} if correct</li>
+                  <li>Zero Marks: 0 if none chosen</li>
+                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect</li>
                 </>
               )}
             </ul>
@@ -1217,7 +1219,7 @@ export default function NormalTestInterface() {
           </Button>
           <Button
             onClick={() => setShowSubmitModal(true)}
-            className="bg-[#34a853] hover:bg-[#2d8f47] text-white text-xs md:text-sm px-2 md:px-4"
+            className="bg-[#22c55e] hover:bg-[#16a34a] text-white text-xs md:text-sm px-2 md:px-4"
             disabled={submitting}
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit"}
@@ -1277,7 +1279,7 @@ export default function NormalTestInterface() {
                   Continue Test
                 </Button>
                 <Button 
-                  className="flex-1 bg-[#34a853] hover:bg-[#2d8f47]" 
+                  className="flex-1 bg-[#22c55e] hover:bg-[#16a34a]" 
                   onClick={() => handleSubmit()} 
                   disabled={submitting}
                 >
