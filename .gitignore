@@ -25,4 +25,3 @@ dist-ssr
 
 # Test files
 test-latex.html
-test-middleware.ts
