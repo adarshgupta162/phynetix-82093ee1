@@ -78,6 +78,7 @@ export default function NormalTestInterface() {
   const [studentAvatar, setStudentAvatar] = useState<string | null>(null);
   const [examType, setExamType] = useState<string>("custom");
   const [testType, setTestType] = useState<string>("full");
+  const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
   
   // Time tracking per question
@@ -552,9 +553,9 @@ export default function NormalTestInterface() {
 
   // Render shared header for screens 1-3
   const renderHeader = () => (
-    <header className="bg-[#1e3a5f] text-[#fbbf24] px-6 py-3 flex items-center justify-between">
+    <header className="bg-[#1a2332] text-[#fbbf24] px-6 py-3 flex items-center justify-between">
       <div className="text-sm">
-        <span className="font-medium">System Name: {systemId}</span>
+        <span className="font-medium">System Name: {systemId || "..."}</span>
       </div>
       <div className="text-sm text-right">
         <div className="font-medium">Candidate Name: {studentName}</div>
@@ -565,6 +566,19 @@ export default function NormalTestInterface() {
 
   // Screen 1: Login/Verification
   if (currentScreen === 1) {
+    const handleSignIn = () => {
+      // Basic validation
+      if (!studentId.trim()) {
+        toast({
+          title: "Student ID Required",
+          description: "Please enter your student ID to continue.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setCurrentScreen(2);
+    };
+
     return (
       <div className="min-h-screen bg-[#0a1628] flex flex-col">
         {renderHeader()}
@@ -573,9 +587,9 @@ export default function NormalTestInterface() {
           {/* Student photo placeholder */}
           <div className="absolute top-6 right-6 w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
             {studentAvatar ? (
-              <img src={studentAvatar} alt="Student" className="w-full h-full object-cover" />
+              <img src={studentAvatar} alt={studentName} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-5xl">👤</span>
+              <span className="text-5xl" role="img" aria-label="User avatar placeholder">👤</span>
             )}
           </div>
 
@@ -595,6 +609,8 @@ export default function NormalTestInterface() {
                 </label>
                 <input
                   type="text"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
                   placeholder="Enter your student ID"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a73e8] focus:border-[#1a73e8] outline-none"
                 />
@@ -617,7 +633,7 @@ export default function NormalTestInterface() {
               </div>
 
               <Button
-                onClick={() => setCurrentScreen(2)}
+                onClick={handleSignIn}
                 className="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white py-3 text-lg"
               >
                 Sign In
@@ -646,7 +662,7 @@ export default function NormalTestInterface() {
               {testType === 'practice' && (
                 <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 text-center">
                   <p className="text-red-700 font-bold text-lg">
-                    This Mock Exam Only for Practice Purpose
+                    This Mock Exam is Only for Practice Purpose
                   </p>
                 </div>
               )}
@@ -878,14 +894,14 @@ export default function NormalTestInterface() {
             timeLeft < 300 ? "bg-red-500/20 text-red-300" : "bg-white/10"
           )}>
             <Clock className="w-4 h-4" />
-            {formatTime(timeLeft)}
+            Time Left: {formatTime(timeLeft)}
           </div>
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 bg-gray-300 rounded flex items-center justify-center overflow-hidden">
               {studentAvatar ? (
                 <img src={studentAvatar} alt={studentName} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-xl">👤</span>
+                <span className="text-xl" role="img" aria-label="User avatar">👤</span>
               )}
             </div>
             <div className="text-sm">
@@ -1018,7 +1034,7 @@ export default function NormalTestInterface() {
                     >
                       <input
                         type={isMultipleChoice ? "checkbox" : "radio"}
-                        name={isMultipleChoice ? undefined : "answer"}
+                        name={isMultipleChoice ? undefined : `question-${currentQuestion?.id}`}
                         checked={isSelected}
                         onChange={() => handleAnswer(index)}
                         className="w-4 h-4 text-[#1a73e8] border-gray-300 focus:ring-[#1a73e8] mt-1"
@@ -1058,7 +1074,7 @@ export default function NormalTestInterface() {
               {studentAvatar ? (
                 <img src={studentAvatar} alt={studentName} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-2xl">👤</span>
+                <span className="text-2xl" role="img" aria-label="User avatar placeholder">👤</span>
               )}
             </div>
             <p className="text-sm font-medium text-gray-700">{studentName}</p>
