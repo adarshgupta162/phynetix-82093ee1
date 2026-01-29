@@ -588,7 +588,7 @@ export default function NormalTestInterface() {
         
         {/* Disclaimer message */}
         <div className="bg-[#1e3a5f] text-white/90 px-6 py-3 text-center text-sm">
-          Kindly contact the invigilator if there are any discrepancies in the Name and Photograph displayed on the screen or if the photograph is not yours
+          Please contact the invigilator if there are any discrepancies in the Name and Photograph displayed on the screen, or if the photograph is not yours.
         </div>
         
         <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
@@ -681,7 +681,7 @@ export default function NormalTestInterface() {
               {testType === 'practice' && (
                 <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 text-center">
                   <p className="text-red-700 font-bold text-lg">
-                    This Mock Exam Only for Practice Purpose
+                    This Mock Exam is Only for Practice Purpose
                   </p>
                 </div>
               )}
@@ -860,7 +860,10 @@ export default function NormalTestInterface() {
                     className="mt-1 w-5 h-5 rounded border-gray-300 text-[#1a73e8] focus:ring-[#1a73e8]"
                   />
                   <span className="text-gray-700 text-sm">
-                    I have read and understood the instructions. All computer hardware allotted to me are in proper working condition. I declare that I am not in possession of / not wearing / not carrying any prohibited gadget like mobile phone, bluetooth devices etc. /any prohibited material with me into the Examination Hall. I agree that in case of not adhering to the instructions, I shall be liable to be debarred from this Test / Examinations and/or to disciplinary action, which may include ban from future Tests / Examinations
+                    I have read and understood the instructions. All computer hardware allotted to me are in proper working condition. 
+                    I declare that I am not in possession of, not wearing, or not carrying any prohibited gadget like mobile phone, bluetooth devices, etc., 
+                    or any prohibited material with me into the Examination Hall. I agree that in case of not adhering to the instructions, 
+                    I shall be liable to be debarred from this Test/Examination and/or to disciplinary action, which may include a ban from future Tests/Examinations.
                   </span>
                 </label>
               </div>
@@ -997,23 +1000,27 @@ export default function NormalTestInterface() {
                   <li>Enter your answer as a numerical value (integer only).</li>
                   <li>Full Marks: +{currentQuestion?.marks || 4} if correct</li>
                   <li>Zero Marks: 0 if none chosen</li>
-                  {currentQuestion?.negative_marks && currentQuestion.negative_marks > 0 && (
+                  {currentQuestion?.negative_marks ? (
                     <li>Negative Marks: -{currentQuestion.negative_marks} for incorrect</li>
-                  )}
+                  ) : null}
                 </>
               ) : isMultipleChoice ? (
                 <>
                   <li>Each question has FOUR options. ONE OR MORE may be correct.</li>
                   <li>Full Marks: +{currentQuestion?.marks || 4} if correct</li>
                   <li>Zero Marks: 0 if none chosen</li>
-                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect</li>
+                  {currentQuestion?.negative_marks ? (
+                    <li>Negative Marks: -{currentQuestion.negative_marks} for incorrect</li>
+                  ) : null}
                 </>
               ) : (
                 <>
                   <li>Each question has FOUR options. ONLY ONE is correct.</li>
                   <li>Full Marks: +{currentQuestion?.marks || 4} if correct</li>
                   <li>Zero Marks: 0 if none chosen</li>
-                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect</li>
+                  {currentQuestion?.negative_marks ? (
+                    <li>Negative Marks: -{currentQuestion.negative_marks} for incorrect</li>
+                  ) : null}
                 </>
               )}
             </ul>
