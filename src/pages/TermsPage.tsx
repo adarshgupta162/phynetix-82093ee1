@@ -88,7 +88,7 @@ export default function TermsPage() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-lg md:text-xl text-muted-foreground mb-4"
             >
-              Last updated: January 2024
+              Last updated: January 2026
             </motion.p>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
