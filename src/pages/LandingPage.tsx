@@ -24,7 +24,18 @@ import {
   UserCheck,
   FileCheck,
   Scale,
-  AlertCircle
+  AlertCircle,
+  Star,
+  Users,
+  CheckCircle,
+  Award,
+  TrendingUp,
+  ShieldCheck,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Youtube
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -122,6 +133,92 @@ const faqs = [
   }
 ];
 
+const courses = [
+  {
+    title: "JEE Mains Complete",
+    description: "Full syllabus coverage with 30+ tests",
+    price: "₹2,999",
+    duration: "6 months access",
+    examType: "JEE Mains",
+    features: ["30+ Full Tests", "Subject-wise Tests", "Part Tests", "Detailed Analytics"],
+    popular: true,
+    color: "from-blue-500/20 to-cyan-500/20",
+    borderColor: "border-blue-500/30"
+  },
+  {
+    title: "JEE Advanced Pro",
+    description: "Advanced level preparation with expert-curated tests",
+    price: "₹3,999",
+    duration: "6 months access",
+    examType: "JEE Advanced",
+    features: ["25+ Advanced Tests", "Topic-wise Tests", "Previous Year Papers", "Live Rankings"],
+    popular: false,
+    color: "from-purple-500/20 to-pink-500/20",
+    borderColor: "border-purple-500/30"
+  },
+  {
+    title: "NEET Mastery",
+    description: "Comprehensive NEET preparation package",
+    price: "₹2,499",
+    duration: "6 months access",
+    examType: "NEET",
+    features: ["35+ Mock Tests", "Biology Focus Tests", "Physics & Chemistry", "Performance Tracking"],
+    popular: false,
+    color: "from-green-500/20 to-emerald-500/20",
+    borderColor: "border-green-500/30"
+  }
+];
+
+const testimonials = [
+  {
+    name: "Arjun Sharma",
+    role: "JEE Advanced AIR 234",
+    image: "👨‍🎓",
+    rating: 5,
+    text: "PhyNetix's PDF-based tests gave me the exact exam feel. The detailed analytics helped me identify my weak areas and improve systematically.",
+    exam: "JEE Advanced 2024"
+  },
+  {
+    name: "Priya Patel",
+    role: "NEET AIR 456",
+    image: "👩‍🎓",
+    rating: 5,
+    text: "The test interface is incredibly realistic. I felt so prepared on exam day because I had practiced in similar conditions hundreds of times.",
+    exam: "NEET 2024"
+  },
+  {
+    name: "Rohit Kumar",
+    role: "JEE Mains 99.8%ile",
+    image: "👨‍💻",
+    rating: 5,
+    text: "Best test series I've used. The question quality is top-notch and the performance tracking features are amazing. Highly recommend!",
+    exam: "JEE Mains 2024"
+  }
+];
+
+const trustStats = [
+  {
+    icon: Users,
+    value: "10,000+",
+    label: "Active Students"
+  },
+  {
+    icon: FileText,
+    value: "50,000+",
+    label: "Tests Attempted"
+  },
+  {
+    icon: Trophy,
+    value: "95%",
+    label: "Success Rate"
+  },
+  {
+    icon: Award,
+    value: "500+",
+    label: "Top AIR Selections"
+  }
+];
+
 
 export default function LandingPage() {
   return (
@@ -146,9 +243,8 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8">
             <a href="#exams" className="text-muted-foreground hover:text-foreground transition-colors">Exams</a>
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="#courses" className="text-muted-foreground hover:text-foreground transition-colors">Courses</a>
             <a href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
-            <a href="#privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</a>
-            <a href="#terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</a>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -506,6 +602,188 @@ export default function LandingPage() {
                 </div>
                 <h3 className="text-xl font-semibold font-display mb-2">{feature.title}</h3>
                 <p className="text-muted-foreground">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Courses & Pricing Section */}
+      <section id="courses" className="relative z-10 py-16 border-t border-border/50 bg-muted/20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              Choose Your <span className="gradient-text">Course</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Affordable, comprehensive test series packages designed for your success.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {courses.map((course, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className={`glass-card p-6 border ${course.borderColor} relative overflow-hidden group hover:scale-105 transition-transform duration-300 ${
+                  course.popular ? 'ring-2 ring-primary' : ''
+                }`}
+              >
+                {course.popular && (
+                  <div className="absolute top-4 right-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold">
+                    Popular
+                  </div>
+                )}
+                <div className={`absolute inset-0 bg-gradient-to-br ${course.color} opacity-50`} />
+                <div className="relative z-10">
+                  <div className="mb-4">
+                    <span className="text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
+                      {course.examType}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold font-display mb-2">{course.title}</h3>
+                  <p className="text-muted-foreground text-sm mb-4">{course.description}</p>
+                  
+                  <div className="mb-4 pb-4 border-b border-border/50">
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-3xl font-bold gradient-text">{course.price}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{course.duration}</span>
+                  </div>
+
+                  <ul className="space-y-2 mb-6">
+                    {course.features.map((feature, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="space-y-2">
+                    <Link to="/auth" className="block">
+                      <Button variant="gradient" className="w-full">
+                        Buy Now
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    </Link>
+                    <Link to="/auth" className="block">
+                      <Button variant="outline" className="w-full">
+                        Free Preview
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust & Quality Indicators */}
+      <section className="relative z-10 py-16 border-t border-border/50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              Trusted by <span className="gradient-text">Thousands</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Join our growing community of successful students preparing for top competitive exams.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto mb-12">
+            {trustStats.map((stat, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="glass-card p-6 text-center"
+              >
+                <stat.icon className="w-8 h-8 text-primary mx-auto mb-3" />
+                <div className="text-2xl md:text-3xl font-bold font-display gradient-text mb-1">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-muted-foreground">{stat.label}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Trust Badges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-wrap items-center justify-center gap-8 text-muted-foreground"
+          >
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              <span className="text-sm">Secure Payments</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-primary" />
+              <span className="text-sm">Expert Verified</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <span className="text-sm">Proven Results</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              <span className="text-sm">10K+ Community</span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Student Testimonials */}
+      <section className="relative z-10 py-16 border-t border-border/50 bg-muted/20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              What Our <span className="gradient-text">Students Say</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Real success stories from students who achieved their dreams with PhyNetix.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {testimonials.map((testimonial, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="glass-card p-6 relative"
+              >
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-2xl">
+                    {testimonial.image}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-semibold font-display">{testimonial.name}</h4>
+                    <p className="text-sm text-primary font-medium">{testimonial.role}</p>
+                    <p className="text-xs text-muted-foreground">{testimonial.exam}</p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-1 mb-3">
+                  {[...Array(testimonial.rating)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                  ))}
+                </div>
+                
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  "{testimonial.text}"
+                </p>
               </motion.div>
             ))}
           </div>
@@ -1093,17 +1371,82 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border/50 py-12">
+      <footer className="relative z-10 border-t border-border/50 py-16 bg-muted/20">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary-foreground" />
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            {/* Brand Column */}
+            <div className="md:col-span-1">
+              <Link to="/" className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <span className="text-xl font-bold font-display gradient-text">PhyNetix</span>
+              </Link>
+              <p className="text-sm text-muted-foreground mb-4">
+                Your trusted partner for JEE & NEET test preparation. Practice tests that feel real.
+              </p>
+              <div className="flex gap-3">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                  <Facebook className="w-4 h-4" />
+                </a>
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                  <Twitter className="w-4 h-4" />
+                </a>
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                  <Instagram className="w-4 h-4" />
+                </a>
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                  <Linkedin className="w-4 h-4" />
+                </a>
+                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                  <Youtube className="w-4 h-4" />
+                </a>
               </div>
-              <span className="font-bold font-display">PhyNetix</span>
             </div>
+
+            {/* Courses Column */}
+            <div>
+              <h3 className="font-semibold font-display mb-4">Courses</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link to="/auth" className="hover:text-primary transition-colors">JEE Mains Complete</Link></li>
+                <li><Link to="/auth" className="hover:text-primary transition-colors">JEE Advanced Pro</Link></li>
+                <li><Link to="/auth" className="hover:text-primary transition-colors">NEET Mastery</Link></li>
+                <li><Link to="/auth" className="hover:text-primary transition-colors">Free Sample Tests</Link></li>
+              </ul>
+            </div>
+
+            {/* Company Column */}
+            <div>
+              <h3 className="font-semibold font-display mb-4">Company</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
+                <li><a href="#courses" className="hover:text-primary transition-colors">Pricing</a></li>
+                <li><a href="#faq" className="hover:text-primary transition-colors">FAQ</a></li>
+                <li><Link to="/auth" className="hover:text-primary transition-colors">About Us</Link></li>
+              </ul>
+            </div>
+
+            {/* Legal & Support Column */}
+            <div>
+              <h3 className="font-semibold font-display mb-4">Legal & Support</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><a href="#privacy" className="hover:text-primary transition-colors">Privacy Policy</a></li>
+                <li><a href="#terms" className="hover:text-primary transition-colors">Terms of Service</a></li>
+                <li><a href="mailto:support@phynetix.me" className="hover:text-primary transition-colors">Contact Support</a></li>
+                <li><a href="mailto:contact@phynetix.me" className="hover:text-primary transition-colors">General Inquiries</a></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="text-sm text-muted-foreground">
               © 2024 PhyNetix. All rights reserved.
+            </div>
+            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+              <a href="#privacy" className="hover:text-primary transition-colors">Privacy</a>
+              <a href="#terms" className="hover:text-primary transition-colors">Terms</a>
+              <a href="mailto:contact@phynetix.me" className="hover:text-primary transition-colors">Contact</a>
             </div>
           </div>
         </div>
