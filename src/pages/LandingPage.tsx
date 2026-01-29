@@ -33,6 +33,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import Hello from "@/components/Hello";
 
 const features = [
   {
@@ -161,6 +162,9 @@ export default function LandingPage() {
           </div>
         </div>
       </header>
+
+      {/* Hello Section */}
+      <Hello />
 
       {/* Hero Section */}
       <section className="relative z-10 py-20 md:py-28">
