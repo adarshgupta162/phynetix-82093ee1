@@ -4,17 +4,11 @@ import {
   BookOpen, 
   Trophy, 
   Target, 
-  Zap, 
-  BarChart3,
   ArrowRight,
-  Brain,
   Sparkles,
   FileText,
-  Clock,
   Shield,
   GraduationCap,
-  Atom,
-  FlaskConical,
   Lock,
   ScrollText,
   Mail,
@@ -47,31 +41,31 @@ import {
 
 // IIT/NIT colleges data for auto-scrolling section
 const colleges = [
-  { name: "IIT Bombay", logo: "/logos/colleges/iit-bombay.png", website: "https://www.iitb.ac.in" },
-  { name: "IIT Delhi", logo: "/logos/colleges/iit-delhi.png", website: "https://www.iitd.ac.in" },
-  { name: "IIT Madras", logo: "/logos/colleges/iit-madras.png", website: "https://www.iitm.ac.in" },
-  { name: "IIT Kharagpur", logo: "/logos/colleges/iit-kharagpur.png", website: "https://www.iitkgp.ac.in" },
-  { name: "IIT Kanpur", logo: "/logos/colleges/iit-kanpur.png", website: "https://www.iitk.ac.in" },
-  { name: "IIT Roorkee", logo: "/logos/colleges/iit-roorkee.png", website: "https://www.iitr.ac.in" },
-  { name: "IIT Guwahati", logo: "/logos/colleges/iit-guwahati.png", website: "https://www.iitg.ac.in" },
-  { name: "IIT Hyderabad", logo: "/logos/colleges/iit-hyderabad.png", website: "https://www.iith.ac.in" },
-  { name: "IIT Bhubaneswar", logo: "/logos/colleges/iit-bhubaneswar.png", website: "https://www.iitbbs.ac.in" },
-  { name: "IIT Gandhinagar", logo: "/logos/colleges/iit-gandhinagar.png", website: "https://www.iitgn.ac.in" },
-  { name: "IIT Jodhpur", logo: "/logos/colleges/iit-jodhpur.png", website: "https://www.iitj.ac.in" },
-  { name: "IIT Patna", logo: "/logos/colleges/iit-patna.png", website: "https://www.iitp.ac.in" },
-  { name: "IIT Indore", logo: "/logos/colleges/iit-indore.png", website: "https://www.iiti.ac.in" },
-  { name: "IIT Mandi", logo: "/logos/colleges/iit-mandi.png", website: "https://www.iitmandi.ac.in" },
-  { name: "IIT Varanasi", logo: "/logos/colleges/iit-varanasi.png", website: "https://www.iitbhu.ac.in" },
-  { name: "IIT Bhilai", logo: "/logos/colleges/iit-bhilai.png", website: "https://www.iitbhilai.ac.in" },
-  { name: "IIT Dharwad", logo: "/logos/colleges/iit-dharwad.png", website: "https://www.iitdh.ac.in" },
-  { name: "NIT Tiruchirappalli", logo: "/logos/colleges/nit-trichy.png", website: "https://www.nitt.edu" },
-  { name: "NIT Rourkela", logo: "/logos/colleges/nit-rourkela.png", website: "https://www.nitrkl.ac.in" },
-  { name: "NIT Silchar", logo: "/logos/colleges/nit-silchar.png", website: "https://www.nits.ac.in" },
-  { name: "VNIT Nagpur", logo: "/logos/colleges/vnit-nagpur.png", website: "https://www.vnit.ac.in" },
-  { name: "NIT Warangal", logo: "/logos/colleges/nit-warangal.png", website: "https://www.nitw.ac.in" },
-  { name: "NIT Surathkal", logo: "/logos/colleges/nit-surathkal.png", website: "https://www.nitk.ac.in" },
-  { name: "NIT Calicut", logo: "/logos/colleges/nit-calicut.png", website: "https://www.nitc.ac.in" },
-  { name: "MANIT Bhopal", logo: "/logos/colleges/manit-bhopal.png", website: "https://www.manit.ac.in" },
+  { name: "IIT Bombay", logo: "/logos/colleges/iit-bombay.svg", website: "https://www.iitb.ac.in" },
+  { name: "IIT Delhi", logo: "/logos/colleges/iit-delhi.svg", website: "https://www.iitd.ac.in" },
+  { name: "IIT Madras", logo: "/logos/colleges/iit-madras.svg", website: "https://www.iitm.ac.in" },
+  { name: "IIT Kharagpur", logo: "/logos/colleges/iit-kharagpur.svg", website: "https://www.iitkgp.ac.in" },
+  { name: "IIT Kanpur", logo: "/logos/colleges/iit-kanpur.svg", website: "https://www.iitk.ac.in" },
+  { name: "IIT Roorkee", logo: "/logos/colleges/iit-roorkee.svg", website: "https://www.iitr.ac.in" },
+  { name: "IIT Guwahati", logo: "/logos/colleges/iit-guwahati.svg", website: "https://www.iitg.ac.in" },
+  { name: "IIT Hyderabad", logo: "/logos/colleges/iit-hyderabad.svg", website: "https://www.iith.ac.in" },
+  { name: "IIT Bhubaneswar", logo: "/logos/colleges/iit-bhubaneswar.svg", website: "https://www.iitbbs.ac.in" },
+  { name: "IIT Gandhinagar", logo: "/logos/colleges/iit-gandhinagar.svg", website: "https://www.iitgn.ac.in" },
+  { name: "IIT Jodhpur", logo: "/logos/colleges/iit-jodhpur.svg", website: "https://www.iitj.ac.in" },
+  { name: "IIT Patna", logo: "/logos/colleges/iit-patna.svg", website: "https://www.iitp.ac.in" },
+  { name: "IIT Indore", logo: "/logos/colleges/iit-indore.svg", website: "https://www.iiti.ac.in" },
+  { name: "IIT Mandi", logo: "/logos/colleges/iit-mandi.svg", website: "https://www.iitmandi.ac.in" },
+  { name: "IIT Varanasi", logo: "/logos/colleges/iit-varanasi.svg", website: "https://www.iitbhu.ac.in" },
+  { name: "IIT Bhilai", logo: "/logos/colleges/iit-bhilai.svg", website: "https://www.iitbhilai.ac.in" },
+  { name: "IIT Dharwad", logo: "/logos/colleges/iit-dharwad.svg", website: "https://www.iitdh.ac.in" },
+  { name: "NIT Tiruchirappalli", logo: "/logos/colleges/nit-trichy.svg", website: "https://www.nitt.edu" },
+  { name: "NIT Rourkela", logo: "/logos/colleges/nit-rourkela.svg", website: "https://www.nitrkl.ac.in" },
+  { name: "NIT Silchar", logo: "/logos/colleges/nit-silchar.svg", website: "https://www.nits.ac.in" },
+  { name: "VNIT Nagpur", logo: "/logos/colleges/vnit-nagpur.svg", website: "https://www.vnit.ac.in" },
+  { name: "NIT Warangal", logo: "/logos/colleges/nit-warangal.svg", website: "https://www.nitw.ac.in" },
+  { name: "NIT Surathkal", logo: "/logos/colleges/nit-surathkal.svg", website: "https://www.nitk.ac.in" },
+  { name: "NIT Calicut", logo: "/logos/colleges/nit-calicut.svg", website: "https://www.nitc.ac.in" },
+  { name: "MANIT Bhopal", logo: "/logos/colleges/manit-bhopal.svg", website: "https://www.manit.ac.in" },
 ];
 
 // Test Series data
@@ -108,67 +102,6 @@ const testSeriesCards = [
   },
 ];
 
-const features = [
-  {
-    icon: FileText,
-    title: "PDF-Based Tests",
-    description: "Real exam experience with PDF question papers and OMR-style answering"
-  },
-  {
-    icon: Target,
-    title: "JEE & NEET Pattern",
-    description: "Tests designed exactly like JEE Mains, JEE Advanced & NEET exams"
-  },
-  {
-    icon: Brain,
-    title: "AI Analysis",
-    description: "Get personalized insights and improvement suggestions"
-  },
-  {
-    icon: Trophy,
-    title: "Live Rankings",
-    description: "Compare your performance with peers through leaderboards"
-  },
-  {
-    icon: Clock,
-    title: "Timed Practice",
-    description: "Simulate real exam conditions with countdown timers"
-  },
-  {
-    icon: BarChart3,
-    title: "Detailed Analytics",
-    description: "Track your progress with subject-wise performance breakdown"
-  }
-];
-
-const examTypes = [
-  {
-    icon: Atom,
-    title: "JEE Mains",
-    description: "75 questions • 3 hours",
-    subjects: ["Physics", "Chemistry", "Mathematics"],
-    color: "from-blue-500/20 to-cyan-500/20",
-    borderColor: "border-blue-500/30"
-  },
-  {
-    icon: Zap,
-    title: "JEE Advanced",
-    description: "54 questions • 3 hours per paper",
-    subjects: ["Physics", "Chemistry", "Mathematics"],
-    color: "from-purple-500/20 to-pink-500/20",
-    borderColor: "border-purple-500/30"
-  },
-  {
-    icon: FlaskConical,
-    title: "NEET",
-    description: "200 questions • 3 hours 20 mins",
-    subjects: ["Physics", "Chemistry", "Biology"],
-    color: "from-green-500/20 to-emerald-500/20",
-    borderColor: "border-green-500/30"
-  }
-];
-
-
 const faqs = [
   {
     question: "What exams does PhyNetix support?",
@@ -193,42 +126,6 @@ const faqs = [
   {
     question: "Can I see my mistakes after the test?",
     answer: "Absolutely! After submission, you get a detailed analysis showing each question, your answer, the correct answer, and your marks. The PDF is displayed alongside so you can review everything in context."
-  }
-];
-
-const courses = [
-  {
-    title: "JEE Mains Complete",
-    description: "Full syllabus coverage with 30+ tests",
-    price: "₹2,999",
-    duration: "6 months access",
-    examType: "JEE Mains",
-    features: ["30+ Full Tests", "Subject-wise Tests", "Part Tests", "Detailed Analytics"],
-    popular: true,
-    color: "from-blue-500/20 to-cyan-500/20",
-    borderColor: "border-blue-500/30"
-  },
-  {
-    title: "JEE Advanced Pro",
-    description: "Advanced level preparation with expert-curated tests",
-    price: "₹3,999",
-    duration: "6 months access",
-    examType: "JEE Advanced",
-    features: ["25+ Advanced Tests", "Topic-wise Tests", "Previous Year Papers", "Live Rankings"],
-    popular: false,
-    color: "from-purple-500/20 to-pink-500/20",
-    borderColor: "border-purple-500/30"
-  },
-  {
-    title: "NEET Mastery",
-    description: "Comprehensive NEET preparation package",
-    price: "₹2,499",
-    duration: "6 months access",
-    examType: "NEET",
-    features: ["35+ Mock Tests", "Biology Focus Tests", "Physics & Chemistry", "Performance Tracking"],
-    popular: false,
-    color: "from-green-500/20 to-emerald-500/20",
-    borderColor: "border-green-500/30"
   }
 ];
 
@@ -304,9 +201,6 @@ export default function LandingPage() {
           </Link>
           
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#exams" className="text-muted-foreground hover:text-foreground transition-colors">Exams</a>
-            <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#courses" className="text-muted-foreground hover:text-foreground transition-colors">Courses</a>
             <a href="#faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
           </nav>
 
@@ -545,48 +439,6 @@ export default function LandingPage() {
 
 
       {/* Exam Types Section */}
-      <section id="exams" className="relative z-10 py-16 border-t border-border/50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
-              Prepare for <span className="gradient-text">Top Exams</span>
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Practice tests designed to match the exact pattern of major competitive exams.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {examTypes.map((exam, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`glass-card p-6 border ${exam.borderColor} relative overflow-hidden group hover:scale-105 transition-transform duration-300`}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${exam.color} opacity-50`} />
-                <div className="relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-background/80 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <exam.icon className="w-7 h-7 text-primary" />
-                  </div>
-                  <h3 className="text-2xl font-bold font-display mb-2">{exam.title}</h3>
-                  <p className="text-muted-foreground text-sm mb-4">{exam.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {exam.subjects.map((subject, i) => (
-                      <span key={i} className="px-3 py-1 rounded-full bg-background/60 text-xs font-medium">
-                        {subject}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Interface Preview Section */}
       <section id="preview" className="relative z-10 py-16 border-t border-border/50">
         <div className="container mx-auto px-4">
@@ -788,113 +640,6 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="relative z-10 py-16 border-t border-border/50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
-              Why Choose <span className="gradient-text">PhyNetix</span>
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Built specifically for JEE and NEET aspirants who want authentic exam practice.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="stat-card group"
-              >
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <feature.icon className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold font-display mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Courses & Pricing Section */}
-      <section id="courses" className="relative z-10 py-16 border-t border-border/50 bg-muted/20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
-              Choose Your <span className="gradient-text">Course</span>
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Affordable, comprehensive test series packages designed for your success.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {courses.map((course, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className={`glass-card p-6 border ${course.borderColor} relative overflow-hidden group hover:scale-105 transition-transform duration-300 ${
-                  course.popular ? 'ring-2 ring-primary' : ''
-                }`}
-              >
-                {course.popular && (
-                  <div className="absolute top-4 right-4 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-semibold">
-                    Popular
-                  </div>
-                )}
-                <div className={`absolute inset-0 bg-gradient-to-br ${course.color} opacity-50`} />
-                <div className="relative z-10">
-                  <div className="mb-4">
-                    <span className="text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">
-                      {course.examType}
-                    </span>
-                  </div>
-                  <h3 className="text-2xl font-bold font-display mb-2">{course.title}</h3>
-                  <p className="text-muted-foreground text-sm mb-4">{course.description}</p>
-                  
-                  <div className="mb-4 pb-4 border-b border-border/50">
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-3xl font-bold gradient-text">{course.price}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{course.duration}</span>
-                  </div>
-
-                  <ul className="space-y-2 mb-6">
-                    {course.features.map((feature, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm">
-                        <CheckCircle className="w-4 h-4 text-primary flex-shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="space-y-2">
-                    <Link to="/auth" className="block">
-                      <Button variant="gradient" className="w-full">
-                        Buy Now
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
-                    <Link to="/tests" className="block">
-                      <Button variant="outline" className="w-full">
-                        Free Preview
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Trust & Quality Indicators */}
       <section className="relative z-10 py-16 border-t border-border/50">
         <div className="container mx-auto px-4">
@@ -1631,8 +1376,6 @@ export default function LandingPage() {
             <div>
               <h3 className="font-semibold font-display mb-4">Company</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
-                <li><a href="#courses" className="hover:text-primary transition-colors">Pricing</a></li>
                 <li><a href="#faq" className="hover:text-primary transition-colors">FAQ</a></li>
                 <li><Link to="/auth" className="hover:text-primary transition-colors">About Us</Link></li>
               </ul>
