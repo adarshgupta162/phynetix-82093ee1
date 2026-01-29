@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-import { getAuthRedirectTo } from "@/lib/canonical";
+import { getAuthRedirectTo, getOAuthRedirectUri } from "@/lib/canonical";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -124,7 +124,7 @@ export default function AuthPage() {
     localStorage.setItem('rememberMe', String(rememberMe));
     try {
       const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: getOAuthRedirectUri(),
       });
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -141,7 +141,7 @@ export default function AuthPage() {
     localStorage.setItem('rememberMe', String(rememberMe));
     try {
       const { error } = await lovable.auth.signInWithOAuth("apple", {
-        redirect_uri: window.location.origin,
+        redirect_uri: getOAuthRedirectUri(),
       });
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
