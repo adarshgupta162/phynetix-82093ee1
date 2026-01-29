@@ -4,6 +4,7 @@
 export const CANONICAL_ORIGIN = "https://phynetix.me";
 
 const STAGING_HOST = "phynetix.lovable.app";
+export const STAGING_ORIGIN = `https://${STAGING_HOST}`;
 const CANONICAL_HOSTS = new Set(["phynetix.me", "www.phynetix.me"]);
 
 /**
@@ -36,4 +37,22 @@ export function maybeRedirectToCanonical(): void {
   if (window.location.href === target) return;
 
   window.location.replace(target);
+}
+
+/**
+ * OAuth endpoints (/authorize, /callback) are served only on the published domain.
+ * If you run the app on a custom domain (or elsewhere), start OAuth on the published
+ * domain, then rely on maybeRedirectToCanonical() to forward the user back.
+ */
+export function getOAuthRedirectUri(): string {
+  const hostname = window.location.hostname;
+
+  // Custom domains don't serve Lovable Cloud auth endpoints.
+  if (CANONICAL_HOSTS.has(hostname)) return STAGING_ORIGIN;
+
+  // Published domain is already correct.
+  if (hostname === STAGING_HOST) return STAGING_ORIGIN;
+
+  // Preview / localhost.
+  return window.location.origin;
 }
