@@ -33,6 +33,7 @@ import ProfilePage from "./pages/ProfilePage";
 import QuestionBankPage from "./pages/QuestionBankPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import SolutionsPage from "./pages/SolutionsPage";
+import TestSeriesEnrollment from "./pages/TestSeriesEnrollment";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminQuestionBank from "./pages/admin/AdminQuestionBank";
 import AdminTests from "./pages/admin/AdminTests";
@@ -73,6 +74,8 @@ const App = () => (
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/refund" element={<RefundPage />} />
+              {/* Test Series Enrollment */}
+              <Route path="/enroll/:testSeriesId" element={<TestSeriesEnrollment />} />
               {/* Authentication Pages */}
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/login" element={<AuthPage />} />
