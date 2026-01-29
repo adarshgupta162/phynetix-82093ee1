@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle, Bookmark, Flag, StickyNote, MinusCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { LatexRenderer } from "@/components/ui/latex-renderer";
 
 interface OptionData {
   label: string;
@@ -139,7 +140,9 @@ export function QuestionDisplay({
 
       {/* Question Content */}
       {questionText && (
-        <p className="text-foreground leading-relaxed">{questionText}</p>
+        <div className="text-foreground leading-relaxed">
+          <LatexRenderer content={questionText} />
+        </div>
       )}
 
       {imageUrl && (
@@ -186,7 +189,9 @@ export function QuestionDisplay({
                 </div>
 
                 {/* Option Value */}
-                <span className="flex-1 text-sm">{option.value}</span>
+                <span className="flex-1 text-sm">
+                  <LatexRenderer content={option.value} />
+                </span>
 
                 {/* Stats & Badges */}
                 <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
