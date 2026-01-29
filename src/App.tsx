@@ -7,6 +7,15 @@ import { AuthProvider } from "@/hooks/useAuth";
 import AdminRoute from "@/components/AdminRoute";
 import ProfileGuard from "@/components/ProfileGuard";
 import LandingPage from "./pages/LandingPage";
+import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+import CoursesPage from "./pages/CoursesPage";
+import CoursePage from "./pages/CoursePage";
+import PricingPage from "./pages/PricingPage";
+import FAQPage from "./pages/FAQPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import RefundPage from "./pages/RefundPage";
 import AuthPage from "./pages/AuthPage";
 import StaffAuthPage from "./pages/StaffAuthPage";
 import Dashboard from "./pages/Dashboard";
@@ -54,6 +63,17 @@ const App = () => (
           <ProfileGuard>
             <Routes>
               <Route path="/" element={<LandingPage />} />
+              {/* Marketing/Pre-Login Pages */}
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/course/:courseId" element={<CoursePage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/refund" element={<RefundPage />} />
+              {/* Authentication Pages */}
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/login" element={<AuthPage />} />
               <Route path="/signup" element={<AuthPage />} />
