@@ -4,17 +4,11 @@ import {
   BookOpen, 
   Trophy, 
   Target, 
-  Zap, 
-  BarChart3,
   ArrowRight,
-  Brain,
   Sparkles,
   FileText,
-  Clock,
   Shield,
   GraduationCap,
-  Atom,
-  FlaskConical,
   Lock,
   ScrollText,
   Mail,
@@ -107,34 +101,6 @@ const testSeriesCards = [
     bgGradient: "from-red-600/20 to-red-800/20",
   },
 ];
-
-const examTypes = [
-  {
-    icon: Atom,
-    title: "JEE Mains",
-    description: "75 questions • 3 hours",
-    subjects: ["Physics", "Chemistry", "Mathematics"],
-    color: "from-blue-500/20 to-cyan-500/20",
-    borderColor: "border-blue-500/30"
-  },
-  {
-    icon: Zap,
-    title: "JEE Advanced",
-    description: "54 questions • 3 hours per paper",
-    subjects: ["Physics", "Chemistry", "Mathematics"],
-    color: "from-purple-500/20 to-pink-500/20",
-    borderColor: "border-purple-500/30"
-  },
-  {
-    icon: FlaskConical,
-    title: "NEET",
-    description: "200 questions • 3 hours 20 mins",
-    subjects: ["Physics", "Chemistry", "Biology"],
-    color: "from-green-500/20 to-emerald-500/20",
-    borderColor: "border-green-500/30"
-  }
-];
-
 
 const faqs = [
   {
