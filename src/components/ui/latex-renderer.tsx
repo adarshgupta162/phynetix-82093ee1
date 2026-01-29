@@ -50,6 +50,8 @@ async function ensureMathJaxLoaded() {
         mjModule = { document, adaptor };
       } catch (error) {
         console.error('Failed to load MathJax:', error);
+        // Reset the promise so future attempts can retry
+        mjInitPromise = null;
         throw error;
       }
     })();
@@ -60,23 +62,41 @@ async function ensureMathJaxLoaded() {
 }
 
 /**
- * Render with MathJax
+ * Render with MathJax (fallback for expressions that KaTeX cannot handle)
+ * Note: MathJax is lazy-loaded on first use, which may cause a brief delay
  */
 async function renderWithMathJax(mathExpression: string, displayMode: boolean): Promise<string> {
-  const mj = await ensureMathJaxLoaded();
-  const node = mj.document.convert(mathExpression, { display: displayMode });
-  return mj.adaptor.innerHTML(node);
+  const mathJaxModule = await ensureMathJaxLoaded();
+  const node = mathJaxModule.document.convert(mathExpression, { display: displayMode });
+  return mathJaxModule.adaptor.innerHTML(node);
 }
 
 /**
  * Renders text with LaTeX math expressions
- * Uses KaTeX as primary renderer with MathJax as fallback
+ * Uses KaTeX as primary renderer with MathJax as fallback for complex expressions
+ * 
  * Supports:
  * - Inline math: $...$, \(...\)
  * - Display math: $$...$$, \[...\]
  * - Regular text mixed with math
- * - Chemistry expressions (mhchem)
- * - Common TeX extensions (physics, cancel, etc.)
+ * - Chemistry expressions (mhchem) via MathJax fallback
+ * - Common TeX extensions (physics, cancel, etc.) via MathJax fallback
+ * 
+ * Performance Notes:
+ * - KaTeX renders synchronously and is very fast
+ * - MathJax loads lazily on first KaTeX failure and renders asynchronously
+ * - Multiple failed expressions are processed in parallel for better performance
+ * - The component may show original content briefly while MathJax is loading/rendering
+ * 
+ * Security Notes:
+ * - KaTeX is configured with `trust: true` to support advanced features
+ * - Content should come from trusted sources only
+ * - Non-math text is HTML-escaped for security
+ * 
+ * Limitations:
+ * - Escaped delimiters (e.g., \$5) may be incorrectly parsed as math
+ * - Nested delimiters are not supported
+ * - TikZ diagrams are not supported (as specified in requirements)
  */
 export function LatexRenderer({ content, className = '', displayMode = false }: LatexRendererProps) {
   const [renderedContent, setRenderedContent] = useState<string>('');
@@ -100,7 +120,7 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
         let lastIndex = 0;
         const parts: string[] = [];
         let match;
-        const failedExpressions: Array<{ content: string; display: boolean; index: number }> = [];
+        const failedExpressions: Array<{ content: string; display: boolean }> = [];
         
         while ((match = mathPattern.exec(content)) !== null) {
           // Add text before the math expression
@@ -117,14 +137,13 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
           const isDisplayMath = match[1] !== undefined || match[2] !== undefined;
           
           // Try KaTeX first with permissive settings
-          let rendered: string;
           let katexFailed = false;
           
           try {
-            rendered = katex.renderToString(mathContent.trim(), {
+            const rendered = katex.renderToString(mathContent.trim(), {
               throwOnError: false, // Don't throw on errors
               displayMode: isDisplayMath || displayMode,
-              trust: true, // Allow \url, \href, etc.
+              trust: true, // Allow \url, \href, etc. - ensure content is from trusted sources
               strict: false, // Allow non-strict LaTeX
               output: 'html', // Use HTML output
             });
@@ -141,12 +160,10 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
           
           // Track failed expressions for MathJax fallback
           if (katexFailed) {
-            const placeholderIndex = parts.length;
             parts.push(`<!--MATHJAX_PLACEHOLDER_${failedExpressions.length}-->`);
             failedExpressions.push({
               content: mathContent.trim(),
               display: isDisplayMath || displayMode,
-              index: placeholderIndex,
             });
           }
           
@@ -160,26 +177,29 @@ export function LatexRenderer({ content, className = '', displayMode = false }: 
         
         let result = parts.join('');
         
-        // Process failed expressions with MathJax
+        // Process failed expressions with MathJax in parallel for better performance
         if (failedExpressions.length > 0) {
           try {
-            for (let i = 0; i < failedExpressions.length; i++) {
-              const expr = failedExpressions[i];
-              try {
-                const mathjaxSvg = await renderWithMathJax(expr.content, expr.display);
-                result = result.replace(
-                  `<!--MATHJAX_PLACEHOLDER_${i}-->`,
-                  mathjaxSvg
-                );
-              } catch (mathjaxError) {
-                // If MathJax also fails, show error
-                console.error('Both KaTeX and MathJax failed:', mathjaxError);
-                result = result.replace(
-                  `<!--MATHJAX_PLACEHOLDER_${i}-->`,
-                  `<span class="text-red-500">${escapeHtml(expr.content)}</span>`
-                );
-              }
-            }
+            const mathjaxResults = await Promise.all(
+              failedExpressions.map(async (expr, i) => {
+                try {
+                  const mathjaxSvg = await renderWithMathJax(expr.content, expr.display);
+                  return { index: i, html: mathjaxSvg, success: true };
+                } catch (mathjaxError) {
+                  console.error('MathJax rendering failed for expression:', expr.content, mathjaxError);
+                  return { 
+                    index: i, 
+                    html: `<span class="text-red-500">${escapeHtml(expr.content)}</span>`,
+                    success: false 
+                  };
+                }
+              })
+            );
+            
+            // Replace all placeholders with rendered content
+            mathjaxResults.forEach(({ index, html }) => {
+              result = result.replace(`<!--MATHJAX_PLACEHOLDER_${index}-->`, html);
+            });
           } catch (error) {
             console.error('MathJax fallback error:', error);
           }
