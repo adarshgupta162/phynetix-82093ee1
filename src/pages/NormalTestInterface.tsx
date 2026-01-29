@@ -287,6 +287,17 @@ export default function NormalTestInterface() {
     return () => clearInterval(timer);
   }, [loading, timeLeft]);
 
+  // Auto-save every 10 seconds
+  useEffect(() => {
+    if (currentScreen !== 4 || !attemptId || loading) return;
+    
+    const interval = setInterval(() => {
+      saveProgress();
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [currentScreen, attemptId, loading, saveProgress]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
