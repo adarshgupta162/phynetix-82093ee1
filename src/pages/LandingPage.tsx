@@ -670,7 +670,7 @@ export default function LandingPage() {
                         <ArrowRight className="w-4 h-4 ml-2" />
                       </Button>
                     </Link>
-                    <Link to="/auth" className="block">
+                    <Link to="/tests" className="block">
                       <Button variant="outline" className="w-full">
                         Free Preview
                       </Button>
@@ -750,7 +750,7 @@ export default function LandingPage() {
               What Our <span className="gradient-text">Students Say</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Real success stories from students who achieved their dreams with PhyNetix.
+              Success stories from students who achieved their goals with quality test preparation.
             </p>
           </div>
 
@@ -765,7 +765,7 @@ export default function LandingPage() {
                 className="glass-card p-6 relative"
               >
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-2xl">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-2xl" role="img" aria-label="Student avatar">
                     {testimonial.image}
                   </div>
                   <div className="flex-1">
@@ -775,9 +775,9 @@ export default function LandingPage() {
                   </div>
                 </div>
                 
-                <div className="flex gap-1 mb-3">
+                <div className="flex gap-1 mb-3" role="img" aria-label={`${testimonial.rating} out of 5 stars`}>
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                    <Star key={i} className="w-4 h-4 fill-primary text-primary" aria-hidden="true" />
                   ))}
                 </div>
                 
@@ -1386,19 +1386,19 @@ export default function LandingPage() {
                 Your trusted partner for JEE & NEET test preparation. Practice tests that feel real.
               </p>
               <div className="flex gap-3">
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Visit our Facebook page" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
                   <Facebook className="w-4 h-4" />
                 </a>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Visit our Twitter page" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
                   <Twitter className="w-4 h-4" />
                 </a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Visit our Instagram page" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
                   <Instagram className="w-4 h-4" />
                 </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="Visit our LinkedIn page" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
                   <Linkedin className="w-4 h-4" />
                 </a>
-                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
+                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" aria-label="Visit our YouTube channel" className="w-9 h-9 rounded-lg bg-background/60 border border-border/50 flex items-center justify-center hover:border-primary hover:text-primary transition-colors">
                   <Youtube className="w-4 h-4" />
                 </a>
               </div>
