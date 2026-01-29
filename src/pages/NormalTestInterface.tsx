@@ -78,8 +78,7 @@ export default function NormalTestInterface() {
   const [studentAvatar, setStudentAvatar] = useState<string | null>(null);
   const [examType, setExamType] = useState<string>("custom");
   const [testType, setTestType] = useState<string>("full");
-  const [studentId, setStudentId] = useState("");
-  const [password, setPassword] = useState("");
+  const [studentRollNumber, setStudentRollNumber] = useState("");
   
   // Time tracking per question
   const [timePerQuestion, setTimePerQuestion] = useState<Record<string, number>>({});
@@ -115,12 +114,13 @@ export default function NormalTestInterface() {
         // Fetch student profile
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, avatar_url')
+          .select('full_name, avatar_url, roll_number')
           .eq('id', user.id)
           .single();
 
         setStudentName(profile?.full_name || 'Student');
         setStudentAvatar(profile?.avatar_url);
+        setStudentRollNumber(profile?.roll_number || user.id.substring(0, 8));
 
         // Generate or retrieve systemId
         const storageKey = `systemId_${testId}`;
@@ -553,13 +553,13 @@ export default function NormalTestInterface() {
 
   // Render shared header for screens 1-3
   const renderHeader = () => (
-    <header className="bg-[#1a2332] text-[#fbbf24] px-6 py-3 flex items-center justify-between">
+    <header className="bg-[#1e3a5f] text-[#fbbf24] px-6 py-3 flex items-center justify-between">
       <div className="text-sm">
         <span className="font-medium">System Name: {systemId || "..."}</span>
       </div>
       <div className="text-sm text-right">
         <div className="font-medium">Candidate Name: {studentName}</div>
-        <div className="text-white/90">Subject: {testName}</div>
+        <div className="text-[#fbbf24]">Subject: {testName}</div>
       </div>
     </header>
   );
@@ -567,15 +567,7 @@ export default function NormalTestInterface() {
   // Screen 1: Login/Verification
   if (currentScreen === 1) {
     const handleSignIn = () => {
-      // Basic validation
-      if (!studentId.trim()) {
-        toast({
-          title: "Student ID Required",
-          description: "Please enter your student ID to continue.",
-          variant: "destructive",
-        });
-        return;
-      }
+      // No validation needed - this is just a verification screen
       setCurrentScreen(2);
     };
 
@@ -583,36 +575,36 @@ export default function NormalTestInterface() {
       <div className="min-h-screen bg-[#0a1628] flex flex-col">
         {renderHeader()}
         
+        {/* Disclaimer message */}
+        <div className="bg-[#1e3a5f] text-white/90 px-6 py-3 text-center text-sm">
+          Kindly contact the invigilator if there are any discrepancies in the Name and Photograph displayed on the screen or if the photograph is not yours
+        </div>
+        
         <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
-          {/* Student photo placeholder */}
-          <div className="absolute top-6 right-6 w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+          {/* Student photo placeholder - top right */}
+          <div className="absolute top-8 right-8 w-40 h-40 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden shadow-lg">
             {studentAvatar ? (
               <img src={studentAvatar} alt={studentName} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-5xl" role="img" aria-label="User avatar placeholder">👤</span>
+              <span className="text-6xl" role="img" aria-label="User avatar placeholder">👤</span>
             )}
-          </div>
-
-          {/* Disclaimer */}
-          <div className="w-full max-w-2xl mb-6 text-center text-white/80 text-sm">
-            <p>Please ensure your photo is clearly visible for verification purposes.</p>
           </div>
 
           {/* Login box */}
           <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Sign In</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Login</h2>
             
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Student ID
+                  Username/ID
                 </label>
                 <input
                   type="text"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="Enter your student ID"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a73e8] focus:border-[#1a73e8] outline-none"
+                  value={studentRollNumber}
+                  disabled
+                  readOnly
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
                 />
               </div>
               
@@ -623,10 +615,26 @@ export default function NormalTestInterface() {
                 <div className="relative">
                   <input
                     type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a73e8] focus:border-[#1a73e8] outline-none pr-10"
+                    value="••••••••"
+                    disabled
+                    readOnly
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed pr-10"
+                  />
+                  <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value="••••••••"
+                    disabled
+                    readOnly
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed pr-10"
                   />
                   <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 </div>
@@ -634,7 +642,7 @@ export default function NormalTestInterface() {
 
               <Button
                 onClick={handleSignIn}
-                className="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white py-3 text-lg"
+                className="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white py-3 text-lg mt-6"
               >
                 Sign In
               </Button>
@@ -662,7 +670,7 @@ export default function NormalTestInterface() {
               {testType === 'practice' && (
                 <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 text-center">
                   <p className="text-red-700 font-bold text-lg">
-                    This Mock Exam is Only for Practice Purpose
+                    This Mock Exam Only for Practice Purpose
                   </p>
                 </div>
               )}
@@ -673,44 +681,44 @@ export default function NormalTestInterface() {
                   <AlertCircle className="w-5 h-5 text-[#1a73e8]" />
                   General Instructions
                 </h3>
-                <ul className="list-disc ml-6 space-y-2 text-gray-700 text-sm">
+                <ul className="list-decimal ml-6 space-y-2 text-gray-700 text-sm">
                   <li>Total duration of examination is <strong>{testDuration} minutes</strong>.</li>
-                  <li>The clock will be set at the server. The countdown timer will display the remaining time.</li>
-                  <li>The test will auto-submit when the time expires. You cannot resume once submitted.</li>
+                  <li>The clock will be set at the server. The countdown timer will display the remaining time available for you to complete the examination. When the timer reaches zero, the examination will end by itself. You will not be required to end or submit your examination.</li>
+                  <li>The Question Palette displayed on the right side of screen will show the status of each question using one of the following symbols:</li>
                 </ul>
               </div>
 
               {/* Question Palette Legend */}
               <div>
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <Menu className="w-5 h-5 text-purple-600" />
-                  Question Palette Legend
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-gray-300 flex items-center justify-center text-gray-600 font-bold">1</div>
-                    <span className="text-gray-600">Not Visited</span>
+                <h3 className="font-bold text-gray-800 mb-3">Legend:</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-[#d1d5db] flex items-center justify-center text-gray-700 font-bold">1</div>
+                    <span className="text-gray-700">You have not visited the question yet</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-red-500 text-white flex items-center justify-center font-bold">2</div>
-                    <span className="text-gray-600">Not Answered</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-[#ef4444] text-white flex items-center justify-center font-bold">2</div>
+                    <span className="text-gray-700">You have not answered the question</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-green-500 text-white flex items-center justify-center font-bold">3</div>
-                    <span className="text-gray-600">Answered</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-[#22c55e] text-white flex items-center justify-center font-bold">3</div>
+                    <span className="text-gray-700">You have answered the question</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-purple-500 text-white flex items-center justify-center font-bold">4</div>
-                    <span className="text-gray-600">Marked for Review</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-[#a855f7] text-white flex items-center justify-center font-bold">4</div>
+                    <span className="text-gray-700">You have NOT answered the question, but have marked the question for review</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded bg-purple-500 text-white flex items-center justify-center font-bold relative">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded bg-[#a855f7] text-white flex items-center justify-center font-bold relative">
                       5
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white"></span>
+                      <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-[#22c55e] rounded-full border-2 border-white"></span>
                     </div>
-                    <span className="text-gray-600">Answered & Marked</span>
+                    <span className="text-gray-700">The question(s) "Answered and Marked for Review" will be considered for evaluation</span>
                   </div>
                 </div>
+                <p className="mt-4 text-sm text-gray-600 italic">
+                  The Marked for Review status for a question simply indicates that you would like to look at that question again.
+                </p>
               </div>
             </div>
 
@@ -734,31 +742,70 @@ export default function NormalTestInterface() {
     const getExamInstructions = () => {
       if (examType === 'jee_mains') {
         return (
-          <>
-            <li>The question paper consists of 3 sections (Physics, Chemistry, Mathematics).</li>
-            <li>Each section contains 20 questions with multiple choice answers.</li>
-            <li>Section A: 20 questions (4 marks for correct, -1 for incorrect).</li>
-            <li>Section B: 10 questions (4 marks for correct, 0 for incorrect) - Numerical value type.</li>
-            <li>For multiple choice questions, there is negative marking for incorrect answers.</li>
-          </>
+          <div className="space-y-4 text-sm text-gray-700">
+            <p>The motive for enabling this mock test is to familiarize the candidates with the Computer Based Test (CBT) environment.</p>
+            <p>The types of questions and marking scheme is only illustrative and is in no way indicative or representation of the type of questions and marking scheme of the actual question paper.</p>
+            
+            <h4 className="font-bold text-gray-800 mt-4">Section wise Instructions</h4>
+            <p className="italic">Note: There will be 25% negative marking in both the sections.</p>
+            
+            <p><strong>SECTION 1:</strong> Subject Proficiency Test (Subject Code 101)<br/>
+            Maximum marks: 50</p>
+            
+            <p><strong>SECTION 2:</strong> Research Aptitude Test (Subject Code 102)<br/>
+            Maximum marks: 100</p>
+            
+            <p>No clarification will be provided during the exam.</p>
+            
+            <p>Calculators and other electronic devices are not allowed during the exam. Rough sheets and pens will be provided in the exam center. A virtual on-screen calculator is available for use.</p>
+            
+            <p>Some questions may have more than one answer correct. Points will be given only when ALL the correct answers are marked and NONE of the incorrect are marked.</p>
+            
+            <p>The exam is spread over two sections, Section 1 and Section 2. You cannot review your answers to Section 1 once you start answering Section 2.</p>
+          </div>
         );
       } else if (examType === 'jee_advanced') {
         return (
-          <>
-            <li>The question paper consists of 3 sections (Physics, Chemistry, Mathematics).</li>
-            <li>Each section may contain single correct, multiple correct, and numerical type questions.</li>
-            <li>Partial marking may apply for multiple correct answer questions.</li>
-            <li>Negative marking applies as per question type indicated.</li>
-          </>
+          <div className="space-y-4 text-sm text-gray-700">
+            <p>The test consists of multiple subjects with section-wise questions. Each section may have different marking schemes.</p>
+            
+            <h4 className="font-bold text-gray-800 mt-4">Section wise Instructions</h4>
+            
+            <ul className="list-disc ml-6 space-y-2">
+              <li>For single correct answer questions: +3 marks for correct answer, -1 for incorrect answer.</li>
+              <li>For multiple correct answer questions: +4 marks for all correct answers (partial marking applies), 0 for incorrect.</li>
+              <li>For numerical questions: +3 marks for correct answer, 0 for incorrect.</li>
+            </ul>
+            
+            <p className="mt-4">No clarification will be provided during the exam.</p>
+            
+            <p>Calculators and other electronic devices are not allowed during the exam. A virtual on-screen calculator is available for use.</p>
+            
+            <p>The exam is divided into sections by subject. You can navigate between sections freely during the test duration.</p>
+          </div>
         );
       } else {
+        // Get first question's marks for display
+        const sampleMarks = questions.length > 0 ? questions[0].marks : 4;
+        const sampleNegativeMarks = questions.length > 0 ? questions[0].negative_marks : 1;
+        
         return (
-          <>
-            <li>Read each question carefully before answering.</li>
-            <li>Marking scheme varies by question type.</li>
-            <li>You can navigate between questions using the question palette.</li>
-            <li>Mark questions for review if you want to revisit them later.</li>
-          </>
+          <div className="space-y-4 text-sm text-gray-700">
+            <p className="font-semibold">General Test Instructions:</p>
+            
+            <p>This test contains questions of various types. Please read each question carefully before answering.</p>
+            
+            <h4 className="font-bold text-gray-800 mt-4">Marking Scheme:</h4>
+            <ul className="list-disc ml-6 space-y-2">
+              <li>Correct Answer: +{sampleMarks} marks</li>
+              <li>Incorrect Answer: -{sampleNegativeMarks} marks</li>
+              <li>Unattempted: 0 marks</li>
+            </ul>
+            
+            <p className="mt-4">You can navigate freely between all questions during the test.</p>
+            <p>Use the question palette on the right to track your progress.</p>
+            <p>Mark questions for review if you want to revisit them.</p>
+          </div>
         );
       }
     };
@@ -771,18 +818,11 @@ export default function NormalTestInterface() {
           <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
             <div className="bg-[#1a73e8] text-white px-6 py-4">
               <h2 className="text-xl font-bold">Other Important Instructions</h2>
+              <p className="text-white/80 text-sm">General instructions:</p>
             </div>
 
             <div className="p-6 space-y-6">
-              <div>
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-[#1a73e8]" />
-                  Exam Specific Instructions
-                </h3>
-                <ul className="list-disc ml-6 space-y-2 text-gray-700 text-sm">
-                  {getExamInstructions()}
-                </ul>
-              </div>
+              {getExamInstructions()}
 
               {/* Fullscreen Warning */}
               {fullscreenEnabled && (
@@ -809,7 +849,7 @@ export default function NormalTestInterface() {
                     className="mt-1 w-5 h-5 rounded border-gray-300 text-[#1a73e8] focus:ring-[#1a73e8]"
                   />
                   <span className="text-gray-700 text-sm">
-                    I have read and understood all the instructions. I agree to abide by them and understand that any violation may lead to disqualification. I also understand that attempting to exit fullscreen mode multiple times or using unfair means will result in automatic submission of my test.
+                    I have read and understood the instructions. All computer hardware allotted to me are in proper working condition. I declare that I am not in possession of / not wearing / not carrying any prohibited gadget like mobile phone, bluetooth devices etc. /any prohibited material with me into the Examination Hall. I agree that in case of not adhering to the instructions, I shall be liable to be debarred from this Test / Examinations and/or to disciplinary action, which may include ban from future Tests / Examinations
                   </span>
                 </label>
               </div>
@@ -827,7 +867,7 @@ export default function NormalTestInterface() {
               <Button
                 onClick={startTest}
                 disabled={!agreedToTerms || loading}
-                className="bg-[#34a853] hover:bg-[#2d8f47] text-white px-8 py-2 text-lg"
+                className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-8 py-2 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
