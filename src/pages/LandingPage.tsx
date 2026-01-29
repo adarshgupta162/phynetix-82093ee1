@@ -45,6 +45,69 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+// IIT/NIT colleges data for auto-scrolling section
+const colleges = [
+  { name: "IIT Bombay", logo: "/logos/colleges/iit-bombay.png", website: "https://www.iitb.ac.in" },
+  { name: "IIT Delhi", logo: "/logos/colleges/iit-delhi.png", website: "https://www.iitd.ac.in" },
+  { name: "IIT Madras", logo: "/logos/colleges/iit-madras.png", website: "https://www.iitm.ac.in" },
+  { name: "IIT Kharagpur", logo: "/logos/colleges/iit-kharagpur.png", website: "https://www.iitkgp.ac.in" },
+  { name: "IIT Kanpur", logo: "/logos/colleges/iit-kanpur.png", website: "https://www.iitk.ac.in" },
+  { name: "IIT Roorkee", logo: "/logos/colleges/iit-roorkee.png", website: "https://www.iitr.ac.in" },
+  { name: "IIT Guwahati", logo: "/logos/colleges/iit-guwahati.png", website: "https://www.iitg.ac.in" },
+  { name: "IIT Hyderabad", logo: "/logos/colleges/iit-hyderabad.png", website: "https://www.iith.ac.in" },
+  { name: "IIT Bhubaneswar", logo: "/logos/colleges/iit-bhubaneswar.png", website: "https://www.iitbbs.ac.in" },
+  { name: "IIT Gandhinagar", logo: "/logos/colleges/iit-gandhinagar.png", website: "https://www.iitgn.ac.in" },
+  { name: "IIT Jodhpur", logo: "/logos/colleges/iit-jodhpur.png", website: "https://www.iitj.ac.in" },
+  { name: "IIT Patna", logo: "/logos/colleges/iit-patna.png", website: "https://www.iitp.ac.in" },
+  { name: "IIT Indore", logo: "/logos/colleges/iit-indore.png", website: "https://www.iiti.ac.in" },
+  { name: "IIT Mandi", logo: "/logos/colleges/iit-mandi.png", website: "https://www.iitmandi.ac.in" },
+  { name: "IIT Varanasi", logo: "/logos/colleges/iit-varanasi.png", website: "https://www.iitbhu.ac.in" },
+  { name: "IIT Bhilai", logo: "/logos/colleges/iit-bhilai.png", website: "https://www.iitbhilai.ac.in" },
+  { name: "IIT Dharwad", logo: "/logos/colleges/iit-dharwad.png", website: "https://www.iitdh.ac.in" },
+  { name: "NIT Tiruchirappalli", logo: "/logos/colleges/nit-trichy.png", website: "https://www.nitt.edu" },
+  { name: "NIT Rourkela", logo: "/logos/colleges/nit-rourkela.png", website: "https://www.nitrkl.ac.in" },
+  { name: "NIT Silchar", logo: "/logos/colleges/nit-silchar.png", website: "https://www.nits.ac.in" },
+  { name: "VNIT Nagpur", logo: "/logos/colleges/vnit-nagpur.png", website: "https://www.vnit.ac.in" },
+  { name: "NIT Warangal", logo: "/logos/colleges/nit-warangal.png", website: "https://www.nitw.ac.in" },
+  { name: "NIT Surathkal", logo: "/logos/colleges/nit-surathkal.png", website: "https://www.nitk.ac.in" },
+  { name: "NIT Calicut", logo: "/logos/colleges/nit-calicut.png", website: "https://www.nitc.ac.in" },
+  { name: "MANIT Bhopal", logo: "/logos/colleges/manit-bhopal.png", website: "https://www.manit.ac.in" },
+];
+
+// Test Series data
+const testSeriesCards = [
+  {
+    title: "JEE Main 2026 Test Series",
+    logo: "/logos/test-series/jee-main.png",
+    features: ["30 Full Tests (Video & Textual Solutions)", "15 RPYQs", "12 Part Tests", "Chapter-wise Tests"],
+    bgGradient: "from-blue-600/20 to-blue-800/20",
+  },
+  {
+    title: "JEE Advanced 2026 Test Series",
+    logo: "/logos/test-series/jee-advanced.png",
+    features: ["20 Full Tests", "10 Topic-wise Tests", "Detailed Analysis", "Expert Solutions"],
+    bgGradient: "from-purple-600/20 to-purple-800/20",
+  },
+  {
+    title: "BITSAT 2026 Test Series",
+    logo: "/logos/test-series/bitsat.png",
+    features: ["25 Full Tests", "8 Part Tests", "English Proficiency", "Speed Tests"],
+    bgGradient: "from-orange-600/20 to-orange-800/20",
+  },
+  {
+    title: "MHT-CET 2026 Test Series",
+    logo: "/logos/test-series/mht-cet.png",
+    features: ["20 Full Tests", "15 Chapter Tests", "State Board Focus", "Quick Revision"],
+    bgGradient: "from-green-600/20 to-green-800/20",
+  },
+  {
+    title: "NEET 2026 Test Series",
+    logo: "/logos/test-series/neet.png",
+    features: ["35 Full Tests", "Biology Focus Tests", "Medical MCQs", "AIIMS Pattern"],
+    bgGradient: "from-red-600/20 to-red-800/20",
+  },
+];
+
 const features = [
   {
     icon: FileText,
@@ -258,75 +321,224 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative z-10 py-20 md:py-28">
+      {/* Hero Section - Quizrr Style */}
+      <section className="relative z-10 py-16 md:py-24 bg-gradient-to-br from-purple-900/50 via-indigo-900/30 to-blue-900/20 backdrop-blur-sm">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-500/10 via-transparent to-transparent" />
+        
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
+          {/* Tabs for Test Series Years */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex justify-center gap-3 mb-12"
+          >
+            <button className="px-6 py-2.5 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold text-sm hover:shadow-lg transition-shadow">
+              Our 2026 Test Series
+            </button>
+            <button className="px-6 py-2.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white font-semibold text-sm hover:bg-white/20 transition-colors">
+              Our 2027 Test Series
+            </button>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-12 items-center max-w-6xl mx-auto">
+            {/* Left Content */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-            >
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-                <Sparkles className="w-4 h-4" />
-                JEE & NEET Test Platform
-              </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-4xl md:text-6xl lg:text-7xl font-bold font-display mb-6 leading-tight"
-            >
-              Practice Tests That{" "}
-              <span className="gradient-text">Feel Real</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
+              className="text-left"
             >
-              Experience authentic exam conditions with PDF-based tests, 
-              OMR-style answering, and detailed performance analytics.
-            </motion.p>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-display mb-6 leading-tight text-white">
+                India's{" "}
+                <span className="bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent">
+                  Most Relevant
+                </span>
+                <br />
+                Test Series
+              </h1>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
+              <p className="text-lg text-gray-200 mb-6 leading-relaxed">
+                1 in every 5 99%iler used this test series in JEE Main 2025
+              </p>
+
               <Link to="/auth">
-                <Button variant="gradient" size="xl" className="w-full sm:w-auto">
-                  Get Started
-                  <ArrowRight className="w-5 h-5" />
+                <Button 
+                  className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-black font-bold text-base px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                >
+                  Join Test Series
+                  <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
+
+              {/* Statistics */}
+              <div className="grid grid-cols-3 gap-4 mt-10" role="list" aria-label="Platform statistics">
+                <div className="text-left" role="listitem">
+                  <div className="text-3xl font-bold text-white">50K+</div>
+                  <div className="text-sm text-gray-300">Students</div>
+                </div>
+                <div className="text-left" role="listitem">
+                  <div className="text-3xl font-bold text-white">1L+</div>
+                  <div className="text-sm text-gray-300">Tests Taken</div>
+                </div>
+                <div className="text-left" role="listitem">
+                  <div className="text-3xl font-bold text-white">99%</div>
+                  <div className="text-sm text-gray-300">Success Rate</div>
+                </div>
+              </div>
             </motion.div>
 
-            {/* Quick Info */}
+            {/* Right Image */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              className="flex flex-wrap items-center justify-center gap-6 mt-12 text-sm text-muted-foreground"
+              className="hidden md:flex justify-center items-center"
             >
-              <span className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-primary" />
-                JEE Mains Pattern
-              </span>
-              <span className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary" />
-                JEE Advanced Pattern
-              </span>
-              <span className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-primary" />
-                Secure Test Environment
-              </span>
+              <div className="relative">
+                <div className="w-80 h-80 rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 backdrop-blur-xl flex items-center justify-center">
+                  <div className="text-8xl">🎓</div>
+                </div>
+                {/* Floating elements */}
+                <div className="absolute -top-4 -right-4 w-20 h-20 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-xl animate-bounce">
+                  <Trophy className="w-10 h-10 text-white" />
+                </div>
+                <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-xl animate-pulse">
+                  <Target className="w-8 h-8 text-white" />
+                </div>
+              </div>
             </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* IIT/NIT Auto-Scrolling Section */}
+      <section className="relative z-10 py-20 border-t border-border/50 overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-3">
+              Get Into India's Top <span className="gradient-text">IITs & NITs</span>
+            </h2>
+            <p className="text-muted-foreground text-lg">
+              Our students are across Top Colleges of India
+            </p>
+          </div>
+
+          {/* Auto-scrolling college carousel */}
+          <div className="relative">
+            <div className="overflow-hidden">
+              <motion.div
+                className="flex gap-6"
+                animate={{
+                  x: [0, -(colleges.length * (192 + 24))], // 192px card width + 24px gap
+                }}
+                transition={{
+                  x: {
+                    repeat: Infinity,
+                    repeatType: "loop",
+                    duration: 40,
+                    ease: "linear",
+                  },
+                }}
+                aria-label="Auto-scrolling college showcase"
+              >
+                {/* Render colleges twice for seamless loop */}
+                {[...colleges, ...colleges].map((college, index) => (
+                  <div
+                    key={`${college.name}-${index}`}
+                    className="flex-shrink-0 w-48 glass-card p-6 border border-border/50 rounded-2xl flex flex-col items-center justify-center gap-3 hover:scale-105 transition-transform"
+                  >
+                    <div className="w-20 h-20 flex items-center justify-center">
+                      <img 
+                        src={college.logo} 
+                        alt={`${college.name} logo`}
+                        className="max-w-full max-h-full object-contain"
+                        onError={(e) => {
+                          // Fallback to placeholder if image fails to load
+                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iODAiIGZpbGw9IiMyMjI4MzgiIHJ4PSI4Ii8+PHBhdGggZD0iTTQwIDIwQzI4Ljk1NDMgMjAgMjAgMjguOTU0MyAyMCA0MEMyMCA1MS4wNDU3IDI4Ljk1NDMgNjAgNDAgNjBDNTEuMDQ1NyA2MCA2MCA1MS4wNDU3IDYwIDQwQzYwIDI4Ljk1NDMgNTEuMDQ1NyAyMCA0MCAyMFpNNDAgMjZDNDcuNzMyIDI2IDU0IDMyLjI2OCA1NCA0MEM1NCA0Ny43MzIgNDcuNzMyIDU0IDQwIDU0QzMyLjI2OCA1NCAyNiA0Ny43MzIgMjYgNDBDMjYgMzIuMjY4IDMyLjI2OCAyNiA0MCAyNloiIGZpbGw9IiMzQjgyRjYiLz48L3N2Zz4=';
+                        }}
+                      />
+                    </div>
+                    <div className="text-sm font-semibold text-center">{college.name}</div>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Test Series Cards Section */}
+      <section id="test-series" className="relative z-10 py-20 border-t border-border/50">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold font-display mb-4">
+              Join India's <span className="gradient-text">Most Relevant Test Series</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Comprehensive test series designed for JEE, NEET, BITSAT, and other competitive exams
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {testSeriesCards.map((testSeries, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="glass-card rounded-2xl overflow-hidden border border-border/50 hover:scale-105 transition-transform duration-300 group"
+              >
+                {/* Background with Logo */}
+                <div className={`relative h-48 bg-gradient-to-br ${testSeries.bgGradient} flex items-center justify-center`}>
+                  <div className="absolute inset-0 bg-black/30" />
+                  <div className="relative z-10 w-24 h-24 flex items-center justify-center">
+                    <img 
+                      src={testSeries.logo} 
+                      alt={`${testSeries.title} logo`}
+                      className="max-w-full max-h-full object-contain drop-shadow-lg"
+                      onError={(e) => {
+                        // Fallback to placeholder if image fails to load
+                        e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCA5NiA5NiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHJ4PSIxMiIgZmlsbD0id2hpdGUiIGZpbGwtb3BhY2l0eT0iMC4xIi8+PHBhdGggZD0iTTQ4IDI0QzM1LjI5NzUgMjQgMjUgMzQuMjk3NSAyNSA0N0MyNSA1OS43MDI1IDM1LjI5NzUgNzAgNDggNzBDNjAuNzAyNSA3MCA3MSA1OS43MDI1IDcxIDQ3QzcxIDM0LjI5NzUgNjAuNzAyNSAyNCA0OCAyNFpNNDggMzBDNTcuMzg5OCAzMCA2NSAzNy42MTAyIDY1IDQ3QzY1IDU2LjM4OTggNTcuMzg5OCA2NCA0OCA2NEMzOC42MTAyIDY0IDMxIDU2LjM4OTggMzEgNDdDMzEgMzcuNjEwMiAzOC42MTAyIDMwIDQ4IDMwWiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=';
+                      }}
+                    />
+                  </div>
+                  {/* Indian Flag Icon */}
+                  <div className="absolute top-4 right-4 w-10 h-7 rounded border border-white/30 overflow-hidden" role="img" aria-label="Indian flag">
+                    <div className="h-1/3 bg-orange-500" />
+                    <div className="h-1/3 bg-white flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full border-2 border-blue-600" />
+                    </div>
+                    <div className="h-1/3 bg-green-600" />
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6">
+                  <h3 className="text-xl font-bold font-display mb-4">{testSeries.title}</h3>
+                  
+                  <ul className="space-y-2 mb-6">
+                    {testSeries.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link to="/auth">
+                    <Button 
+                      variant="outline" 
+                      className="w-full bg-navy text-white border-navy-border hover:bg-navy-light group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 transition-all"
+                    >
+                      View Details
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
