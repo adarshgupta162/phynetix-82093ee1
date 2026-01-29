@@ -9,7 +9,8 @@ import {
   AlertCircle,
   Mail,
   FileText,
-  CreditCard
+  CreditCard,
+  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
