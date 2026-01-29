@@ -287,16 +287,7 @@ export default function NormalTestInterface() {
     return () => clearInterval(timer);
   }, [loading, timeLeft]);
 
-  // Auto-save every 10 seconds
-  useEffect(() => {
-    if (currentScreen !== 4 || !attemptId || loading) return;
-    
-    const interval = setInterval(() => {
-      saveProgress();
-    }, 10000);
-    
-    return () => clearInterval(interval);
-  }, [currentScreen, attemptId, loading, saveProgress]);
+  // Note: Auto-save useEffect is defined after saveProgress callback
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -400,6 +391,17 @@ export default function NormalTestInterface() {
       setIsSaving(false);
     }
   }, [attemptId, answers, timePerQuestion, currentQuestion, questionStartTime, isSaving]);
+
+  // Auto-save every 10 seconds
+  useEffect(() => {
+    if (currentScreen !== 4 || !attemptId || loading) return;
+    
+    const interval = setInterval(() => {
+      saveProgress();
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [currentScreen, attemptId, loading, saveProgress]);
 
   const saveAndNext = async () => {
     // Update time for current question
