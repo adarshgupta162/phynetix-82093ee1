@@ -15,10 +15,11 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export function middleware(request: NextRequest) {
   // Get the hostname from the request
-  const hostname = request.headers.get('host') || '';
+  // Strip port number if present (e.g., localhost:3000 → localhost)
+  const hostname = (request.headers.get('host') || '').split(':')[0];
   
   // Extract the subdomain from the hostname
-  // This handles formats like: admin.phynetix.me, admin.phynetix.me:3000, etc.
+  // This handles formats like: admin.phynetix.me, admin.localhost, etc.
   const subdomain = hostname.split('.')[0];
   
   // Check if the request is coming from the admin subdomain
@@ -62,7 +63,11 @@ export function middleware(request: NextRequest) {
  * This ensures the middleware runs for all paths except:
  * - Static files (_next/static, _next/image)
  * - Public files in /public (favicon.ico, etc.)
- * - API routes that should not be rewritten
+ * - Asset files (images, fonts, etc.)
+ * 
+ * Note: This pattern excludes paths with file extensions to avoid processing
+ * static assets. If you have dynamic routes with dots (e.g., /file.json as a route),
+ * you may need to adjust this pattern.
  */
 export const config = {
   matcher: [
@@ -72,8 +77,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public assets (images, etc.)
+     * - Files with common static extensions (images, fonts, etc.)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(png|jpg|jpeg|gif|svg|ico|css|js|woff|woff2|ttf|eot)$).*)',
   ],
 };
