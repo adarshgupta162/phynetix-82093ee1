@@ -287,7 +287,7 @@ export default function LandingPage() {
               Experience the <span className="gradient-text">Test Interface</span>
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Our split-view interface shows the PDF question paper alongside an OMR-style answer panel.
+              Our intuitive interface displays questions with LaTeX rendering, multiple choice options, and a comprehensive question palette.
             </p>
           </div>
 
@@ -314,103 +314,162 @@ export default function LandingPage() {
               </div>
 
               {/* Mock Interface */}
-              <div className="grid md:grid-cols-[1fr_340px] gap-4 p-2">
-                {/* PDF Preview Area */}
-                <div className="bg-muted/30 rounded-xl p-4 min-h-[300px] md:min-h-[400px] flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-muted-foreground">PDF Question Paper</span>
-                    <div className="flex gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-background/60 flex items-center justify-center">
-                        <span className="text-xs">−</span>
-                      </div>
-                      <div className="w-8 h-8 rounded-lg bg-background/60 flex items-center justify-center">
-                        <span className="text-xs">+</span>
-                      </div>
+              <div className="flex flex-col gap-3 p-2">
+                {/* Section Tabs */}
+                <div className="bg-muted/30 rounded-lg p-2 flex items-center gap-2 overflow-x-auto">
+                  {['Physics', 'Chemistry', 'Mathematics'].map((subject, i) => (
+                    <div
+                      key={subject}
+                      className={`px-4 py-1.5 rounded text-xs font-medium whitespace-nowrap border ${
+                        i === 0 
+                          ? 'bg-primary text-primary-foreground border-primary' 
+                          : 'bg-background/60 text-muted-foreground border-border/50'
+                      }`}
+                    >
+                      {subject} (25)
                     </div>
-                  </div>
-                  <div className="flex-1 bg-background/40 rounded-lg p-4 space-y-3">
-                    <div className="text-center text-sm font-semibold text-muted-foreground mb-4">JEE Main 2024 - Paper 1</div>
-                    <div className="space-y-2">
-                      <div className="h-3 bg-muted/40 rounded w-full" />
-                      <div className="h-3 bg-muted/40 rounded w-5/6" />
-                      <div className="h-3 bg-muted/40 rounded w-4/5" />
-                    </div>
-                    <div className="pt-4 space-y-2">
-                      <div className="text-xs text-muted-foreground font-medium">Q1. A particle moves in a straight line...</div>
-                      <div className="pl-4 space-y-1 text-xs text-muted-foreground">
-                        <div>(A) 2 m/s²</div>
-                        <div>(B) 4 m/s²</div>
-                        <div>(C) 6 m/s²</div>
-                        <div>(D) 8 m/s²</div>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
-                {/* OMR Panel Preview */}
-                <div className="bg-muted/30 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm font-medium text-muted-foreground">OMR Panel</span>
-                    <div className="px-3 py-1 rounded-lg bg-primary/20 text-primary text-xs font-medium">
-                      02:45:30
+                {/* Main Content Area */}
+                <div className="grid md:grid-cols-[1fr_300px] gap-3">
+                  {/* Question Display Area */}
+                  <div className="bg-muted/30 rounded-xl p-4 min-h-[300px] md:min-h-[450px] flex flex-col">
+                    {/* Section Instructions */}
+                    <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg text-xs space-y-1">
+                      <div className="text-muted-foreground">• This section contains <strong>25</strong> questions.</div>
+                      <div className="text-muted-foreground">• Each question has FOUR options. ONLY ONE is correct.</div>
+                      <div className="text-muted-foreground">• Full Marks: <strong>+4</strong> | Zero Marks: <strong>0</strong> | Negative Marks: <strong>-1</strong></div>
                     </div>
-                  </div>
-                  
-                  {/* Question Status */}
-                  <div className="grid grid-cols-4 gap-2 mb-4">
-                    <div className="flex items-center gap-1 text-xs">
-                      <div className="w-3 h-3 rounded bg-success/60" />
-                      <span className="text-muted-foreground">Answered</span>
+
+                    {/* Question Content */}
+                    <div className="flex-1 bg-background/40 rounded-lg p-4 space-y-4">
+                      {/* Question Badge */}
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 bg-primary text-primary-foreground rounded text-xs font-medium">
+                          Q.1
+                        </span>
+                        <span className="text-xs text-muted-foreground">Single Choice</span>
+                      </div>
+
+                      {/* Question Text with LaTeX */}
+                      <div className="text-sm text-foreground leading-relaxed">
+                        A particle of mass <span className="font-mono text-xs">m</span> moves in a circular path of radius <span className="font-mono text-xs">r</span> with velocity <span className="font-mono text-xs">v</span>. What is the centripetal acceleration?
+                      </div>
+
+                      {/* Answer Options */}
+                      <div className="space-y-2">
+                        {[
+                          { label: 'A', text: 'v²/r', selected: false },
+                          { label: 'B', text: 'v/r²', selected: true },
+                          { label: 'C', text: 'mr/v', selected: false },
+                          { label: 'D', text: 'mv²/r', selected: false }
+                        ].map((option) => (
+                          <div 
+                            key={option.label}
+                            className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                              option.selected
+                                ? 'border-primary/50 bg-primary/10' 
+                                : 'border-border/50 bg-background/60'
+                            }`}
+                          >
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold bg-muted text-muted-foreground flex-shrink-0">
+                              {option.label}
+                            </div>
+                            <span className="text-xs font-mono">{option.text}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 text-xs">
-                      <div className="w-3 h-3 rounded bg-muted/60" />
-                      <span className="text-muted-foreground">Unseen</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                      <div className="w-3 h-3 rounded bg-warning/60" />
-                      <span className="text-muted-foreground">Skipped</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-xs">
-                      <div className="w-3 h-3 rounded bg-purple-500/60" />
-                      <span className="text-muted-foreground">Review</span>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-border/50">
+                      <div className="flex gap-2">
+                        <div className="px-3 py-1.5 rounded-lg bg-background/60 border border-border/50 text-xs font-medium text-muted-foreground">
+                          Mark for Review
+                        </div>
+                        <div className="px-3 py-1.5 rounded-lg bg-background/60 border border-border/50 text-xs font-medium text-muted-foreground">
+                          Clear Response
+                        </div>
+                      </div>
+                      <div className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium">
+                        Save & Next
+                      </div>
                     </div>
                   </div>
 
-                  {/* Question Grid */}
-                  <div className="bg-background/40 rounded-lg p-3 mb-4">
-                    <div className="text-xs text-muted-foreground mb-2">Question 1 of 75</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {['A', 'B', 'C', 'D'].map((opt, i) => (
-                        <div 
-                          key={opt} 
-                          className={`px-4 py-2 rounded-lg text-center text-sm font-medium transition-colors cursor-pointer ${
-                            i === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted/50 hover:bg-muted'
-                          }`}
-                        >
-                          {opt}
-                        </div>
-                      ))}
+                  {/* Question Palette Sidebar */}
+                  <div className="bg-muted/30 rounded-xl p-4 flex flex-col min-h-[300px] md:min-h-[450px]">
+                    {/* Student Info */}
+                    <div className="mb-3 text-center pb-3 border-b border-border/50">
+                      <div className="w-12 h-12 mx-auto bg-muted rounded-lg mb-2 flex items-center justify-center text-xl">
+                        👤
+                      </div>
+                      <div className="text-xs font-medium text-muted-foreground">Student Name</div>
                     </div>
-                  </div>
 
-                  {/* Question Palette */}
-                  <div className="bg-background/40 rounded-lg p-3">
-                    <div className="text-xs text-muted-foreground mb-2">Question Palette</div>
-                    <div className="grid grid-cols-5 gap-1.5">
-                      {[...Array(15)].map((_, i) => (
-                        <div 
-                          key={i} 
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-medium ${
-                            i === 0 ? 'bg-success/60 text-success-foreground' :
-                            i < 3 ? 'bg-success/40' :
-                            i === 3 ? 'bg-primary text-primary-foreground ring-2 ring-primary' :
-                            i === 5 ? 'bg-purple-500/60' :
-                            'bg-muted/40'
-                          }`}
-                        >
-                          {i + 1}
+                    {/* Timer */}
+                    <div className="mb-3 pb-3 border-b border-border/50">
+                      <div className="px-3 py-2 rounded-lg bg-primary/20 text-primary text-center">
+                        <div className="text-xs font-medium">Time Left</div>
+                        <div className="text-sm font-bold">02:45:30</div>
+                      </div>
+                    </div>
+
+                    {/* Legend */}
+                    <div className="mb-3 pb-3 border-b border-border/50 space-y-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded bg-success text-white flex items-center justify-center text-xs font-medium">5</div>
+                        <span className="text-muted-foreground">Answered</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded bg-destructive text-white flex items-center justify-center text-xs font-medium">2</div>
+                        <span className="text-muted-foreground">Not Answered</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-xs font-medium">17</div>
+                        <span className="text-muted-foreground">Not Visited</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded bg-purple-500 text-white flex items-center justify-center text-xs font-medium">1</div>
+                        <span className="text-muted-foreground">Marked for Review</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded bg-purple-500 text-white flex items-center justify-center text-xs font-medium relative">
+                          2
+                          <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-success rounded-full"></span>
                         </div>
-                      ))}
+                        <span className="text-muted-foreground">Answered & Marked</span>
+                      </div>
+                    </div>
+
+                    {/* Section Title */}
+                    <div className="mb-2">
+                      <div className="text-xs font-semibold text-primary">Physics</div>
+                      <div className="text-xs text-muted-foreground">Choose a Question</div>
+                    </div>
+
+                    {/* Question Grid */}
+                    <div className="flex-1 bg-background/40 rounded-lg p-2 overflow-y-auto">
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {[...Array(25)].map((_, i) => (
+                          <div 
+                            key={i} 
+                            className={`w-7 h-7 rounded flex items-center justify-center text-xs font-medium ${
+                              i === 0 ? 'bg-primary text-primary-foreground ring-2 ring-primary' :
+                              i < 5 ? 'bg-success text-white' :
+                              i === 5 || i === 6 ? 'bg-destructive text-white' :
+                              i === 7 ? 'bg-purple-500 text-white relative' :
+                              'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {i + 1}
+                            {i === 7 && (
+                              <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-success rounded-full"></span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
