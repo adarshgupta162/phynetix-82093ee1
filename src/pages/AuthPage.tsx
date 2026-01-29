@@ -123,11 +123,8 @@ export default function AuthPage() {
     setGoogleLoading(true);
     localStorage.setItem('rememberMe', String(rememberMe));
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: getAuthRedirectTo('/dashboard'),
-        }
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
       });
       if (error) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
