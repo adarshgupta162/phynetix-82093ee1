@@ -360,8 +360,8 @@ export default function LandingPage() {
                       {/* Answer Options */}
                       <div className="space-y-2">
                         {[
-                          { label: 'A', text: 'v²/r', selected: false },
-                          { label: 'B', text: 'v/r²', selected: true },
+                          { label: 'A', text: 'v²/r', selected: true },
+                          { label: 'B', text: 'v/r²', selected: false },
                           { label: 'C', text: 'mr/v', selected: false },
                           { label: 'D', text: 'mv²/r', selected: false }
                         ].map((option) => (
@@ -419,7 +419,7 @@ export default function LandingPage() {
                     {/* Legend */}
                     <div className="mb-3 pb-3 border-b border-border/50 space-y-2 text-xs">
                       <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded bg-success text-white flex items-center justify-center text-xs font-medium">5</div>
+                        <div className="w-5 h-5 rounded bg-success text-white flex items-center justify-center text-xs font-medium">4</div>
                         <span className="text-muted-foreground">Answered</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -436,7 +436,7 @@ export default function LandingPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded bg-purple-500 text-white flex items-center justify-center text-xs font-medium relative">
-                          2
+                          1
                           <span className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 bg-success rounded-full"></span>
                         </div>
                         <span className="text-muted-foreground">Answered & Marked</span>
