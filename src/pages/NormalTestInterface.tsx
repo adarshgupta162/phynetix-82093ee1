@@ -13,7 +13,8 @@ import {
   Loader2,
   RotateCcw,
   Eye,
-  EyeOff
+  EyeOff,
+  KeyRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
@@ -35,12 +36,14 @@ interface Question {
   subject: string;
   chapter: string;
   image_url?: string;
+  section_type?: string;
 }
 
 interface Section {
   id: string;
   name: string;
   questions: Question[];
+  section_type?: string;
 }
 
 export default function NormalTestInterface() {
@@ -52,7 +55,7 @@ export default function NormalTestInterface() {
   const [sections, setSections] = useState<Section[]>([]);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(new Set());
   const [timeLeft, setTimeLeft] = useState(0);
@@ -63,11 +66,19 @@ export default function NormalTestInterface() {
   const [fullscreenEnabled, setFullscreenEnabled] = useState(true);
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
   
-  // Instructions page state
-  const [showInstructions, setShowInstructions] = useState(true);
+  // Instructions page state - now for 4-screen flow
+  const [currentScreen, setCurrentScreen] = useState(1);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [testDuration, setTestDuration] = useState(0);
   const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
+  
+  // New state for UGEE pattern
+  const [systemId, setSystemId] = useState("");
+  const [studentName, setStudentName] = useState("Student");
+  const [studentAvatar, setStudentAvatar] = useState<string | null>(null);
+  const [examType, setExamType] = useState<string>("custom");
+  const [testType, setTestType] = useState<string>("full");
+  const [password, setPassword] = useState("");
   
   // Time tracking per question
   const [timePerQuestion, setTimePerQuestion] = useState<Record<string, number>>({});
@@ -85,7 +96,7 @@ export default function NormalTestInterface() {
       // Get test info first
       const { data: testData } = await supabase
         .from("tests")
-        .select("name, duration_minutes, fullscreen_enabled")
+        .select("name, duration_minutes, fullscreen_enabled, exam_type, test_type")
         .eq("id", testId)
         .single();
 
@@ -93,11 +104,32 @@ export default function NormalTestInterface() {
         setTestName(testData.name);
         setTestDuration(testData.duration_minutes);
         setFullscreenEnabled(testData.fullscreen_enabled ?? true);
+        setExamType(testData.exam_type || 'custom');
+        setTestType(testData.test_type || 'full');
       }
 
       // Check for existing attempt
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Fetch student profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', user.id)
+          .single();
+
+        setStudentName(profile?.full_name || 'Student');
+        setStudentAvatar(profile?.avatar_url);
+
+        // Generate or retrieve systemId
+        const storageKey = `systemId_${testId}`;
+        let storedSystemId = localStorage.getItem(storageKey);
+        if (!storedSystemId) {
+          storedSystemId = `C${Math.floor(100 + Math.random() * 900)}`;
+          localStorage.setItem(storageKey, storedSystemId);
+        }
+        setSystemId(storedSystemId);
+
         const { data: existingAttempt } = await supabase
           .from("test_attempts")
           .select("id, completed_at, fullscreen_exit_count")
@@ -111,9 +143,9 @@ export default function NormalTestInterface() {
             navigate(`/test/${testId}/analysis`);
             return;
           }
-          // Has ongoing attempt - skip instructions
+          // Has ongoing attempt - skip to test screen
           setHasExistingAttempt(true);
-          setShowInstructions(false);
+          setCurrentScreen(4);
           setFullscreenExitCount(existingAttempt.fullscreen_exit_count || 0);
           initializeTest();
           return;
@@ -136,7 +168,7 @@ export default function NormalTestInterface() {
       });
       return;
     }
-    setShowInstructions(false);
+    setCurrentScreen(4);
     setLoading(true);
     initializeTest();
   };
@@ -263,9 +295,32 @@ export default function NormalTestInterface() {
   const currentSection = sections.find(s => s.id === activeSection);
   const currentQuestion = currentSection?.questions[currentQuestionIndex];
 
+  // Check if question is multiple choice
+  const isMultipleChoice = currentQuestion?.question_type === 'multiple_choice' || 
+                           currentQuestion?.question_type === 'multi' ||
+                           currentQuestion?.section_type === 'multiple_choice' ||
+                           currentQuestion?.section_type === 'multi';
+
   const handleAnswer = (optionIndex: number) => {
     if (currentQuestion) {
-      setAnswers({ ...answers, [currentQuestion.id]: String(optionIndex) });
+      if (isMultipleChoice) {
+        // Handle multiple choice - toggle selection
+        const currentAnswers = Array.isArray(answers[currentQuestion.id]) 
+          ? answers[currentQuestion.id] as string[]
+          : answers[currentQuestion.id] 
+            ? [answers[currentQuestion.id] as string]
+            : [];
+        
+        const optionStr = String(optionIndex);
+        const newAnswers = currentAnswers.includes(optionStr)
+          ? currentAnswers.filter(a => a !== optionStr)
+          : [...currentAnswers, optionStr];
+        
+        setAnswers({ ...answers, [currentQuestion.id]: newAnswers });
+      } else {
+        // Handle single choice
+        setAnswers({ ...answers, [currentQuestion.id]: String(optionIndex) });
+      }
     }
   };
 
@@ -484,7 +539,7 @@ export default function NormalTestInterface() {
   };
 
   // Loading state
-  if (loading && !showInstructions) {
+  if (loading && currentScreen === 4) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -495,23 +550,107 @@ export default function NormalTestInterface() {
     );
   }
 
-  // Instructions page
-  if (showInstructions && !hasExistingAttempt) {
+  // Render shared header for screens 1-3
+  const renderHeader = () => (
+    <header className="bg-[#1e3a5f] text-[#fbbf24] px-6 py-3 flex items-center justify-between">
+      <div className="text-sm">
+        <span className="font-medium">System Name: {systemId}</span>
+      </div>
+      <div className="text-sm text-right">
+        <div className="font-medium">Candidate Name: {studentName}</div>
+        <div className="text-white/90">Subject: {testName}</div>
+      </div>
+    </header>
+  );
+
+  // Screen 1: Login/Verification
+  if (currentScreen === 1) {
     return (
       <div className="min-h-screen bg-[#0a1628] flex flex-col">
-        <header className="bg-[#1e3a5f] text-white px-6 py-4">
-          <h1 className="text-xl font-bold">{testName}</h1>
-          <p className="text-white/70 text-sm">JEE Mains Pattern Test</p>
-        </header>
+        {renderHeader()}
+        
+        <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
+          {/* Student photo placeholder */}
+          <div className="absolute top-6 right-6 w-32 h-32 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden">
+            {studentAvatar ? (
+              <img src={studentAvatar} alt="Student" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-5xl">👤</span>
+            )}
+          </div>
 
+          {/* Disclaimer */}
+          <div className="w-full max-w-2xl mb-6 text-center text-white/80 text-sm">
+            <p>Please ensure your photo is clearly visible for verification purposes.</p>
+          </div>
+
+          {/* Login box */}
+          <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Sign In</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Student ID
+                </label>
+                <input
+                  type="text"
+                  placeholder="Enter your student ID"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a73e8] focus:border-[#1a73e8] outline-none"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1a73e8] focus:border-[#1a73e8] outline-none pr-10"
+                  />
+                  <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+              </div>
+
+              <Button
+                onClick={() => setCurrentScreen(2)}
+                className="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white py-3 text-lg"
+              >
+                Sign In
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Screen 2: General Instructions
+  if (currentScreen === 2) {
+    return (
+      <div className="min-h-screen bg-[#0a1628] flex flex-col">
+        {renderHeader()}
+        
         <div className="flex-1 p-6 lg:p-10 overflow-y-auto">
           <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
             <div className="bg-[#1a73e8] text-white px-6 py-4">
               <h2 className="text-xl font-bold">Instructions</h2>
-              <p className="text-white/80 text-sm">Please read carefully before starting</p>
+              <p className="text-white/80 text-sm">Please read the instructions carefully</p>
             </div>
 
             <div className="p-6 space-y-6">
+              {testType === 'practice' && (
+                <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 text-center">
+                  <p className="text-red-700 font-bold text-lg">
+                    This Mock Exam Only for Practice Purpose
+                  </p>
+                </div>
+              )}
+
               {/* General Instructions */}
               <div>
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
@@ -522,29 +661,14 @@ export default function NormalTestInterface() {
                   <li>Total duration of examination is <strong>{testDuration} minutes</strong>.</li>
                   <li>The clock will be set at the server. The countdown timer will display the remaining time.</li>
                   <li>The test will auto-submit when the time expires. You cannot resume once submitted.</li>
-                  <li>Only <strong>1 attempt</strong> is allowed per user.</li>
                 </ul>
               </div>
 
-              {/* Answering Instructions */}
-              <div>
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  Answering a Question
-                </h3>
-                <ul className="list-disc ml-6 space-y-2 text-gray-700 text-sm">
-                  <li>Click on the option to select your answer.</li>
-                  <li>Click <strong>Save & Next</strong> to save and proceed to the next question.</li>
-                  <li>Click <strong>Mark for Review & Next</strong> to save and mark for review.</li>
-                  <li>Click <strong>Clear Response</strong> to deselect your answer.</li>
-                </ul>
-              </div>
-
-              {/* Navigating Instructions */}
+              {/* Question Palette Legend */}
               <div>
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                   <Menu className="w-5 h-5 text-purple-600" />
-                  Navigating the Question Palette
+                  Question Palette Legend
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                   <div className="flex items-center gap-2">
@@ -572,39 +696,76 @@ export default function NormalTestInterface() {
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Marking Scheme */}
+            {/* Next Button */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+              <Button
+                onClick={() => setCurrentScreen(3)}
+                className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-8 py-2 text-lg"
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Screen 3: Important Instructions
+  if (currentScreen === 3) {
+    const getExamInstructions = () => {
+      if (examType === 'jee_mains') {
+        return (
+          <>
+            <li>The question paper consists of 3 sections (Physics, Chemistry, Mathematics).</li>
+            <li>Each section contains 20 questions with multiple choice answers.</li>
+            <li>Section A: 20 questions (4 marks for correct, -1 for incorrect).</li>
+            <li>Section B: 10 questions (4 marks for correct, 0 for incorrect) - Numerical value type.</li>
+            <li>For multiple choice questions, there is negative marking for incorrect answers.</li>
+          </>
+        );
+      } else if (examType === 'jee_advanced') {
+        return (
+          <>
+            <li>The question paper consists of 3 sections (Physics, Chemistry, Mathematics).</li>
+            <li>Each section may contain single correct, multiple correct, and numerical type questions.</li>
+            <li>Partial marking may apply for multiple correct answer questions.</li>
+            <li>Negative marking applies as per question type indicated.</li>
+          </>
+        );
+      } else {
+        return (
+          <>
+            <li>Read each question carefully before answering.</li>
+            <li>Marking scheme varies by question type.</li>
+            <li>You can navigate between questions using the question palette.</li>
+            <li>Mark questions for review if you want to revisit them later.</li>
+          </>
+        );
+      }
+    };
+
+    return (
+      <div className="min-h-screen bg-[#0a1628] flex flex-col">
+        {renderHeader()}
+        
+        <div className="flex-1 p-6 lg:p-10 overflow-y-auto">
+          <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
+            <div className="bg-[#1a73e8] text-white px-6 py-4">
+              <h2 className="text-xl font-bold">Other Important Instructions</h2>
+            </div>
+
+            <div className="p-6 space-y-6">
               <div>
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <Flag className="w-5 h-5 text-orange-500" />
-                  Marking Scheme
+                  <AlertCircle className="w-5 h-5 text-[#1a73e8]" />
+                  Exam Specific Instructions
                 </h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-gray-600">
-                        <th className="text-left py-2">Question Type</th>
-                        <th className="text-center py-2">Correct</th>
-                        <th className="text-center py-2">Incorrect</th>
-                        <th className="text-center py-2">Unattempted</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-gray-800">
-                      <tr className="border-t border-gray-200">
-                        <td className="py-2">MCQ (Single Correct)</td>
-                        <td className="text-center text-green-600 font-bold">+4</td>
-                        <td className="text-center text-red-600 font-bold">-1</td>
-                        <td className="text-center text-gray-400">0</td>
-                      </tr>
-                      <tr className="border-t border-gray-200">
-                        <td className="py-2">Integer Type</td>
-                        <td className="text-center text-green-600 font-bold">+4</td>
-                        <td className="text-center text-gray-400">0</td>
-                        <td className="text-center text-gray-400">0</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <ul className="list-disc ml-6 space-y-2 text-gray-700 text-sm">
+                  {getExamInstructions()}
+                </ul>
               </div>
 
               {/* Fullscreen Warning */}
@@ -632,14 +793,21 @@ export default function NormalTestInterface() {
                     className="mt-1 w-5 h-5 rounded border-gray-300 text-[#1a73e8] focus:ring-[#1a73e8]"
                   />
                   <span className="text-gray-700 text-sm">
-                    I have read and understood all the instructions. I agree to abide by them and understand that any violation may lead to disqualification.
+                    I have read and understood all the instructions. I agree to abide by them and understand that any violation may lead to disqualification. I also understand that attempting to exit fullscreen mode multiple times or using unfair means will result in automatic submission of my test.
                   </span>
                 </label>
               </div>
             </div>
 
-            {/* Start Button */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+            {/* Action Buttons */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentScreen(2)}
+                className="px-8 py-2 text-lg"
+              >
+                Previous
+              </Button>
               <Button
                 onClick={startTest}
                 disabled={!agreedToTerms || loading}
@@ -657,6 +825,8 @@ export default function NormalTestInterface() {
       </div>
     );
   }
+
+  // Screen 4: Test Interface (existing code continues below)
 
   // Determine if this is an integer type question
   const isIntegerQuestion = currentQuestion?.question_type === 'integer' || 
@@ -698,17 +868,29 @@ export default function NormalTestInterface() {
   const testContent = (
     <div className="min-h-screen bg-[#0a1628] flex flex-col pb-14 md:pb-16">
       {/* Header */}
-      <header className="bg-[#1e3a5f] text-white px-4 py-2 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-sm font-medium uppercase tracking-wide">{testName}</h1>
+      <header className="bg-[#1a2332] text-white px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <h1 className="text-base font-medium">{testName}</h1>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <div className={cn(
             "flex items-center gap-2 px-4 py-1.5 rounded font-mono font-bold text-sm",
             timeLeft < 300 ? "bg-red-500/20 text-red-300" : "bg-white/10"
           )}>
             <Clock className="w-4 h-4" />
-            Time Left: {formatTime(timeLeft)}
+            {formatTime(timeLeft)}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-gray-300 rounded flex items-center justify-center overflow-hidden">
+              {studentAvatar ? (
+                <img src={studentAvatar} alt={studentName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl">👤</span>
+              )}
+            </div>
+            <div className="text-sm">
+              <div className="font-medium">{studentName}</div>
+            </div>
           </div>
         </div>
       </header>
@@ -716,7 +898,6 @@ export default function NormalTestInterface() {
       {/* Section Tabs */}
       <div className="bg-[#f5f5f5] border-b border-gray-300 px-4 py-2 overflow-x-auto">
         <div className="flex items-center gap-2">
-          <span className="text-gray-600 text-sm font-medium mr-2">Sections</span>
           {sections.map((section) => (
             <button
               key={section.id}
@@ -731,7 +912,7 @@ export default function NormalTestInterface() {
                   : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
               )}
             >
-              {section.name}
+              {section.name} ({section.questions.length})
             </button>
           ))}
         </div>
@@ -750,6 +931,13 @@ export default function NormalTestInterface() {
                   <li>Full Marks: +{currentQuestion?.marks || 4} if the correct answer is entered</li>
                   <li>Zero Marks: 0 if no answer is entered</li>
                   <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect answer</li>
+                </>
+              ) : isMultipleChoice ? (
+                <>
+                  <li>Each question has FOUR options. ONE OR MORE may be correct.</li>
+                  <li>Full Marks: +{currentQuestion?.marks || 4} if ALL correct options are chosen</li>
+                  <li>Partial Marks: May apply for partially correct answers</li>
+                  <li>Negative Marks: -{currentQuestion?.negative_marks || 1} for incorrect answers</li>
                 </>
               ) : (
                 <>
@@ -770,7 +958,7 @@ export default function NormalTestInterface() {
                 Q.{currentQuestionIndex + 1}
               </span>
               <span className="text-xs text-gray-500">
-                {isIntegerQuestion ? 'Integer Type' : 'Single Choice'}
+                {isIntegerQuestion ? 'Integer Type' : isMultipleChoice ? 'Multiple Choice' : 'Single Choice'}
               </span>
             </div>
 
@@ -811,44 +999,52 @@ export default function NormalTestInterface() {
               </div>
             ) : (
               <div className="space-y-3">
-                {options.map((option, index) => (
-                  <label
-                    key={index}
-                    className={cn(
-                      "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all",
-                      currentQuestion && answers[currentQuestion.id] === String(index)
-                        ? "border-[#1a73e8] bg-blue-50" 
-                        : "border-gray-200 hover:bg-gray-50"
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="answer"
-                      checked={currentQuestion && answers[currentQuestion.id] === String(index)}
-                      onChange={() => handleAnswer(index)}
-                      className="w-4 h-4 text-[#1a73e8] border-gray-300 focus:ring-[#1a73e8] mt-1"
-                    />
-                    <span className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gray-100 text-gray-700 flex-shrink-0">
-                      {String.fromCharCode(65 + index)}
-                    </span>
-                    <div className="flex-1">
-                      <span className="text-gray-700 block">
-                        <LatexRenderer content={option.text} />
-                      </span>
-                      {option.image_url && (
-                        <img 
-                          src={option.image_url} 
-                          alt={`Option ${String.fromCharCode(65 + index)}`} 
-                          className="max-w-full h-auto rounded-lg border border-gray-200 mt-2"
-                          onError={(e) => {
-                            console.error('Option image failed to load:', option.image_url);
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
+                {options.map((option, index) => {
+                  const optionStr = String(index);
+                  const currentAnswers = currentQuestion ? answers[currentQuestion.id] : undefined;
+                  const isSelected = isMultipleChoice
+                    ? Array.isArray(currentAnswers) && currentAnswers.includes(optionStr)
+                    : currentAnswers === optionStr;
+
+                  return (
+                    <label
+                      key={index}
+                      className={cn(
+                        "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-all",
+                        isSelected
+                          ? "border-[#1a73e8] bg-blue-50" 
+                          : "border-gray-200 hover:bg-gray-50"
                       )}
-                    </div>
-                  </label>
-                ))}
+                    >
+                      <input
+                        type={isMultipleChoice ? "checkbox" : "radio"}
+                        name={isMultipleChoice ? undefined : "answer"}
+                        checked={isSelected}
+                        onChange={() => handleAnswer(index)}
+                        className="w-4 h-4 text-[#1a73e8] border-gray-300 focus:ring-[#1a73e8] mt-1"
+                      />
+                      <span className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gray-100 text-gray-700 flex-shrink-0">
+                        {String.fromCharCode(65 + index)}
+                      </span>
+                      <div className="flex-1">
+                        <span className="text-gray-700 block">
+                          <LatexRenderer content={option.text} />
+                        </span>
+                        {option.image_url && (
+                          <img 
+                            src={option.image_url} 
+                            alt={`Option ${String.fromCharCode(65 + index)}`} 
+                            className="max-w-full h-auto rounded-lg border border-gray-200 mt-2"
+                            onError={(e) => {
+                              console.error('Option image failed to load:', option.image_url);
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -858,9 +1054,14 @@ export default function NormalTestInterface() {
         <aside className="w-80 bg-[#f8f9fa] border-l border-gray-200 flex flex-col">
           {/* User Info */}
           <div className="p-4 border-b border-gray-200 text-center">
-            <div className="w-16 h-16 mx-auto bg-gray-300 rounded-lg mb-2 flex items-center justify-center">
-              <span className="text-2xl">👤</span>
+            <div className="w-16 h-16 mx-auto bg-gray-300 rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+              {studentAvatar ? (
+                <img src={studentAvatar} alt={studentName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl">👤</span>
+              )}
             </div>
+            <p className="text-sm font-medium text-gray-700">{studentName}</p>
           </div>
 
           {/* Legend */}
