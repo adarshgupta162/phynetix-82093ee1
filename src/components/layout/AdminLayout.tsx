@@ -25,17 +25,42 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { AtomIcon } from "@/components/icons/AtomIcon";
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
-  { icon: FileText, label: "PDF Tests", path: "/admin/pdf-tests" },
-  { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
-  { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
-  { icon: Library, label: "PhyNetix Library", path: "/admin/phynetix-library" },
-  { icon: Users, label: "Users", path: "/admin/users" },
-  { icon: MessageSquare, label: "Community", path: "/admin/community" },
-  { icon: Send, label: "Requests", path: "/admin/requests" },
-  { icon: History, label: "Audit Logs", path: "/admin/audit-logs" },
-  { icon: Settings, label: "Settings", path: "/admin/settings" },
+// Department navigation sections
+const navSections = [
+  {
+    title: "Overview",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
+    ]
+  },
+  {
+    title: "Departments",
+    items: [
+      { icon: FileQuestion, label: "Academic", path: "/admin/academic" },
+      { icon: Users, label: "Operations", path: "/admin/operations" },
+      { icon: History, label: "Finance", path: "/admin/finance" },
+    ]
+  },
+  {
+    title: "Content",
+    items: [
+      { icon: FileText, label: "PDF Tests", path: "/admin/pdf-tests" },
+      { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
+      { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
+      { icon: Library, label: "PhyNetix Library", path: "/admin/phynetix-library" },
+      { icon: Bell, label: "Batches", path: "/admin/batches" },
+    ]
+  },
+  {
+    title: "Management",
+    items: [
+      { icon: Users, label: "Users", path: "/admin/users" },
+      { icon: MessageSquare, label: "Community", path: "/admin/community" },
+      { icon: Send, label: "Requests", path: "/admin/requests" },
+      { icon: History, label: "Audit Logs", path: "/admin/audit-logs" },
+      { icon: Settings, label: "Settings", path: "/admin/settings" },
+    ]
+  }
 ];
 
 interface AdminLayoutProps {
@@ -146,49 +171,67 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </Link>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              const hasNotification = item.path === "/admin/requests" && unreadRequests > 0;
-              
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 relative",
-                    isActive
-                      ? "bg-primary/10 text-primary border border-primary/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+          <nav className="flex-1 space-y-4 overflow-y-auto">
+            {navSections.map((section) => (
+              <div key={section.title}>
+                <AnimatePresence mode="wait">
+                  {!collapsed && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 mb-2"
+                    >
+                      {section.title}
+                    </motion.p>
                   )}
-                >
-                  <div className="relative">
-                    <item.icon className="w-5 h-5 flex-shrink-0" />
-                    {hasNotification && (
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />
-                    )}
-                  </div>
-                  <AnimatePresence mode="wait">
-                    {!collapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="font-medium flex-1"
+                </AnimatePresence>
+                <div className="space-y-1">
+                  {section.items.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    const hasNotification = item.path === "/admin/requests" && unreadRequests > 0;
+                    
+                    return (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 relative",
+                          isActive
+                            ? "bg-primary/10 text-primary border border-primary/20"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                        )}
                       >
-                        {item.label}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                  {!collapsed && hasNotification && (
-                    <span className="bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
-                      {unreadRequests}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+                        <div className="relative">
+                          <item.icon className="w-5 h-5 flex-shrink-0" />
+                          {hasNotification && (
+                            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />
+                          )}
+                        </div>
+                        <AnimatePresence mode="wait">
+                          {!collapsed && (
+                            <motion.span
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.2, ease: "easeOut" }}
+                              className="font-medium flex-1 text-sm"
+                            >
+                              {item.label}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
+                        {!collapsed && hasNotification && (
+                          <span className="bg-destructive text-destructive-foreground text-xs px-2 py-0.5 rounded-full">
+                            {unreadRequests}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
 
           {/* Back to Student View */}

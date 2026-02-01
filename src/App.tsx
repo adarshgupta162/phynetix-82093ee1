@@ -34,6 +34,12 @@ import QuestionBankPage from "./pages/QuestionBankPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import SolutionsPage from "./pages/SolutionsPage";
 import TestSeriesEnrollment from "./pages/TestSeriesEnrollment";
+// Batch pages
+import BatchCatalogPage from "./pages/BatchCatalogPage";
+import BatchDetailsPage from "./pages/BatchDetailsPage";
+import MyBatchesPage from "./pages/MyBatchesPage";
+import CheckoutPage from "./pages/CheckoutPage";
+// Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminQuestionBank from "./pages/admin/AdminQuestionBank";
 import AdminTests from "./pages/admin/AdminTests";
@@ -50,6 +56,10 @@ import AuditLogs from "./pages/admin/AuditLogs";
 import StaffRequests from "./pages/admin/StaffRequests";
 import PhyNetixLibrary from "./pages/admin/PhyNetixLibrary";
 import FullscreenTestEditor from "./pages/admin/FullscreenTestEditor";
+import FinanceDashboard from "./pages/admin/FinanceDashboard";
+import AcademicDashboard from "./pages/admin/AcademicDashboard";
+import OperationsDashboard from "./pages/admin/OperationsDashboard";
+import BatchManagement from "./pages/admin/BatchManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -81,6 +91,7 @@ const App = () => (
               <Route path="/login" element={<AuthPage />} />
               <Route path="/signup" element={<AuthPage />} />
               <Route path="/staff-login" element={<StaffAuthPage />} />
+              {/* Student Dashboard & Features */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/tests" element={<TestLibrary />} />
               <Route path="/pdf-tests" element={<PDFTestLibrary />} />
@@ -95,8 +106,17 @@ const App = () => (
               <Route path="/attempts" element={<MyAttempts />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<SettingsPage />} />
+              {/* Batch Pages - Student */}
+              <Route path="/batches" element={<BatchCatalogPage />} />
+              <Route path="/batches/:batchId" element={<BatchDetailsPage />} />
+              <Route path="/my-batches" element={<MyBatchesPage />} />
+              <Route path="/checkout/:batchId" element={<CheckoutPage />} />
               {/* Admin Routes - All protected with AdminRoute */}
               <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/finance" element={<AdminRoute><FinanceDashboard /></AdminRoute>} />
+              <Route path="/admin/academic" element={<AdminRoute><AcademicDashboard /></AdminRoute>} />
+              <Route path="/admin/operations" element={<AdminRoute><OperationsDashboard /></AdminRoute>} />
+              <Route path="/admin/batches" element={<AdminRoute><BatchManagement /></AdminRoute>} />
               <Route path="/admin/question-bank" element={<AdminRoute><AdminQuestionBank /></AdminRoute>} />
               <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
               <Route path="/admin/test-creator" element={<AdminRoute><TestCreator /></AdminRoute>} />
