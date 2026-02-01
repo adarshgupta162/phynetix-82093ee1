@@ -24,9 +24,9 @@ import { AtomIcon } from "@/components/icons/AtomIcon";
 
 const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: BookOpen, label: "Test Library", path: "/tests" },
-  { icon: FileText, label: "PDF Tests", path: "/pdf-tests" },
-  { icon: Library, label: "Question Bank", path: "/question-bank" },
+  { icon: BookOpen, label: "My Batches", path: "/my-batches" },
+  { icon: Library, label: "Browse Batches", path: "/batches" },
+  { icon: FileText, label: "Test Library", path: "/tests" },
   { icon: ClipboardList, label: "My Attempts", path: "/attempts" },
   { icon: BarChart3, label: "Analytics", path: "/analytics" },
   { icon: User, label: "Profile", path: "/profile" },

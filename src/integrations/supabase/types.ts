@@ -47,6 +47,170 @@ export type Database = {
         }
         Relationships: []
       }
+      batch_enrollments: {
+        Row: {
+          batch_id: string
+          enrolled_at: string | null
+          enrolled_by: string | null
+          enrollment_type: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          payment_id: string | null
+          payment_status: string | null
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          enrolled_at?: string | null
+          enrolled_by?: string | null
+          enrollment_type?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          payment_id?: string | null
+          payment_status?: string | null
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          enrolled_at?: string | null
+          enrolled_by?: string | null
+          enrollment_type?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          payment_id?: string | null
+          payment_status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_enrollments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_tests: {
+        Row: {
+          batch_id: string
+          created_at: string | null
+          id: string
+          is_bonus: boolean | null
+          order_index: number | null
+          test_id: string
+          unlock_date: string | null
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string | null
+          id?: string
+          is_bonus?: boolean | null
+          order_index?: number | null
+          test_id: string
+          unlock_date?: string | null
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string | null
+          id?: string
+          is_bonus?: boolean | null
+          order_index?: number | null
+          test_id?: string
+          unlock_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_tests_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_tests_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batches: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          current_students: number | null
+          description: string | null
+          end_date: string | null
+          enrollment_deadline: string | null
+          features: Json | null
+          id: string
+          is_active: boolean | null
+          is_featured: boolean | null
+          max_students: number | null
+          name: string
+          original_price: number | null
+          price: number
+          short_description: string | null
+          start_date: string | null
+          syllabus: Json | null
+          thumbnail_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_students?: number | null
+          description?: string | null
+          end_date?: string | null
+          enrollment_deadline?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          max_students?: number | null
+          name: string
+          original_price?: number | null
+          price?: number
+          short_description?: string | null
+          start_date?: string | null
+          syllabus?: Json | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_students?: number | null
+          description?: string | null
+          end_date?: string | null
+          enrollment_deadline?: string | null
+          features?: Json | null
+          id?: string
+          is_active?: boolean | null
+          is_featured?: boolean | null
+          max_students?: number | null
+          name?: string
+          original_price?: number | null
+          price?: number
+          short_description?: string | null
+          start_date?: string | null
+          syllabus?: Json | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       chapters: {
         Row: {
           course_id: string
@@ -109,6 +273,96 @@ export type Database = {
           is_deleted?: boolean | null
           message?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      coupon_usage: {
+        Row: {
+          coupon_id: string
+          id: string
+          payment_id: string | null
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          id?: string
+          payment_id?: string | null
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          id?: string
+          payment_id?: string | null
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_usage_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coupon_usage_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          applicable_batches: string[] | null
+          code: string
+          created_at: string | null
+          created_by: string | null
+          current_uses: number | null
+          description: string | null
+          discount_type: string | null
+          discount_value: number
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          min_purchase_amount: number | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          applicable_batches?: string[] | null
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          description?: string | null
+          discount_type?: string | null
+          discount_value: number
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_purchase_amount?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          applicable_batches?: string[] | null
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          current_uses?: number | null
+          description?: string | null
+          discount_type?: string | null
+          discount_value?: number
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_purchase_amount?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
         }
         Relationships: []
       }
@@ -198,6 +452,74 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          batch_id: string
+          created_at: string | null
+          currency: string | null
+          gateway_order_id: string | null
+          gateway_response: Json | null
+          id: string
+          payment_gateway: string | null
+          payment_method: string | null
+          refund_amount: number | null
+          refund_reason: string | null
+          refunded_at: string | null
+          refunded_by: string | null
+          status: string | null
+          transaction_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          batch_id: string
+          created_at?: string | null
+          currency?: string | null
+          gateway_order_id?: string | null
+          gateway_response?: Json | null
+          id?: string
+          payment_gateway?: string | null
+          payment_method?: string | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          refunded_by?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          created_at?: string | null
+          currency?: string | null
+          gateway_order_id?: string | null
+          gateway_response?: Json | null
+          id?: string
+          payment_gateway?: string | null
+          payment_method?: string | null
+          refund_amount?: number | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          refunded_by?: string | null
+          status?: string | null
+          transaction_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phynetix_library: {
         Row: {
@@ -1017,6 +1339,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_test_access: {
+        Args: { _test_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_enrolled_in_batch: {
+        Args: { _batch_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       user_completed_test: {
         Args: { _test_id: string; _user_id: string }
@@ -1032,6 +1362,10 @@ export type Database = {
         | "teacher"
         | "data_manager"
         | "test_manager"
+        | "finance_admin"
+        | "academic_admin"
+        | "operations_admin"
+        | "marketing_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1167,6 +1501,10 @@ export const Constants = {
         "teacher",
         "data_manager",
         "test_manager",
+        "finance_admin",
+        "academic_admin",
+        "operations_admin",
+        "marketing_admin",
       ],
     },
   },
