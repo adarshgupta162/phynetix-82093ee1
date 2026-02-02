@@ -38,45 +38,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useState } from "react";
-
-// Test Series Cards Data with slug property
-const testSeriesCards = [
-  {
-    title: "JEE Main 2026 Test Series",
-    slug: "jee-main-2026",
-    logo: "/logos/test-series/jee-main.png",
-    features: ["30 Full Tests (Video & Textual Solutions)", "15 RPYQs", "12 Part Tests", "Chapter-wise Tests"],
-    bgGradient: "from-blue-600/20 to-blue-800/20",
-  },
-  {
-    title: "JEE Advanced 2026 Test Series",
-    slug: "jee-advanced-2026",
-    logo: "/logos/test-series/jee-advanced.png",
-    features: ["20 Full Tests", "10 Topic-wise Tests", "Detailed Analysis", "Expert Solutions"],
-    bgGradient: "from-purple-600/20 to-purple-800/20",
-  },
-  {
-    title: "BITSAT 2026 Test Series",
-    slug: "bitsat-2026",
-    logo: "/logos/test-series/bitsat.png",
-    features: ["25 Full Tests", "8 Part Tests", "English Proficiency", "Speed Tests"],
-    bgGradient: "from-orange-600/20 to-orange-800/20",
-  },
-  {
-    title: "MHT-CET 2026 Test Series",
-    slug: "mht-cet-2026",
-    logo: "/logos/test-series/mht-cet.png",
-    features: ["20 Full Tests", "15 Chapter Tests", "State Board Focus", "Quick Revision"],
-    bgGradient: "from-green-600/20 to-green-800/20",
-  },
-  {
-    title: "NEET 2026 Test Series",
-    slug: "neet-2026",
-    logo: "/logos/test-series/neet.png",
-    features: ["35 Full Tests", "Biology Focus Tests", "Medical MCQs", "AIIMS Pattern"],
-    bgGradient: "from-red-600/20 to-red-800/20",
-  },
-];
+import { TestSeriesSection } from "@/components/landing/TestSeriesSection";
 
 // Trust Stats
 const trustStats = [
@@ -342,86 +304,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Test Series Cards */}
-      <section className="relative z-10 py-20">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
-              <Badge className="mb-4 px-4 py-1.5 text-sm">
-                <Trophy className="w-3 h-3 mr-2" />
-                Test Series
-              </Badge>
-              <h2 className="text-3xl md:text-5xl font-bold font-display mb-4 gradient-text">
-                Choose Your Test Series
-              </h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Comprehensive test series designed by experts to help you ace your exams
-              </p>
-            </motion.div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {testSeriesCards.map((testSeries, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="group relative overflow-hidden rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-all duration-300"
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${testSeries.bgGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                
-                <div className="relative p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-16 h-16 rounded-xl bg-muted flex items-center justify-center">
-                      <img 
-                        src={testSeries.logo} 
-                        alt={testSeries.title}
-                        className="w-12 h-12 object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement!.innerHTML = '<div class="text-2xl">📚</div>';
-                        }}
-                      />
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      2026
-                    </Badge>
-                  </div>
-
-                  <h3 className="text-xl font-bold mb-4 group-hover:gradient-text transition-all">
-                    {testSeries.title}
-                  </h3>
-
-                  <div className="space-y-2 mb-6">
-                    {testSeries.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <CheckCircle className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                        <span>{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Link to={`/enroll/${testSeries.slug}`}>
-                    <Button 
-                      variant="outline" 
-                      className="w-full bg-navy text-white border-navy-border hover:bg-navy-light group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 transition-all"
-                    >
-                      View Details
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </Link>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Dynamic Test Series Section */}
+      <TestSeriesSection />
 
       {/* Features Section */}
       <section className="relative z-10 py-20 bg-muted/30">
