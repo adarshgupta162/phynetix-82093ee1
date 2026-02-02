@@ -26,7 +26,7 @@ import {
   Calendar,
   MoreHorizontal
 } from "lucide-react";
-import { useAllBatches, useDeleteBatch } from "@/hooks/useBatches";
+import { useAllBatches, useDeleteBatch, type Batch } from "@/hooks/useBatches";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -46,10 +46,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { BatchEditorDialog } from "@/components/admin/BatchEditorDialog";
 
 const categoryLabels: Record<string, string> = {
   jee_main: "JEE Main",
   jee_advanced: "JEE Advanced",
+  jee_main_advanced: "JEE Main + Advanced",
   neet: "NEET",
   bitsat: "BITSAT",
   mht_cet: "MHT-CET",
@@ -59,6 +61,8 @@ const categoryLabels: Record<string, string> = {
 export default function BatchManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
   
   const { data: batches, isLoading } = useAllBatches();
   const deleteBatch = useDeleteBatch();
@@ -103,7 +107,7 @@ export default function BatchManagement() {
                 Create and manage course batches
               </p>
             </div>
-            <Button>
+            <Button onClick={() => { setEditingBatch(null); setEditorOpen(true); }}>
               <Plus className="w-4 h-4 mr-2" />
               Create Batch
             </Button>
@@ -237,11 +241,13 @@ export default function BatchManagement() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Eye className="w-4 h-4 mr-2" />
-                              View
+                            <DropdownMenuItem asChild>
+                              <Link to={`/batches/${batch.id}`}>
+                                <Eye className="w-4 h-4 mr-2" />
+                                View
+                              </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setEditingBatch(batch); setEditorOpen(true); }}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
@@ -268,6 +274,13 @@ export default function BatchManagement() {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Batch Editor Dialog */}
+          <BatchEditorDialog 
+            open={editorOpen}
+            onOpenChange={setEditorOpen}
+            batch={editingBatch}
+          />
 
           {/* Delete Confirmation */}
           <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
