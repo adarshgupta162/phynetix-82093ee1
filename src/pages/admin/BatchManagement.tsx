@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Table, 
   TableBody, 
@@ -23,8 +22,9 @@ import {
   Search,
   IndianRupee,
   Users,
-  Calendar,
-  MoreHorizontal
+  MoreHorizontal,
+  FileText,
+  Link2
 } from "lucide-react";
 import { useAllBatches, useDeleteBatch, type Batch } from "@/hooks/useBatches";
 import { format } from "date-fns";
@@ -34,6 +34,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -47,6 +48,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { BatchEditorDialog } from "@/components/admin/BatchEditorDialog";
+import { BatchTestsManager } from "@/components/admin/BatchTestsManager";
 
 const categoryLabels: Record<string, string> = {
   jee_main: "JEE Main",
@@ -63,6 +65,7 @@ export default function BatchManagement() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
+  const [testsManagerBatch, setTestsManagerBatch] = useState<Batch | null>(null);
   
   const { data: batches, isLoading } = useAllBatches();
   const deleteBatch = useDeleteBatch();
@@ -251,6 +254,11 @@ export default function BatchManagement() {
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTestsManagerBatch(batch)}>
+                              <Link2 className="w-4 h-4 mr-2" />
+                              Manage Tests
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               className="text-destructive"
                               onClick={() => setDeleteId(batch.id)}
@@ -281,6 +289,16 @@ export default function BatchManagement() {
             onOpenChange={setEditorOpen}
             batch={editingBatch}
           />
+
+          {/* Batch Tests Manager */}
+          {testsManagerBatch && (
+            <BatchTestsManager
+              open={!!testsManagerBatch}
+              onOpenChange={(open) => !open && setTestsManagerBatch(null)}
+              batchId={testsManagerBatch.id}
+              batchName={testsManagerBatch.name}
+            />
+          )}
 
           {/* Delete Confirmation */}
           <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
