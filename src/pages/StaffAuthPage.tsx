@@ -28,7 +28,8 @@ export default function StaffAuthPage() {
     if (!authLoading && user) {
       // Check if user has staff role (not student)
       if (isAdmin) {
-        navigate("/admin");
+        // Redirect to role selector instead of directly to admin
+        navigate("/admin/select-role");
       } else {
         // Sign out and show error
         toast({
@@ -84,9 +85,9 @@ export default function StaffAuthPage() {
       } else {
         toast({
           title: "Welcome back!",
-          description: "Redirecting to admin dashboard...",
+          description: "Selecting your dashboard...",
         });
-        navigate("/admin");
+        navigate("/admin/select-role");
       }
     } finally {
       setIsLoading(false);

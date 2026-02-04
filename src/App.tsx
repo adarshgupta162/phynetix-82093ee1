@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { StaffRolesProvider } from "@/hooks/useStaffRoles";
 import AdminRoute from "@/components/AdminRoute";
 import ProfileGuard from "@/components/ProfileGuard";
 import LandingPage from "./pages/LandingPage";
@@ -60,6 +61,7 @@ import FinanceDashboard from "./pages/admin/FinanceDashboard";
 import AcademicDashboard from "./pages/admin/AcademicDashboard";
 import OperationsDashboard from "./pages/admin/OperationsDashboard";
 import BatchManagement from "./pages/admin/BatchManagement";
+import RoleSelectorPage from "./pages/admin/RoleSelectorPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,76 +69,80 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ProfileGuard>
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              {/* Marketing/Pre-Login Pages */}
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/courses" element={<CoursesPage />} />
-              <Route path="/course/:courseId" element={<CoursePage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/faq" element={<FAQPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/refund" element={<RefundPage />} />
-              {/* Test Series Enrollment */}
-              <Route path="/enroll/:testSeriesId" element={<TestSeriesEnrollment />} />
-              {/* Authentication Pages */}
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/login" element={<AuthPage />} />
-              <Route path="/signup" element={<AuthPage />} />
-              <Route path="/staff-login" element={<StaffAuthPage />} />
-              {/* Student Dashboard & Features */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/tests" element={<TestLibrary />} />
-              <Route path="/pdf-tests" element={<PDFTestLibrary />} />
-              <Route path="/question-bank" element={<QuestionBankPage />} />
-              <Route path="/test/:testId" element={<NormalTestInterface />} />
-              <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
-              <Route path="/test/:testId/analysis" element={<AnalysisPage />} />
-              <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
-              <Route path="/analysis/:testId" element={<AnalysisPage />} />
-              <Route path="/solutions/:testId" element={<SolutionsPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/attempts" element={<MyAttempts />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              {/* Batch Pages - Student */}
-              <Route path="/batches" element={<BatchCatalogPage />} />
-              <Route path="/batches/:batchId" element={<BatchDetailsPage />} />
-              <Route path="/my-batches" element={<MyBatchesPage />} />
-              <Route path="/checkout/:batchId" element={<CheckoutPage />} />
-              {/* Admin Routes - All protected with AdminRoute */}
-              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-              <Route path="/admin/finance" element={<AdminRoute><FinanceDashboard /></AdminRoute>} />
-              <Route path="/admin/academic" element={<AdminRoute><AcademicDashboard /></AdminRoute>} />
-              <Route path="/admin/operations" element={<AdminRoute><OperationsDashboard /></AdminRoute>} />
-              <Route path="/admin/batches" element={<AdminRoute><BatchManagement /></AdminRoute>} />
-              <Route path="/admin/question-bank" element={<AdminRoute><AdminQuestionBank /></AdminRoute>} />
-              <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
-              <Route path="/admin/test-creator" element={<AdminRoute><TestCreator /></AdminRoute>} />
-              <Route path="/admin/test-editor/:testId" element={<AdminRoute><TestEditor /></AdminRoute>} />
-              <Route path="/admin/test-analytics/:testId" element={<AdminRoute><NormalTestAnalytics /></AdminRoute>} />
-              <Route path="/admin/pdf-tests" element={<AdminRoute><PDFTestList /></AdminRoute>} />
-              <Route path="/admin/pdf-tests/create" element={<AdminRoute><PDFTestCreate /></AdminRoute>} />
-              <Route path="/admin/pdf-tests/:testId/edit" element={<AdminRoute><PDFTestEditor /></AdminRoute>} />
-              <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-              <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
-              <Route path="/admin/community" element={<AdminRoute><StaffCommunity /></AdminRoute>} />
-              <Route path="/admin/audit-logs" element={<AdminRoute><AuditLogs /></AdminRoute>} />
-              <Route path="/admin/requests" element={<AdminRoute><StaffRequests /></AdminRoute>} />
-              <Route path="/admin/phynetix-library" element={<AdminRoute><PhyNetixLibrary /></AdminRoute>} />
-              <Route path="/admin/fullscreen-editor/:testId" element={<AdminRoute><FullscreenTestEditor /></AdminRoute>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </ProfileGuard>
-        </BrowserRouter>
-      </TooltipProvider>
+      <StaffRolesProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ProfileGuard>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                {/* Marketing/Pre-Login Pages */}
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/courses" element={<CoursesPage />} />
+                <Route path="/course/:courseId" element={<CoursePage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/faq" element={<FAQPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/refund" element={<RefundPage />} />
+                {/* Test Series Enrollment */}
+                <Route path="/enroll/:testSeriesId" element={<TestSeriesEnrollment />} />
+                {/* Authentication Pages */}
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/login" element={<AuthPage />} />
+                <Route path="/signup" element={<AuthPage />} />
+                <Route path="/staff-login" element={<StaffAuthPage />} />
+                {/* Role Selector */}
+                <Route path="/admin/select-role" element={<AdminRoute><RoleSelectorPage /></AdminRoute>} />
+                {/* Student Dashboard & Features */}
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/tests" element={<TestLibrary />} />
+                <Route path="/pdf-tests" element={<PDFTestLibrary />} />
+                <Route path="/question-bank" element={<QuestionBankPage />} />
+                <Route path="/test/:testId" element={<NormalTestInterface />} />
+                <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
+                <Route path="/test/:testId/analysis" element={<AnalysisPage />} />
+                <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
+                <Route path="/analysis/:testId" element={<AnalysisPage />} />
+                <Route path="/solutions/:testId" element={<SolutionsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/attempts" element={<MyAttempts />} />
+                <Route path="/analytics" element={<Analytics />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                {/* Batch Pages - Student */}
+                <Route path="/batches" element={<BatchCatalogPage />} />
+                <Route path="/batches/:batchId" element={<BatchDetailsPage />} />
+                <Route path="/my-batches" element={<MyBatchesPage />} />
+                <Route path="/checkout/:batchId" element={<CheckoutPage />} />
+                {/* Admin Routes - All protected with AdminRoute */}
+                <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                <Route path="/admin/finance" element={<AdminRoute><FinanceDashboard /></AdminRoute>} />
+                <Route path="/admin/academic" element={<AdminRoute><AcademicDashboard /></AdminRoute>} />
+                <Route path="/admin/operations" element={<AdminRoute><OperationsDashboard /></AdminRoute>} />
+                <Route path="/admin/batches" element={<AdminRoute><BatchManagement /></AdminRoute>} />
+                <Route path="/admin/question-bank" element={<AdminRoute><AdminQuestionBank /></AdminRoute>} />
+                <Route path="/admin/tests" element={<AdminRoute><AdminTests /></AdminRoute>} />
+                <Route path="/admin/test-creator" element={<AdminRoute><TestCreator /></AdminRoute>} />
+                <Route path="/admin/test-editor/:testId" element={<AdminRoute><TestEditor /></AdminRoute>} />
+                <Route path="/admin/test-analytics/:testId" element={<AdminRoute><NormalTestAnalytics /></AdminRoute>} />
+                <Route path="/admin/pdf-tests" element={<AdminRoute><PDFTestList /></AdminRoute>} />
+                <Route path="/admin/pdf-tests/create" element={<AdminRoute><PDFTestCreate /></AdminRoute>} />
+                <Route path="/admin/pdf-tests/:testId/edit" element={<AdminRoute><PDFTestEditor /></AdminRoute>} />
+                <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+                <Route path="/admin/settings" element={<AdminRoute><AdminSettings /></AdminRoute>} />
+                <Route path="/admin/community" element={<AdminRoute><StaffCommunity /></AdminRoute>} />
+                <Route path="/admin/audit-logs" element={<AdminRoute><AuditLogs /></AdminRoute>} />
+                <Route path="/admin/requests" element={<AdminRoute><StaffRequests /></AdminRoute>} />
+                <Route path="/admin/phynetix-library" element={<AdminRoute><PhyNetixLibrary /></AdminRoute>} />
+                <Route path="/admin/fullscreen-editor/:testId" element={<AdminRoute><FullscreenTestEditor /></AdminRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </ProfileGuard>
+          </BrowserRouter>
+        </TooltipProvider>
+      </StaffRolesProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
