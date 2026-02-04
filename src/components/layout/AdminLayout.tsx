@@ -16,52 +16,150 @@ import {
   History,
   Send,
   Bell,
-  Library
+  Library,
+  IndianRupee,
+  CreditCard,
+  GraduationCap,
+  UserPlus
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useStaffRoles } from "@/hooks/useStaffRoles";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { AtomIcon } from "@/components/icons/AtomIcon";
+import RoleSwitcher from "@/components/admin/RoleSwitcher";
+import type { Database } from "@/integrations/supabase/types";
 
-// Department navigation sections
-const navSections = [
+type AppRole = Database['public']['Enums']['app_role'];
+
+// Navigation sections by role
+const allNavSections = {
+  admin: [
+    {
+      title: "Overview",
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
+      ]
+    },
+    {
+      title: "Departments",
+      items: [
+        { icon: GraduationCap, label: "Academic", path: "/admin/academic" },
+        { icon: Users, label: "Operations", path: "/admin/operations" },
+        { icon: IndianRupee, label: "Finance", path: "/admin/finance" },
+      ]
+    },
+    {
+      title: "Content",
+      items: [
+        { icon: FileText, label: "PDF Tests", path: "/admin/pdf-tests" },
+        { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
+        { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
+        { icon: Library, label: "PhyNetix Library", path: "/admin/phynetix-library" },
+        { icon: Bell, label: "Batches", path: "/admin/batches" },
+      ]
+    },
+    {
+      title: "Management",
+      items: [
+        { icon: Users, label: "Users", path: "/admin/users" },
+        { icon: MessageSquare, label: "Community", path: "/admin/community" },
+        { icon: Send, label: "Requests", path: "/admin/requests" },
+        { icon: History, label: "Audit Logs", path: "/admin/audit-logs" },
+        { icon: Settings, label: "Settings", path: "/admin/settings" },
+      ]
+    }
+  ],
+  academic_admin: [
+    {
+      title: "Academic",
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/admin/academic" },
+      ]
+    },
+    {
+      title: "Content",
+      items: [
+        { icon: FileText, label: "PDF Tests", path: "/admin/pdf-tests" },
+        { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
+        { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
+        { icon: Library, label: "PhyNetix Library", path: "/admin/phynetix-library" },
+      ]
+    },
+    {
+      title: "Batches",
+      items: [
+        { icon: Bell, label: "Manage Batches", path: "/admin/batches" },
+      ]
+    }
+  ],
+  operations_admin: [
+    {
+      title: "Operations",
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/admin/operations" },
+      ]
+    },
+    {
+      title: "Students",
+      items: [
+        { icon: Users, label: "Users", path: "/admin/users" },
+        { icon: UserPlus, label: "Enrollments", path: "/admin/operations" },
+      ]
+    },
+    {
+      title: "Batches",
+      items: [
+        { icon: Bell, label: "Manage Batches", path: "/admin/batches" },
+      ]
+    },
+    {
+      title: "Support",
+      items: [
+        { icon: MessageSquare, label: "Community", path: "/admin/community" },
+        { icon: Send, label: "Requests", path: "/admin/requests" },
+      ]
+    }
+  ],
+  finance_admin: [
+    {
+      title: "Finance",
+      items: [
+        { icon: LayoutDashboard, label: "Dashboard", path: "/admin/finance" },
+      ]
+    },
+    {
+      title: "Transactions",
+      items: [
+        { icon: CreditCard, label: "Payments", path: "/admin/finance" },
+        { icon: IndianRupee, label: "Revenue", path: "/admin/finance" },
+      ]
+    },
+    {
+      title: "Batches",
+      items: [
+        { icon: Bell, label: "Manage Batches", path: "/admin/batches" },
+      ]
+    }
+  ],
+};
+
+// Default navigation for other roles
+const defaultNavSections = [
   {
     title: "Overview",
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
     ]
-  },
-  {
-    title: "Departments",
-    items: [
-      { icon: FileQuestion, label: "Academic", path: "/admin/academic" },
-      { icon: Users, label: "Operations", path: "/admin/operations" },
-      { icon: History, label: "Finance", path: "/admin/finance" },
-    ]
-  },
-  {
-    title: "Content",
-    items: [
-      { icon: FileText, label: "PDF Tests", path: "/admin/pdf-tests" },
-      { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
-      { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
-      { icon: Library, label: "PhyNetix Library", path: "/admin/phynetix-library" },
-      { icon: Bell, label: "Batches", path: "/admin/batches" },
-    ]
-  },
-  {
-    title: "Management",
-    items: [
-      { icon: Users, label: "Users", path: "/admin/users" },
-      { icon: MessageSquare, label: "Community", path: "/admin/community" },
-      { icon: Send, label: "Requests", path: "/admin/requests" },
-      { icon: History, label: "Audit Logs", path: "/admin/audit-logs" },
-      { icon: Settings, label: "Settings", path: "/admin/settings" },
-    ]
   }
 ];
+
+function getNavSections(role: AppRole | null) {
+  if (!role) return defaultNavSections;
+  return allNavSections[role as keyof typeof allNavSections] || defaultNavSections;
+}
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -73,6 +171,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, isLoading, signOut, setViewMode } = useAuth();
+  const { activeRole, userRoles } = useStaffRoles();
+
+  // Get navigation sections based on active role
+  const navSections = useMemo(() => getNavSections(activeRole), [activeRole]);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -169,6 +271,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               )}
             </AnimatePresence>
           </Link>
+
+          {/* Role Switcher - show if user has multiple roles */}
+          {userRoles.length > 1 && (
+            <div className="mb-4">
+              <RoleSwitcher collapsed={collapsed} />
+            </div>
+          )}
 
           {/* Navigation */}
           <nav className="flex-1 space-y-4 overflow-y-auto">
