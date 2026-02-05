@@ -13,6 +13,7 @@ interface SolutionSectionProps {
   topic?: string;
   isAttemptMode?: boolean;
   onShowSolution?: () => void;
+  solutionImageUrl?: string;
 }
 
 export function SolutionSection({
@@ -23,6 +24,7 @@ export function SolutionSection({
   topic,
   isAttemptMode = false,
   onShowSolution,
+  solutionImageUrl,
 }: SolutionSectionProps) {
   const [showWorking, setShowWorking] = useState(true);
 
@@ -89,6 +91,16 @@ export function SolutionSection({
             className="space-y-4 overflow-hidden"
           >
             {/* Given/Setup info */}
+            {solutionImageUrl && (
+              <div className="rounded-lg overflow-hidden border border-border/50">
+                <img 
+                  src={solutionImageUrl} 
+                  alt="Solution" 
+                  className="max-w-full mx-auto"
+                />
+              </div>
+            )}
+
             {solutionText && (
               <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">
                 <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">

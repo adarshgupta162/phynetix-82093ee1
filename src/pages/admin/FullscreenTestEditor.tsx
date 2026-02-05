@@ -32,6 +32,7 @@ import { SectionTabs } from "@/components/admin/NormalTestEditor/SectionTabs";
 import { TestSettingsPanel } from "@/components/admin/NormalTestEditor/TestSettingsPanel";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
 import { QuestionImageUpload } from "@/components/admin/QuestionImageUpload";
+import { ImageUrlInput } from "@/components/admin/ImageUrlInput";
 import { cn } from "@/lib/utils";
 
 interface Test {
@@ -721,11 +722,20 @@ export default function FullscreenTestEditor() {
                       placeholder="Enter question..."
                       className="min-h-[80px] font-mono text-sm"
                     />
-                    <QuestionImageUpload
-                      value={localQuestion.image_url}
-                      onChange={(url) => setLocalQuestion({ ...localQuestion, image_url: url })}
-                      compact
-                    />
+                    <div className="flex items-center gap-2 mt-2">
+                      <QuestionImageUpload
+                        value={localQuestion.image_url}
+                        onChange={(url) => setLocalQuestion({ ...localQuestion, image_url: url })}
+                        compact
+                      />
+                      <span className="text-xs text-muted-foreground">or</span>
+                      <ImageUrlInput
+                        value={localQuestion.image_url}
+                        onChange={(url) => setLocalQuestion({ ...localQuestion, image_url: url })}
+                        compact
+                        label="Question Image"
+                      />
+                    </div>
                   </div>
 
                   {/* Options */}
@@ -757,11 +767,19 @@ export default function FullscreenTestEditor() {
                               placeholder={`Option ${opt.label}...`}
                               className="h-8 text-sm"
                             />
-                            <QuestionImageUpload
-                              value={opt.image_url}
-                              onChange={(url) => handleOptionChange(i, 'image_url', url)}
-                              compact
-                            />
+                              <div className="flex items-center gap-2">
+                                <QuestionImageUpload
+                                  value={opt.image_url}
+                                  onChange={(url) => handleOptionChange(i, 'image_url', url)}
+                                  compact
+                                />
+                                <ImageUrlInput
+                                  value={opt.image_url}
+                                  onChange={(url) => handleOptionChange(i, 'image_url', url)}
+                                  compact
+                                  label={`Option ${opt.label} Image`}
+                                />
+                              </div>
                           </div>
                         </div>
                       ))}
@@ -791,11 +809,20 @@ export default function FullscreenTestEditor() {
                       placeholder="Solution explanation..."
                       className="min-h-[80px] font-mono text-sm"
                     />
-                    <QuestionImageUpload
-                      value={localQuestion.solution_image_url}
-                      onChange={(url) => setLocalQuestion({ ...localQuestion, solution_image_url: url })}
-                      compact
-                    />
+                    <div className="flex items-center gap-2 mt-2">
+                      <QuestionImageUpload
+                        value={localQuestion.solution_image_url}
+                        onChange={(url) => setLocalQuestion({ ...localQuestion, solution_image_url: url })}
+                        compact
+                      />
+                      <span className="text-xs text-muted-foreground">or</span>
+                      <ImageUrlInput
+                        value={localQuestion.solution_image_url}
+                        onChange={(url) => setLocalQuestion({ ...localQuestion, solution_image_url: url })}
+                        compact
+                        label="Solution Image"
+                      />
+                    </div>
                   </div>
                 </div>
               </ScrollArea>

@@ -1,15 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  Search, 
-  Filter, 
-  Clock, 
-  BookOpen, 
-  Zap,
-  Star,
-  CheckCircle2,
-  BarChart3
-} from "lucide-react";
+import { Search, Filter, Clock, BookOpen, Zap, Star, CheckCircle2, BarChart3, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -64,19 +55,41 @@ export default function TestLibrary() {
       .select("id, name, color, icon");
     if (coursesData) setCourses(coursesData);
 
-    // Fetch published tests with question count (exclude PDF tests)
-    const { data: testsData } = await supabase
+    // Fetch tests that are in user's enrolled batches only
+    const { data: enrolledBatches } = await supabase
+      .from("batch_enrollments")
+      .select("batch_id")
+      .eq("user_id", user!.id)
+      .eq("is_active", true);
+
+    const batchIds = enrolledBatches?.map(e => e.batch_id) || [];
+
+    // Get test IDs from enrolled batches
+    const { data: batchTests } = await supabase
+      .from("batch_tests")
+      .select("test_id")
+      .in("batch_id", batchIds.length > 0 ? batchIds : ['00000000-0000-0000-0000-000000000000']);
+
+    const enrolledTestIds = batchTests?.map(bt => bt.test_id) || [];
+
+    // Fetch only tests from enrolled batches
+    let testsQuery = supabase
       .from("tests")
-      .select(`
-        id,
-        name,
-        description,
-        duration_minutes,
-        test_type,
-        test_questions(count)
-      `)
+      .select(`id, name, description, duration_minutes, test_type, test_questions(count)`)
       .eq("is_published", true)
       .neq("test_type", "pdf");
+
+    // If user has enrolled batches, filter by those test IDs
+    if (enrolledTestIds.length > 0) {
+      testsQuery = testsQuery.in("id", enrolledTestIds);
+    } else {
+      // No enrolled tests - return empty
+      setTests([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: testsData } = await testsQuery;
 
     if (testsData) {
       // Get attempt counts and user's attempts
@@ -171,10 +184,10 @@ export default function TestLibrary() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl lg:text-3xl font-bold font-display mb-2">
-            Test <span className="gradient-text">Library</span>
+            My <span className="gradient-text">Tests</span>
           </h1>
           <p className="text-muted-foreground">
-            Choose from our comprehensive collection of tests
+            Tests available in your enrolled batches
           </p>
         </div>
 
@@ -227,11 +240,18 @@ export default function TestLibrary() {
         {/* Test Grid */}
         {filteredTests.length === 0 ? (
           <div className="text-center py-12">
-            <BookOpen className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-            <h3 className="text-lg font-semibold mb-2">No Tests Available</h3>
+            <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">No Tests in Your Batches</h3>
             <p className="text-muted-foreground">
-              {searchQuery ? "No tests match your search." : "No published tests yet. Check back soon!"}
+              {searchQuery 
+                ? "No tests match your search." 
+                : "Enroll in a batch to access tests."}
             </p>
+            <Link to="/batches">
+              <Button variant="gradient" className="mt-4">
+                Browse Batches
+              </Button>
+            </Link>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
