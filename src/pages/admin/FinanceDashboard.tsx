@@ -5,30 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   IndianRupee, 
   TrendingUp, 
   TrendingDown,
   CreditCard, 
-  Users, 
   Receipt,
   Download,
   Search,
-  Filter,
   RefreshCw
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
+import { CouponManager } from "@/components/admin/CouponManager";
 
 export default function FinanceDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -260,16 +252,8 @@ export default function FinanceDashboard() {
             </TabsContent>
 
             <TabsContent value="coupons">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Coupon Management</CardTitle>
-                  <CardDescription>Create and manage discount coupons</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground text-center py-8">
-                    Coupon management coming soon
-                  </p>
-                </CardContent>
+              <Card className="p-6">
+                <CouponManager />
               </Card>
             </TabsContent>
           </Tabs>

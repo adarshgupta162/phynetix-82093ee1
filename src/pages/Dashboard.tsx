@@ -11,7 +11,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +46,7 @@ interface Stats {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<{ full_name: string | null } | null>(null);
   const [recentTests, setRecentTests] = useState<TestAttempt[]>([]);
   const [stats, setStats] = useState<Stats>({ accuracy: 0, avgTime: 0, testsCompleted: 0, percentile: 0 });
@@ -60,6 +61,19 @@ export default function Dashboard() {
   }, [user]);
 
   const fetchData = async () => {
+    // Check if user has any active enrollments
+    const { count: enrollmentCount } = await supabase
+      .from("batch_enrollments")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user!.id)
+      .eq("is_active", true);
+    
+    // Redirect to batch catalog if no enrollments
+    if (enrollmentCount === 0) {
+      navigate("/batches");
+      return;
+    }
+
     // Fetch profile
     const { data: profileData } = await supabase
       .from("profiles")
