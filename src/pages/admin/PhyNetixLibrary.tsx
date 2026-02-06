@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Plus, Filter, Edit, Trash2, Copy, Eye,
-  BookOpen, ChevronDown, X, Save, Loader2, Image as ImageIcon
+  BookOpen, ChevronDown, ChevronRight, X, Save, Loader2, 
+  Image as ImageIcon, Link2, FolderOpen, AlertCircle, ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
 import { cn } from "@/lib/utils";
 import { getSubjects, getChaptersForSubject, getTopicsForChapter } from "@/lib/jeeData";
+import { ImageUrlInput } from "@/components/admin/ImageUrlInput";
 
 interface LibraryQuestion {
   id: string;
@@ -68,6 +70,8 @@ const QUESTION_TYPES = [
   { value: 'integer', label: 'Integer Type' }
 ];
 
+type ViewMode = 'subjects' | 'chapters' | 'questions';
+
 export default function PhyNetixLibrary() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -75,16 +79,19 @@ export default function PhyNetixLibrary() {
   const [questions, setQuestions] = useState<LibraryQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterSubject, setFilterSubject] = useState<string>('all');
-  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
-  const [filterType, setFilterType] = useState<string>('all');
   
+  // Hierarchical navigation
+  const [viewMode, setViewMode] = useState<ViewMode>('subjects');
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  
+  // Editor state
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<LibraryQuestion | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [viewQuestion, setViewQuestion] = useState<LibraryQuestion | null>(null);
 
-  // Editor form state
+  // Form data with pre-filled values
   const [formData, setFormData] = useState({
     subject: 'Physics',
     chapter: '',
@@ -103,33 +110,22 @@ export default function PhyNetixLibrary() {
     tags: [] as string[]
   });
 
-  // Available chapters and topics based on selection
   const availableChapters = getChaptersForSubject(formData.subject);
   const availableTopics = formData.chapter ? getTopicsForChapter(formData.subject, formData.chapter) : [];
 
-  // Image upload state
-  const [uploadingImage, setUploadingImage] = useState<string | null>(null);
+  // Clipboard auto-paste ref
+  const questionImageRef = useRef<HTMLInputElement>(null);
+  const solutionImageRef = useRef<HTMLInputElement>(null);
 
   const fetchQuestions = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('phynetix_library')
         .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (filterSubject !== 'all') {
-        query = query.eq('subject', filterSubject);
-      }
-      if (filterDifficulty !== 'all') {
-        query = query.eq('difficulty', filterDifficulty);
-      }
-      if (filterType !== 'all') {
-        query = query.eq('question_type', filterType);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       setQuestions(data || []);
     } catch (error: any) {
@@ -137,35 +133,90 @@ export default function PhyNetixLibrary() {
     } finally {
       setLoading(false);
     }
-  }, [filterSubject, filterDifficulty, filterType, toast]);
+  }, [toast]);
 
   useEffect(() => {
     fetchQuestions();
   }, [fetchQuestions]);
 
-  // Reset chapter and topic when subject changes
-  useEffect(() => {
-    setFormData(prev => ({ ...prev, chapter: '', topic: '' }));
-  }, [formData.subject]);
+  // Get stats for navigation
+  const getSubjectStats = () => {
+    const stats: Record<string, number> = {};
+    SUBJECTS.forEach(s => {
+      stats[s] = questions.filter(q => q.subject === s).length;
+    });
+    return stats;
+  };
 
-  // Reset topic when chapter changes
-  useEffect(() => {
-    if (!availableTopics.includes(formData.topic)) {
-      setFormData(prev => ({ ...prev, topic: '' }));
+  const getChapterStats = (subject: string) => {
+    const subjectQuestions = questions.filter(q => q.subject === subject);
+    const stats: Record<string, number> = {};
+    const chapters = getChaptersForSubject(subject);
+    
+    chapters.forEach(c => {
+      stats[c] = subjectQuestions.filter(q => q.chapter === c).length;
+    });
+    
+    // Add unmapped count
+    const unmappedCount = subjectQuestions.filter(q => !q.chapter || !chapters.includes(q.chapter)).length;
+    if (unmappedCount > 0) {
+      stats['__unmapped__'] = unmappedCount;
     }
-  }, [formData.chapter, availableTopics, formData.topic]);
+    
+    return stats;
+  };
 
-  const filteredQuestions = questions.filter(q => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      q.library_id.toLowerCase().includes(query) ||
-      q.question_text?.toLowerCase().includes(query) ||
-      q.chapter?.toLowerCase().includes(query) ||
-      q.topic?.toLowerCase().includes(query)
-    );
-  });
+  const getFilteredQuestions = () => {
+    let filtered = questions;
+    
+    if (selectedSubject) {
+      filtered = filtered.filter(q => q.subject === selectedSubject);
+    }
+    
+    if (selectedChapter) {
+      if (selectedChapter === '__unmapped__') {
+        const chapters = getChaptersForSubject(selectedSubject || '');
+        filtered = filtered.filter(q => !q.chapter || !chapters.includes(q.chapter));
+      } else {
+        filtered = filtered.filter(q => q.chapter === selectedChapter);
+      }
+    }
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(q =>
+        q.library_id.toLowerCase().includes(query) ||
+        q.question_text?.toLowerCase().includes(query) ||
+        q.topic?.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  };
 
+  // Navigation handlers
+  const handleSubjectClick = (subject: string) => {
+    setSelectedSubject(subject);
+    setSelectedChapter(null);
+    setViewMode('chapters');
+  };
+
+  const handleChapterClick = (chapter: string) => {
+    setSelectedChapter(chapter);
+    setViewMode('questions');
+  };
+
+  const handleBack = () => {
+    if (viewMode === 'questions') {
+      setSelectedChapter(null);
+      setViewMode('chapters');
+    } else if (viewMode === 'chapters') {
+      setSelectedSubject(null);
+      setViewMode('subjects');
+    }
+  };
+
+  // Open editor with pre-filled values based on current selection
   const openEditor = (question?: LibraryQuestion) => {
     if (question) {
       setEditingQuestion(question);
@@ -188,9 +239,10 @@ export default function PhyNetixLibrary() {
       });
     } else {
       setEditingQuestion(null);
+      // Pre-fill based on current navigation
       setFormData({
-        subject: 'Physics',
-        chapter: '',
+        subject: selectedSubject || 'Physics',
+        chapter: (selectedChapter && selectedChapter !== '__unmapped__') ? selectedChapter : '',
         topic: '',
         question_text: '',
         question_image_url: null,
@@ -287,7 +339,7 @@ export default function PhyNetixLibrary() {
       const current = Array.isArray(formData.correct_answer) ? formData.correct_answer : [];
       const idx = current.indexOf(answer);
       if (idx > -1) {
-        setFormData({ ...formData, correct_answer: current.filter(a => a !== answer) });
+        setFormData({ ...formData, correct_answer: current.filter((a: string) => a !== answer) });
       } else {
         setFormData({ ...formData, correct_answer: [...current, answer] });
       }
@@ -308,121 +360,56 @@ export default function PhyNetixLibrary() {
     toast({ title: "Library ID copied!" });
   };
 
-  // Image upload handler
-  const handleImageUpload = async (file: File, type: 'question' | 'solution' | 'option', optionIndex?: number) => {
-    const uploadKey = type === 'option' ? `option-${optionIndex}` : type;
-    setUploadingImage(uploadKey);
-
+  // Auto-paste from clipboard
+  const handlePasteUrl = async (type: 'question' | 'solution' | 'option', optionIndex?: number) => {
     try {
-      if (!file.type.startsWith("image/")) {
-        toast({ title: "Invalid file type", description: "Please upload an image file", variant: "destructive" });
-        return;
+      const text = await navigator.clipboard.readText();
+      if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+        if (type === 'question') {
+          setFormData(prev => ({ ...prev, question_image_url: text }));
+        } else if (type === 'solution') {
+          setFormData(prev => ({ ...prev, solution_image_url: text }));
+        } else if (type === 'option' && optionIndex !== undefined) {
+          handleOptionChange(optionIndex, 'image_url', text);
+        }
+        toast({ title: "URL pasted!" });
+      } else {
+        toast({ title: "No valid URL in clipboard", variant: "destructive" });
       }
-
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: "File too large", description: "Maximum file size is 5MB", variant: "destructive" });
-        return;
-      }
-
-      const fileName = `question-images/${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      
-      const { data, error } = await supabase.storage
-        .from("test-pdfs")
-        .upload(fileName, file, { cacheControl: "3600", upsert: false });
-
-      if (error) throw error;
-
-      const { data: urlData } = supabase.storage
-        .from("test-pdfs")
-        .getPublicUrl(data.path);
-
-      const publicUrl = urlData.publicUrl;
-
-      if (type === 'question') {
-        setFormData(prev => ({ ...prev, question_image_url: publicUrl }));
-      } else if (type === 'solution') {
-        setFormData(prev => ({ ...prev, solution_image_url: publicUrl }));
-      } else if (type === 'option' && optionIndex !== undefined) {
-        handleOptionChange(optionIndex, 'image_url', publicUrl);
-      }
-
-      toast({ title: "Image uploaded!" });
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-    } finally {
-      setUploadingImage(null);
+    } catch {
+      toast({ title: "Could not access clipboard", variant: "destructive" });
     }
   };
 
-  const ImageUploadButton = ({ 
-    type, 
-    optionIndex, 
-    currentUrl,
-    onRemove
-  }: { 
-    type: 'question' | 'solution' | 'option';
-    optionIndex?: number;
-    currentUrl: string | null;
-    onRemove: () => void;
-  }) => {
-    const uploadKey = type === 'option' ? `option-${optionIndex}` : type;
-    const isUploading = uploadingImage === uploadKey;
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEditorOpen) {
+        // Ctrl+S to save
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+          e.preventDefault();
+          handleSave();
+        }
+        // Escape to close
+        if (e.key === 'Escape') {
+          setIsEditorOpen(false);
+        }
+      } else {
+        // Ctrl+N to add new question
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+          e.preventDefault();
+          openEditor();
+        }
+      }
+    };
 
-    return (
-      <div className="space-y-2">
-        {currentUrl ? (
-          <div className="relative inline-block">
-            <img
-              src={currentUrl}
-              alt="Uploaded"
-              className="max-w-full h-auto max-h-32 rounded-lg border border-border object-contain bg-muted"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-            />
-            <Button
-              type="button"
-              variant="destructive"
-              size="icon"
-              className="absolute -top-2 -right-2 h-6 w-6"
-              onClick={onRemove}
-            >
-              <X className="w-3 h-3" />
-            </Button>
-          </div>
-        ) : (
-          <label className="cursor-pointer">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleImageUpload(file, type, optionIndex);
-                e.target.value = '';
-              }}
-              disabled={isUploading}
-            />
-            <div className={cn(
-              "flex items-center gap-2 px-3 py-2 border border-dashed rounded-lg hover:bg-muted/50 transition-colors",
-              isUploading && "opacity-50 pointer-events-none"
-            )}>
-              {isUploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <ImageIcon className="w-4 h-4 text-muted-foreground" />
-              )}
-              <span className="text-sm text-muted-foreground">
-                {isUploading ? "Uploading..." : "Add Image"}
-              </span>
-            </div>
-          </label>
-        )}
-      </div>
-    );
-  };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEditorOpen]);
+
+  const subjectStats = getSubjectStats();
+  const chapterStats = selectedSubject ? getChapterStats(selectedSubject) : {};
+  const filteredQuestions = getFilteredQuestions();
 
   return (
     <AdminLayout>
@@ -430,179 +417,269 @@ export default function PhyNetixLibrary() {
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border bg-card/50">
           <div className="flex items-center gap-3">
+            {viewMode !== 'subjects' && (
+              <Button variant="ghost" size="sm" onClick={handleBack}>
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            )}
             <BookOpen className="w-6 h-6 text-primary" />
             <div>
-              <h1 className="text-xl font-bold">PhyNetix Library</h1>
-              <p className="text-sm text-muted-foreground">Manage reusable questions</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold">PhyNetix Library</h1>
+                {selectedSubject && (
+                  <>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-primary font-medium">{selectedSubject}</span>
+                  </>
+                )}
+                {selectedChapter && (
+                  <>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-primary font-medium">
+                      {selectedChapter === '__unmapped__' ? 'Unmapped Questions' : selectedChapter}
+                    </span>
+                  </>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {viewMode === 'subjects' && 'Select a subject to browse chapters'}
+                {viewMode === 'chapters' && `${questions.filter(q => q.subject === selectedSubject).length} questions in this subject`}
+                {viewMode === 'questions' && `${filteredQuestions.length} questions`}
+              </p>
             </div>
           </div>
-          <Button onClick={() => openEditor()} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Add Question
-          </Button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-4 p-4 border-b border-border bg-card/30">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by ID, text, chapter..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:block">
+              Ctrl+N: Add | Ctrl+S: Save
+            </span>
+            <Button onClick={() => openEditor()} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Add Question
+            </Button>
           </div>
-          
-          <Select value={filterSubject} onValueChange={setFilterSubject}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Subject" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Subjects</SelectItem>
-              {SUBJECTS.map(s => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Difficulty" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              {DIFFICULTIES.map(d => (
-                <SelectItem key={d} value={d} className="capitalize">{d}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {QUESTION_TYPES.map(t => (
-                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Questions Grid */}
+        {/* Search (only in questions view) */}
+        {viewMode === 'questions' && (
+          <div className="p-4 border-b border-border bg-card/30">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by ID, text, topic..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Content Area */}
         <ScrollArea className="flex-1 p-4">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          ) : filteredQuestions.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No questions found</p>
-              <Button variant="link" onClick={() => openEditor()}>Add your first question</Button>
-            </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredQuestions.map((q) => (
-                <motion.div
-                  key={q.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => copyLibraryId(q.library_id)}
-                        className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-mono hover:bg-primary/20 transition-colors"
-                        title="Click to copy ID"
-                      >
-                        {q.library_id}
-                      </button>
-                      <Badge variant="outline" className="text-xs">
-                        {q.question_type.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => setViewQuestion(q)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEditor(q)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => handleDelete(q.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
+            <>
+              {/* Subjects View */}
+              {viewMode === 'subjects' && (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {SUBJECTS.map((subject) => (
+                    <motion.div
+                      key={subject}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => handleSubjectClick(subject)}
+                      className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 cursor-pointer transition-all hover:shadow-lg group"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={cn(
+                          "w-12 h-12 rounded-xl flex items-center justify-center",
+                          subject === 'Physics' && "bg-blue-500/20",
+                          subject === 'Chemistry' && "bg-green-500/20",
+                          subject === 'Mathematics' && "bg-orange-500/20"
+                        )}>
+                          <BookOpen className={cn(
+                            "w-6 h-6",
+                            subject === 'Physics' && "text-blue-500",
+                            subject === 'Chemistry' && "text-green-500",
+                            subject === 'Mathematics' && "text-orange-500"
+                          )} />
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-1">{subject}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {subjectStats[subject]} questions
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
 
-                  <div className="mb-3">
-                    {q.question_image_url ? (
-                      <img
-                        src={q.question_image_url}
-                        alt="Question"
-                        className="w-full h-24 object-cover rounded-lg mb-2 bg-muted"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    ) : null}
-                    <p className="text-sm line-clamp-2">
-                      {q.question_text ? (
-                        <LatexRenderer content={q.question_text} />
-                      ) : (
-                        <span className="text-muted-foreground italic">No text (image only)</span>
-                      )}
-                    </p>
-                  </div>
+              {/* Chapters View */}
+              {viewMode === 'chapters' && selectedSubject && (
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {/* Unmapped questions section */}
+                  {chapterStats['__unmapped__'] > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      onClick={() => handleChapterClick('__unmapped__')}
+                      className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 hover:border-yellow-500/50 cursor-pointer transition-all group col-span-full"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <AlertCircle className="w-5 h-5 text-yellow-500" />
+                          <div>
+                            <h3 className="font-medium">Unmapped Questions</h3>
+                            <p className="text-sm text-muted-foreground">Questions without a chapter assignment</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">{chapterStats['__unmapped__']}</Badge>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="px-2 py-0.5 bg-secondary rounded">{q.subject}</span>
-                    {q.chapter && (
-                      <span className="px-2 py-0.5 bg-secondary rounded truncate max-w-[100px]">
-                        {q.chapter}
-                      </span>
-                    )}
-                    <span className={cn(
-                      "px-2 py-0.5 rounded capitalize",
-                      q.difficulty === 'easy' && "bg-green-500/20 text-green-600",
-                      q.difficulty === 'medium' && "bg-yellow-500/20 text-yellow-600",
-                      q.difficulty === 'hard' && "bg-red-500/20 text-red-600"
-                    )}>
-                      {q.difficulty}
-                    </span>
-                    <span className="ml-auto">+{q.marks}/-{q.negative_marks}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                  {Object.entries(chapterStats)
+                    .filter(([chapter]) => chapter !== '__unmapped__')
+                    .map(([chapter, count], index) => (
+                      <motion.div
+                        key={chapter}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.03 }}
+                        onClick={() => handleChapterClick(chapter)}
+                        className="bg-card border border-border rounded-xl p-4 hover:border-primary/50 cursor-pointer transition-all group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <FolderOpen className="w-5 h-5 text-primary" />
+                            <h3 className="font-medium truncate">{chapter}</h3>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{count}</Badge>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+
+                  {Object.keys(chapterStats).filter(c => c !== '__unmapped__').length === 0 && (
+                    <div className="col-span-full text-center py-12 text-muted-foreground">
+                      <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No chapters with questions yet</p>
+                      <Button variant="link" onClick={() => openEditor()}>
+                        Add your first question
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Questions View */}
+              {viewMode === 'questions' && (
+                <>
+                  {filteredQuestions.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No questions found</p>
+                      <Button variant="link" onClick={() => openEditor()}>
+                        Add your first question
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {filteredQuestions.map((q) => (
+                        <motion.div
+                          key={q.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-colors"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => copyLibraryId(q.library_id)}
+                                className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-mono hover:bg-primary/20 transition-colors"
+                                title="Click to copy ID"
+                              >
+                                {q.library_id}
+                              </button>
+                              <Badge variant="outline" className="text-xs">
+                                {q.question_type.replace('_', ' ')}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewQuestion(q)}>
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditor(q)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(q.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="mb-3">
+                            {q.question_image_url && (
+                              <img
+                                src={q.question_image_url}
+                                alt="Question"
+                                className="w-full h-24 object-cover rounded-lg mb-2 bg-muted"
+                                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                              />
+                            )}
+                            <p className="text-sm line-clamp-2">
+                              {q.question_text ? (
+                                <LatexRenderer content={q.question_text} />
+                              ) : (
+                                <span className="text-muted-foreground italic">No text (image only)</span>
+                              )}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                            {q.topic && (
+                              <span className="px-2 py-0.5 bg-secondary rounded truncate max-w-[100px]">
+                                {q.topic}
+                              </span>
+                            )}
+                            <span className={cn(
+                              "px-2 py-0.5 rounded capitalize",
+                              q.difficulty === 'easy' && "bg-green-500/20 text-green-600",
+                              q.difficulty === 'medium' && "bg-yellow-500/20 text-yellow-600",
+                              q.difficulty === 'hard' && "bg-red-500/20 text-red-600"
+                            )}>
+                              {q.difficulty}
+                            </span>
+                            <span className="ml-auto">+{q.marks}/-{q.negative_marks}</span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           )}
         </ScrollArea>
 
-        {/* Editor Dialog - Full height scrollable */}
+        {/* Editor Dialog */}
         <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
           <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
             <DialogHeader className="px-6 py-4 border-b shrink-0">
-              <DialogTitle>
-                {editingQuestion ? 'Edit Question' : 'Add New Question'}
+              <DialogTitle className="flex items-center justify-between">
+                <span>{editingQuestion ? 'Edit Question' : 'Add New Question'}</span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  Ctrl+S to save • Esc to close
+                </span>
               </DialogTitle>
             </DialogHeader>
 
@@ -719,11 +796,24 @@ export default function PhyNetixLibrary() {
                       placeholder="Enter question text..."
                       className="min-h-[120px] font-mono"
                     />
-                    <ImageUploadButton
-                      type="question"
-                      currentUrl={formData.question_image_url}
-                      onRemove={() => setFormData({ ...formData, question_image_url: null })}
-                    />
+                    <div className="flex items-center gap-2">
+                      <ImageUrlInput
+                        value={formData.question_image_url}
+                        onChange={(url) => setFormData({ ...formData, question_image_url: url })}
+                        compact
+                        label="Question Image"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handlePasteUrl('question')}
+                        className="h-7 text-xs"
+                      >
+                        <Link2 className="w-3 h-3 mr-1" />
+                        Paste URL
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Preview</Label>
@@ -733,10 +823,7 @@ export default function PhyNetixLibrary() {
                           src={formData.question_image_url} 
                           alt="Question" 
                           className="max-h-32 mb-2 rounded bg-muted object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
+                          onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
                         />
                       )}
                       {formData.question_text ? (
@@ -752,7 +839,7 @@ export default function PhyNetixLibrary() {
                 {formData.question_type !== 'integer' && (
                   <div className="space-y-3">
                     <Label>Options ({formData.question_type === 'multiple_choice' ? 'Multiple Select' : 'Single Select'})</Label>
-                    {formData.options.map((option, index) => (
+                    {formData.options.map((option: any, index: number) => (
                       <div
                         key={index}
                         className={cn(
@@ -780,12 +867,24 @@ export default function PhyNetixLibrary() {
                             onChange={(e) => handleOptionChange(index, 'text', e.target.value)}
                             placeholder={`Option ${option.label}...`}
                           />
-                          <ImageUploadButton
-                            type="option"
-                            optionIndex={index}
-                            currentUrl={option.image_url}
-                            onRemove={() => handleOptionChange(index, 'image_url', null)}
-                          />
+                          <div className="flex items-center gap-2">
+                            <ImageUrlInput
+                              value={option.image_url}
+                              onChange={(url) => handleOptionChange(index, 'image_url', url)}
+                              compact
+                              label={`Option ${option.label} Image`}
+                            />
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handlePasteUrl('option', index)}
+                              className="h-7 text-xs"
+                            >
+                              <Link2 className="w-3 h-3 mr-1" />
+                              Paste
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -816,11 +915,24 @@ export default function PhyNetixLibrary() {
                       placeholder="Enter solution explanation..."
                       className="min-h-[100px] font-mono"
                     />
-                    <ImageUploadButton
-                      type="solution"
-                      currentUrl={formData.solution_image_url}
-                      onRemove={() => setFormData({ ...formData, solution_image_url: null })}
-                    />
+                    <div className="flex items-center gap-2">
+                      <ImageUrlInput
+                        value={formData.solution_image_url}
+                        onChange={(url) => setFormData({ ...formData, solution_image_url: url })}
+                        compact
+                        label="Solution Image"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handlePasteUrl('solution')}
+                        className="h-7 text-xs"
+                      >
+                        <Link2 className="w-3 h-3 mr-1" />
+                        Paste URL
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Solution Preview</Label>
@@ -830,10 +942,7 @@ export default function PhyNetixLibrary() {
                           src={formData.solution_image_url} 
                           alt="Solution" 
                           className="max-h-24 mb-2 rounded bg-muted object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
+                          onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
                         />
                       )}
                       {formData.solution_text ? (
@@ -883,51 +992,36 @@ export default function PhyNetixLibrary() {
                 </div>
 
                 {viewQuestion.question_image_url && (
-                  <img 
-                    src={viewQuestion.question_image_url} 
-                    alt="Question" 
-                    className="max-w-full rounded-lg bg-muted"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
+                  <img src={viewQuestion.question_image_url} alt="Question" className="max-w-full rounded-lg border" />
                 )}
-                
+
                 {viewQuestion.question_text && (
                   <div className="p-4 bg-secondary/50 rounded-lg">
                     <LatexRenderer content={viewQuestion.question_text} />
                   </div>
                 )}
 
-                {viewQuestion.question_type !== 'integer' && viewQuestion.options?.length > 0 && (
+                {viewQuestion.question_type !== 'integer' && viewQuestion.options && (
                   <div className="space-y-2">
                     {viewQuestion.options.map((opt: any, i: number) => {
-                      const isCorrect = Array.isArray(viewQuestion.correct_answer)
-                        ? viewQuestion.correct_answer.includes(opt.label)
+                      const isCorrect = viewQuestion.question_type === 'multiple_choice'
+                        ? Array.isArray(viewQuestion.correct_answer) && viewQuestion.correct_answer.includes(opt.label)
                         : viewQuestion.correct_answer === opt.label;
+                      
                       return (
                         <div key={i} className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg border",
-                          isCorrect && "bg-green-500/10 border-green-500"
+                          "flex items-start gap-3 p-3 rounded-lg border",
+                          isCorrect ? "bg-green-500/10 border-green-500" : "border-border"
                         )}>
                           <span className={cn(
-                            "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm",
+                            "w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs",
                             isCorrect ? "bg-green-500 text-white" : "bg-muted"
                           )}>
                             {opt.label}
                           </span>
                           <div className="flex-1">
                             {opt.image_url && (
-                              <img 
-                                src={opt.image_url} 
-                                alt="" 
-                                className="max-h-16 mb-1 rounded bg-muted"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                }}
-                              />
+                              <img src={opt.image_url} alt={`Option ${opt.label}`} className="max-h-20 rounded mb-1" />
                             )}
                             {opt.text && <LatexRenderer content={opt.text} className="text-sm" />}
                           </div>
@@ -939,24 +1033,16 @@ export default function PhyNetixLibrary() {
 
                 {viewQuestion.question_type === 'integer' && (
                   <div className="p-4 bg-green-500/10 border border-green-500 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Correct Answer:</p>
-                    <p className="text-xl font-bold text-green-500">{String(viewQuestion.correct_answer)}</p>
+                    <Label className="text-xs text-muted-foreground">Correct Answer</Label>
+                    <p className="text-lg font-mono font-bold">{viewQuestion.correct_answer}</p>
                   </div>
                 )}
 
                 {(viewQuestion.solution_text || viewQuestion.solution_image_url) && (
                   <div className="pt-4 border-t">
-                    <p className="text-sm font-medium mb-2">Solution</p>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Solution</Label>
                     {viewQuestion.solution_image_url && (
-                      <img 
-                        src={viewQuestion.solution_image_url} 
-                        alt="Solution" 
-                        className="max-w-full rounded-lg mb-2 bg-muted"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
+                      <img src={viewQuestion.solution_image_url} alt="Solution" className="max-w-full rounded-lg border mb-2" />
                     )}
                     {viewQuestion.solution_text && (
                       <div className="p-4 bg-secondary/50 rounded-lg">
@@ -966,10 +1052,9 @@ export default function PhyNetixLibrary() {
                   </div>
                 )}
 
-                <div className="flex justify-between text-sm text-muted-foreground pt-4 border-t">
-                  <span>Marks: +{viewQuestion.marks} / -{viewQuestion.negative_marks}</span>
-                  <span>Time: {viewQuestion.time_seconds}s</span>
-                  <span>Used: {viewQuestion.usage_count} times</span>
+                <div className="flex items-center justify-between pt-4 border-t text-sm text-muted-foreground">
+                  <span>+{viewQuestion.marks}/-{viewQuestion.negative_marks} marks • {viewQuestion.time_seconds}s</span>
+                  <span>Used {viewQuestion.usage_count} times</span>
                 </div>
               </div>
             )}

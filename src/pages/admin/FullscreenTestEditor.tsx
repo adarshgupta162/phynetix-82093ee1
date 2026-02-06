@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, Eye, EyeOff, Plus, Check, AlertCircle,
   Loader2, Save, RefreshCw, Settings, BookOpen, Import,
-  X, ChevronLeft, ChevronRight, Maximize2, Search
+  X, ChevronLeft, ChevronRight, Maximize2, Search, Link2, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,12 +27,14 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { QuestionPalette } from "@/components/admin/NormalTestEditor/QuestionPalette";
 import { SectionTabs } from "@/components/admin/NormalTestEditor/SectionTabs";
 import { TestSettingsPanel } from "@/components/admin/NormalTestEditor/TestSettingsPanel";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
 import { QuestionImageUpload } from "@/components/admin/QuestionImageUpload";
 import { ImageUrlInput } from "@/components/admin/ImageUrlInput";
+import { LibraryPickerModal } from "@/components/admin/LibraryPickerModal";
 import { cn } from "@/lib/utils";
 
 interface Test {
@@ -111,6 +113,7 @@ export default function FullscreenTestEditor() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [test, setTest] = useState<Test | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -126,10 +129,15 @@ export default function FullscreenTestEditor() {
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const [localQuestion, setLocalQuestion] = useState<Question | null>(null);
 
-  // Import dialog
+  // Import dialogs
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showLibraryPicker, setShowLibraryPicker] = useState(false);
   const [importId, setImportId] = useState('');
   const [importLoading, setImportLoading] = useState(false);
+  
+  // Migrate to library
+  const [showMigrateDialog, setShowMigrateDialog] = useState(false);
+  const [migrateLoading, setMigrateLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!testId) return;
@@ -420,6 +428,147 @@ export default function FullscreenTestEditor() {
     }
   };
 
+  // Migrate question to library
+  const handleMigrateToLibrary = async () => {
+    if (!localQuestion || !user) return;
+
+    setMigrateLoading(true);
+    try {
+      const section = sections.find(s => s.id === localQuestion.section_id);
+      const subject = subjects.find(sub => section && sections.find(sec => sec.subject_id === sub.id && sec.id === section.id));
+      
+      const payload = {
+        subject: subject?.name || 'Physics',
+        chapter: localQuestion.chapter || null,
+        topic: localQuestion.topic || null,
+        question_text: localQuestion.question_text || null,
+        question_image_url: localQuestion.image_url || null,
+        options: localQuestion.options,
+        correct_answer: localQuestion.correct_answer,
+        question_type: section?.section_type || 'single_choice',
+        marks: localQuestion.marks,
+        negative_marks: localQuestion.negative_marks,
+        difficulty: localQuestion.difficulty || 'medium',
+        time_seconds: localQuestion.time_seconds || 60,
+        solution_text: localQuestion.solution_text || null,
+        solution_image_url: localQuestion.solution_image_url || null,
+        created_by: user.id
+      };
+
+      const { data, error } = await supabase
+        .from('phynetix_library')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update the question with library reference
+      await supabase
+        .from('test_section_questions')
+        .update({ library_question_id: data.id })
+        .eq('id', localQuestion.id);
+
+      setLocalQuestion({ ...localQuestion, library_question_id: data.id });
+      setShowMigrateDialog(false);
+      toast({ 
+        title: "Migrated to library!",
+        description: `Library ID: ${data.library_id}`
+      });
+    } catch (err: any) {
+      toast({ title: "Migration failed", description: err.message, variant: "destructive" });
+    } finally {
+      setMigrateLoading(false);
+    }
+  };
+
+  // Import from library picker
+  const handleImportFromPicker = async (libQuestion: any) => {
+    if (!activeSectionId || !testId) return;
+
+    try {
+      const { data: newQ, error: insertError } = await supabase
+        .from('test_section_questions')
+        .insert([{
+          test_id: testId,
+          section_id: activeSectionId,
+          question_number: questions.length + 1,
+          question_text: libQuestion.question_text,
+          correct_answer: libQuestion.correct_answer,
+          options: libQuestion.options,
+          marks: libQuestion.marks,
+          negative_marks: libQuestion.negative_marks,
+          image_url: libQuestion.question_image_url,
+          solution_text: libQuestion.solution_text,
+          solution_image_url: libQuestion.solution_image_url,
+          difficulty: libQuestion.difficulty,
+          time_seconds: libQuestion.time_seconds,
+          chapter: libQuestion.chapter,
+          topic: libQuestion.topic,
+          library_question_id: libQuestion.id,
+          order_index: questions.length
+        }])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Update usage count
+      await supabase
+        .from('phynetix_library')
+        .update({ usage_count: (libQuestion.usage_count || 0) + 1 })
+        .eq('id', libQuestion.id);
+
+      setQuestions([...questions, newQ]);
+      setActiveQuestionId(newQ.id);
+      setLocalQuestion({ ...newQ, options: newQ.options || DEFAULT_OPTIONS });
+      toast({ title: "Question imported from library!" });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // Paste URL from clipboard
+  const handlePasteUrl = async (type: 'question' | 'solution' | 'option', optionIndex?: number) => {
+    if (!localQuestion) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+        if (type === 'question') {
+          setLocalQuestion({ ...localQuestion, image_url: text });
+        } else if (type === 'solution') {
+          setLocalQuestion({ ...localQuestion, solution_image_url: text });
+        } else if (type === 'option' && optionIndex !== undefined) {
+          handleOptionChange(optionIndex, 'image_url', text);
+        }
+        toast({ title: "URL pasted!" });
+      } else {
+        toast({ title: "No valid URL in clipboard", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Could not access clipboard", variant: "destructive" });
+    }
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+S to save
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSaveQuestion();
+      }
+      // Ctrl+N to add question
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n' && activeSectionId) {
+        e.preventDefault();
+        handleAddQuestion();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [localQuestion, activeSectionId]);
+
   // Test handlers
   const handleUpdateTest = async (updates: Partial<Test>) => {
     if (!test) return;
@@ -533,9 +682,16 @@ export default function FullscreenTestEditor() {
         </div>
 
         <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground hidden sm:block">
+            Ctrl+S: Save | Ctrl+N: Add
+          </span>
+          <Button variant="outline" size="sm" onClick={() => setShowLibraryPicker(true)}>
+            <BookOpen className="w-4 h-4 mr-1" />
+            Browse Library
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
             <Import className="w-4 h-4 mr-1" />
-            Import
+            Import by ID
           </Button>
           {test && (
             <TestSettingsPanel
@@ -722,7 +878,7 @@ export default function FullscreenTestEditor() {
                       placeholder="Enter question..."
                       className="min-h-[80px] font-mono text-sm"
                     />
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <QuestionImageUpload
                         value={localQuestion.image_url}
                         onChange={(url) => setLocalQuestion({ ...localQuestion, image_url: url })}
@@ -735,6 +891,16 @@ export default function FullscreenTestEditor() {
                         compact
                         label="Question Image"
                       />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePasteUrl('question')}
+                        className="h-7 text-xs"
+                      >
+                        <Link2 className="w-3 h-3 mr-1" />
+                        Paste URL
+                      </Button>
                     </div>
                   </div>
 
@@ -767,7 +933,7 @@ export default function FullscreenTestEditor() {
                               placeholder={`Option ${opt.label}...`}
                               className="h-8 text-sm"
                             />
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <QuestionImageUpload
                                   value={opt.image_url}
                                   onChange={(url) => handleOptionChange(i, 'image_url', url)}
@@ -779,6 +945,16 @@ export default function FullscreenTestEditor() {
                                   compact
                                   label={`Option ${opt.label} Image`}
                                 />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePasteUrl('option', i)}
+                                  className="h-7 text-xs"
+                                >
+                                  <Link2 className="w-3 h-3 mr-1" />
+                                  Paste
+                                </Button>
                               </div>
                           </div>
                         </div>
@@ -809,7 +985,7 @@ export default function FullscreenTestEditor() {
                       placeholder="Solution explanation..."
                       className="min-h-[80px] font-mono text-sm"
                     />
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <QuestionImageUpload
                         value={localQuestion.solution_image_url}
                         onChange={(url) => setLocalQuestion({ ...localQuestion, solution_image_url: url })}
@@ -822,7 +998,36 @@ export default function FullscreenTestEditor() {
                         compact
                         label="Solution Image"
                       />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePasteUrl('solution')}
+                        className="h-7 text-xs"
+                      >
+                        <Link2 className="w-3 h-3 mr-1" />
+                        Paste URL
+                      </Button>
                     </div>
+                    
+                    {/* Migrate to Library Button */}
+                    {!localQuestion.library_question_id && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowMigrateDialog(true)}
+                        className="mt-3 w-full"
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        Add to PhyNetix Library
+                      </Button>
+                    )}
+                    {localQuestion.library_question_id && (
+                      <div className="mt-3 p-2 bg-primary/10 rounded-lg text-center text-xs text-primary">
+                        ✓ Already in library
+                      </div>
+                    )}
                   </div>
                 </div>
               </ScrollArea>
@@ -958,11 +1163,60 @@ export default function FullscreenTestEditor() {
               </p>
             </div>
             <div className="flex justify-between items-center pt-2 border-t">
-              <Button variant="link" size="sm" onClick={() => navigate('/admin/library')}>
-                Open PhyNetix Library
+              <Button variant="link" size="sm" onClick={() => {
+                setShowImportDialog(false);
+                setShowLibraryPicker(true);
+              }}>
+                Browse Library Instead
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setShowImportDialog(false)}>
                 Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Library Picker Modal */}
+      <LibraryPickerModal
+        open={showLibraryPicker}
+        onClose={() => setShowLibraryPicker(false)}
+        onSelect={handleImportFromPicker}
+      />
+
+      {/* Migrate to Library Dialog */}
+      <Dialog open={showMigrateDialog} onOpenChange={setShowMigrateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5 text-primary" />
+              Add to PhyNetix Library
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This will copy the current question to the PhyNetix Library for reuse in other tests.
+              The question will be linked to the library entry.
+            </p>
+            {localQuestion && (
+              <div className="p-3 bg-secondary/50 rounded-lg text-sm">
+                <p className="font-medium mb-1">Question {localQuestion.question_number}</p>
+                <p className="line-clamp-2 text-muted-foreground">
+                  {localQuestion.question_text || '(Image-based question)'}
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowMigrateDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleMigrateToLibrary} disabled={migrateLoading}>
+                {migrateLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-2" />
+                )}
+                Add to Library
               </Button>
             </div>
           </div>
