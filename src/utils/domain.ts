@@ -20,7 +20,9 @@ export function getCurrentDomain(): string {
  */
 export function isAdminDomain(): boolean {
   const domain = getCurrentDomain();
-  return domain === 'admin.phynetix.me' || domain.startsWith('admin.');
+  // Check for exact match or proper subdomain pattern with base domain
+  return domain === 'admin.phynetix.me' || 
+         (domain.startsWith('admin.') && domain.endsWith('.phynetix.me'));
 }
 
 /**

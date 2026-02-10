@@ -90,11 +90,22 @@ Enhanced component that protects admin routes with domain validation.
 ## Configuration
 
 ### Environment Variables
+
+The application requires the following environment variables:
+
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key
 VITE_SUPABASE_PROJECT_ID=your-project-id
 ```
+
+**Vercel Setup:**
+1. Go to your Vercel project settings
+2. Navigate to "Environment Variables"
+3. Add each variable with values from your Supabase project
+4. Ensure variables are available for all environments (Production, Preview, Development)
+
+**Note:** These are regular environment variables, not Vercel secrets. The VITE_ prefix makes them available to the client-side build.
 
 ### Vercel Configuration (`vercel.json`)
 - Configures domain rewrites for SPA routing
@@ -113,8 +124,14 @@ Both `phynetix.me` and `admin.phynetix.me` must point to the same Vercel project
 
 1. **Double Verification**: Role is checked both client-side and server-side
 2. **JWT Token Validation**: Tokens are decoded and expiry is checked
+   - **Important Note**: The current implementation uses basic JWT decoding without signature verification
+   - For enhanced production security, implement proper JWT signature verification using:
+     - Supabase JWT secret from environment variables
+     - Supabase's official token verification methods
+     - A JWT verification library like 'jose' or '@supabase/supabase-js'
 3. **Session Management**: Supabase handles secure session storage
-4. **Security Headers**: 
+4. **Domain Isolation**: Strict domain matching prevents access through unintended domains
+5. **Security Headers**: 
    - Strict-Transport-Security
    - X-Content-Type-Options
    - X-Frame-Options

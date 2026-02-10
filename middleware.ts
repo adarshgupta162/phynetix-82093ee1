@@ -32,16 +32,21 @@ async function getUserRoleFromCookies(cookieHeader: string | null): Promise<stri
   });
 
   // Get Supabase auth token from cookies
+  // Try standard Supabase cookie names
   const authToken = cookies['sb-access-token'] || 
-                    cookies['supabase-auth-token'] ||
-                    cookies['sb-ydqyvirmwanyllihhkml-auth-token'];
+                    cookies['supabase-auth-token'];
   
   if (!authToken) {
     return null;
   }
 
   try {
-    // Decode JWT token (simplified - in production you should verify signature)
+    // Decode JWT token
+    // Note: This is a simplified implementation for initial validation.
+    // For production, implement proper JWT signature verification using:
+    // 1. Supabase JWT secret from environment variables
+    // 2. Supabase's official token verification methods
+    // 3. A JWT verification library like 'jose' or '@supabase/supabase-js'
     const parts = authToken.split('.');
     if (parts.length !== 3) {
       return null;
@@ -93,7 +98,9 @@ export default async function middleware(request: Request): Promise<Response> {
   const domain = hostname.split(':')[0];
   
   // Check if this is the admin subdomain
-  const isAdminDomain = domain === 'admin.phynetix.me' || domain.startsWith('admin.');
+  // Use strict domain matching to prevent security issues
+  const isAdminDomain = domain === 'admin.phynetix.me' || 
+                        (domain.startsWith('admin.') && domain.endsWith('.phynetix.me'));
   const isMainDomain = domain === 'phynetix.me' || (!isAdminDomain && domain !== 'localhost' && domain !== '127.0.0.1');
   
   // Skip middleware for non-production domains (localhost, vercel preview deployments)
