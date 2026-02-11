@@ -165,7 +165,7 @@ export default function DetailedAnalysis() {
           question_number: q.question_number,
           correct_answer: q.correct_answer,
           marks: q.marks || 4,
-          negative_marks: q.negative_marks || 1,
+          negative_marks: q.negative_marks ?? 0,
           section_type: sectionType,
           subject_name: subjectName,
           section_id: sectionId,

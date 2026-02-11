@@ -175,9 +175,18 @@ export default function SolutionsPage() {
           const sectionType = q.test_sections?.section_type || "single_choice";
           subjectSet.add(subject);
           
-          // Get correct answer - handle both object and string formats
+          const isIntegerType = sectionType === 'integer' || sectionType === 'numerical';
+          const isMultipleChoice = sectionType === 'multiple_choice';
+          
+          // Get correct answer - handle multiple choice arrays, objects, and strings
           let correctAnswer: string;
-          if (typeof q.correct_answer === 'object' && q.correct_answer !== null) {
+          let correctAnswerArray: number[] = [];
+          
+          if (isMultipleChoice && Array.isArray(q.correct_answer)) {
+            // For multiple choice, store as sorted array and convert to letters
+            correctAnswerArray = [...q.correct_answer].sort((a, b) => a - b);
+            correctAnswer = correctAnswerArray.map(idx => indexToLetter(idx)).join(", ");
+          } else if (typeof q.correct_answer === 'object' && q.correct_answer !== null) {
             correctAnswer = (q.correct_answer as any)?.answer || String(q.correct_answer);
           } else {
             correctAnswer = String(q.correct_answer || "");
@@ -185,14 +194,19 @@ export default function SolutionsPage() {
           
           // Get user's answer and normalize it
           const rawUserAnswer = userAnswers[q.id];
-          const isIntegerType = sectionType === 'integer' || sectionType === 'numerical';
           
           // For MCQ: convert index to letter, for integer: keep as is
           let normalizedUserAnswer: string;
+          let userAnswerArray: number[] = [];
+          
           if (isIntegerType) {
             normalizedUserAnswer = rawUserAnswer !== undefined && rawUserAnswer !== null && rawUserAnswer !== "" 
               ? String(rawUserAnswer) 
               : "";
+          } else if (isMultipleChoice && Array.isArray(rawUserAnswer)) {
+            // For multiple choice, store as sorted array and convert to letters
+            userAnswerArray = [...rawUserAnswer].sort((a, b) => a - b);
+            normalizedUserAnswer = userAnswerArray.map(idx => indexToLetter(idx)).join(", ");
           } else {
             normalizedUserAnswer = indexToLetter(rawUserAnswer);
           }
@@ -201,15 +215,26 @@ export default function SolutionsPage() {
           let status: "correct" | "incorrect" | "skipped" = "skipped";
           let userMarks = 0;
           
-          if (rawUserAnswer === undefined || rawUserAnswer === null || rawUserAnswer === "") {
+          if (rawUserAnswer === undefined || rawUserAnswer === null || rawUserAnswer === "" || 
+              (Array.isArray(rawUserAnswer) && rawUserAnswer.length === 0)) {
             status = "skipped";
             userMarks = 0;
+          } else if (isMultipleChoice) {
+            // Compare arrays for multiple choice
+            const isCorrect = JSON.stringify(userAnswerArray) === JSON.stringify(correctAnswerArray);
+            if (isCorrect) {
+              status = "correct";
+              userMarks = q.marks || 4;
+            } else {
+              status = "incorrect";
+              userMarks = -(q.negative_marks ?? 0);
+            }
           } else if (normalizedUserAnswer === correctAnswer) {
             status = "correct";
             userMarks = q.marks || 4;
           } else {
             status = "incorrect";
-            userMarks = -(q.negative_marks || 1);
+            userMarks = -(q.negative_marks ?? 0);
           }
 
           // Calculate option stats from all attempts
@@ -219,10 +244,22 @@ export default function SolutionsPage() {
           allAttempts?.forEach((att: any) => {
             const answers = att.answers as Record<string, any>;
             const ans = answers?.[q.id];
-            if (ans !== undefined && ans !== null && ans !== "") {
+            if (ans !== undefined && ans !== null && ans !== "" && 
+                !(Array.isArray(ans) && ans.length === 0)) {
               totalResponses++;
-              const normalizedAns = isIntegerType ? String(ans) : indexToLetter(ans);
-              optionStats.set(normalizedAns, (optionStats.get(normalizedAns) || 0) + 1);
+              if (isIntegerType) {
+                const normalizedAns = String(ans);
+                optionStats.set(normalizedAns, (optionStats.get(normalizedAns) || 0) + 1);
+              } else if (isMultipleChoice && Array.isArray(ans)) {
+                // For multiple choice, count each selected option separately
+                ans.forEach(idx => {
+                  const letter = indexToLetter(idx);
+                  optionStats.set(letter, (optionStats.get(letter) || 0) + 1);
+                });
+              } else {
+                const normalizedAns = indexToLetter(ans);
+                optionStats.set(normalizedAns, (optionStats.get(normalizedAns) || 0) + 1);
+              }
             }
           });
 
@@ -234,13 +271,21 @@ export default function SolutionsPage() {
               const text = typeof opt === 'object' ? (opt.text || opt.label || '') : String(opt);
               const count = optionStats.get(label) || 0;
               
+              // For multiple choice, check if this option is in the user's array or correct array
+              const isUserAnswer = isMultipleChoice 
+                ? userAnswerArray.includes(optIdx)
+                : normalizedUserAnswer === label;
+              const isCorrect = isMultipleChoice
+                ? correctAnswerArray.includes(optIdx)
+                : correctAnswer === label;
+              
               return {
                 label,
                 value: text,
                 percentage: totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0,
                 studentCount: count,
-                isUserAnswer: normalizedUserAnswer === label,
-                isCorrect: correctAnswer === label,
+                isUserAnswer,
+                isCorrect,
               };
             });
           }

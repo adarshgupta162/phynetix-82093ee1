@@ -180,16 +180,39 @@ export default function AnalysisPage() {
         .select(`id, question_number, correct_answer, marks, negative_marks, section_id, question_text, image_url, difficulty, solution_text, solution_image_url, test_sections!inner(name, section_type, test_subjects!inner(name))`)
         .eq("test_id", testId).order("question_number");
 
-      const questionsData = (sectionQuestions || []).map((q: any) => ({
-        id: q.id, question_number: q.question_number,
-        correct_answer: typeof q.correct_answer === 'object' ? (q.correct_answer as any)?.answer || String(q.correct_answer) : String(q.correct_answer || ""),
-        marks: q.marks || 4, negative_marks: q.negative_marks || 1,
-        subject: q.test_sections?.test_subjects?.name || "General",
-        sectionType: q.test_sections?.section_type || "single_choice",
-        difficulty: q.difficulty || "medium",
-        questionText: q.question_text, imageUrl: q.image_url,
-        solutionText: q.solution_text, solutionImageUrl: q.solution_image_url,
-      }));
+      const questionsData = (sectionQuestions || []).map((q: any) => {
+        const sectionType = q.test_sections?.section_type || "single_choice";
+        const isMultipleChoice = sectionType === 'multiple_choice';
+        
+        // Handle multiple choice arrays properly
+        let correctAnswer: string;
+        let correctAnswerArray: number[] = [];
+        
+        if (isMultipleChoice && Array.isArray(q.correct_answer)) {
+          correctAnswerArray = [...q.correct_answer].sort((a, b) => a - b);
+          correctAnswer = correctAnswerArray.map(idx => indexToLetter(idx)).join(", ");
+        } else if (typeof q.correct_answer === 'object' && q.correct_answer !== null) {
+          correctAnswer = (q.correct_answer as any)?.answer || String(q.correct_answer);
+        } else {
+          correctAnswer = String(q.correct_answer || "");
+        }
+        
+        return {
+          id: q.id,
+          question_number: q.question_number,
+          correct_answer: correctAnswer,
+          correct_answer_array: correctAnswerArray,
+          marks: q.marks || 4,
+          negative_marks: q.negative_marks ?? 0,
+          subject: q.test_sections?.test_subjects?.name || "General",
+          sectionType,
+          difficulty: q.difficulty || "medium",
+          questionText: q.question_text,
+          imageUrl: q.image_url,
+          solutionText: q.solution_text,
+          solutionImageUrl: q.solution_image_url,
+        };
+      });
 
       const userAnswers = (attempt.answers as Record<string, any>) || {};
 
@@ -213,15 +236,38 @@ export default function AnalysisPage() {
 
         const rawUserAnswer = userAnswers[q.id];
         const isIntegerType = q.sectionType === 'integer' || q.sectionType === 'numerical';
-        const normalizedUserAnswer = isIntegerType
-          ? (rawUserAnswer !== undefined && rawUserAnswer !== null && rawUserAnswer !== "" ? String(rawUserAnswer) : "")
-          : indexToLetter(rawUserAnswer);
+        const isMultipleChoice = q.sectionType === 'multiple_choice';
+        
+        let normalizedUserAnswer: string;
+        let userAnswerArray: number[] = [];
+        
+        if (isIntegerType) {
+          normalizedUserAnswer = rawUserAnswer !== undefined && rawUserAnswer !== null && rawUserAnswer !== "" 
+            ? String(rawUserAnswer) 
+            : "";
+        } else if (isMultipleChoice && Array.isArray(rawUserAnswer)) {
+          userAnswerArray = [...rawUserAnswer].sort((a, b) => a - b);
+          normalizedUserAnswer = userAnswerArray.map(idx => indexToLetter(idx)).join(", ");
+        } else {
+          normalizedUserAnswer = indexToLetter(rawUserAnswer);
+        }
 
         let status: "correct" | "incorrect" | "skipped" = "skipped";
         let userMarks = 0;
 
-        if (rawUserAnswer === undefined || rawUserAnswer === null || rawUserAnswer === "") {
+        if (rawUserAnswer === undefined || rawUserAnswer === null || rawUserAnswer === "" ||
+            (Array.isArray(rawUserAnswer) && rawUserAnswer.length === 0)) {
           s.unattempted++; status = "skipped";
+        } else if (isMultipleChoice) {
+          // Compare arrays for multiple choice
+          const isCorrect = JSON.stringify(userAnswerArray) === JSON.stringify((q as any).correct_answer_array);
+          if (isCorrect) {
+            s.correct++; s.marksObtained += q.marks; totalCorrect++; totalPositiveScore += q.marks;
+            status = "correct"; userMarks = q.marks;
+          } else {
+            s.incorrect++; s.negativeMarks += q.negative_marks; totalIncorrect++; totalNegativeScore += q.negative_marks;
+            status = "incorrect"; userMarks = -q.negative_marks;
+          }
         } else if (normalizedUserAnswer === q.correct_answer) {
           s.correct++; s.marksObtained += q.marks; totalCorrect++; totalPositiveScore += q.marks;
           status = "correct"; userMarks = q.marks;

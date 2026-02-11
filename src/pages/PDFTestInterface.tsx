@@ -234,7 +234,7 @@ export default function PDFTestInterface() {
               question_number: q.question_number,
               question_type: questionType,
               marks: q.marks || 4,
-              negative_marks: q.negative_marks || 1,
+              negative_marks: q.negative_marks ?? 0,
               pdf_page_number: q.pdf_page || null,
               section_id: sectionId
             };
