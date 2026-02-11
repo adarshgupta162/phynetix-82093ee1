@@ -63,6 +63,7 @@ import OperationsDashboard from "./pages/admin/OperationsDashboard";
 import BatchManagement from "./pages/admin/BatchManagement";
 import RoleSelectorPage from "./pages/admin/RoleSelectorPage";
 import NotFound from "./pages/NotFound";
+import LatexTestPage from "./pages/LatexTestPage";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +88,8 @@ const App = () => (
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/refund" element={<RefundPage />} />
+                {/* LaTeX Test Page */}
+                <Route path="/latex-test" element={<LatexTestPage />} />
                 {/* Test Series Enrollment */}
                 <Route path="/enroll/:testSeriesId" element={<TestSeriesEnrollment />} />
                 {/* Authentication Pages */}
