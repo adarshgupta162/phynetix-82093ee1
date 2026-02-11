@@ -221,20 +221,21 @@ export default function SolutionsPage() {
             userMarks = 0;
           } else if (isMultipleChoice) {
             // Compare arrays for multiple choice
-            const isCorrect = JSON.stringify(userAnswerArray) === JSON.stringify(correctAnswerArray);
+            const isCorrect = userAnswerArray.length === correctAnswerArray.length && 
+                              userAnswerArray.every((val, idx) => val === correctAnswerArray[idx]);
             if (isCorrect) {
               status = "correct";
               userMarks = q.marks || 4;
             } else {
               status = "incorrect";
-              userMarks = -(q.negative_marks ?? 0);
+              userMarks = -(q.negative_marks ?? 1);
             }
           } else if (normalizedUserAnswer === correctAnswer) {
             status = "correct";
             userMarks = q.marks || 4;
           } else {
             status = "incorrect";
-            userMarks = -(q.negative_marks ?? 0);
+            userMarks = -(q.negative_marks ?? 1);
           }
 
           // Calculate option stats from all attempts

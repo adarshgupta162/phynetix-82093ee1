@@ -51,6 +51,22 @@ interface QuestionData {
   solutionImageUrl?: string;
 }
 
+interface ProcessedQuestion {
+  id: string;
+  question_number: number;
+  correct_answer: string;
+  correct_answer_array: number[];
+  marks: number;
+  negative_marks: number;
+  subject: string;
+  sectionType: string;
+  difficulty: string;
+  questionText?: string;
+  imageUrl?: string;
+  solutionText?: string;
+  solutionImageUrl?: string;
+}
+
 interface RankData {
   rank: number;
   totalStudents: number;
@@ -180,7 +196,7 @@ export default function AnalysisPage() {
         .select(`id, question_number, correct_answer, marks, negative_marks, section_id, question_text, image_url, difficulty, solution_text, solution_image_url, test_sections!inner(name, section_type, test_subjects!inner(name))`)
         .eq("test_id", testId).order("question_number");
 
-      const questionsData = (sectionQuestions || []).map((q: any) => {
+      const questionsData: ProcessedQuestion[] = (sectionQuestions || []).map((q: any) => {
         const sectionType = q.test_sections?.section_type || "single_choice";
         const isMultipleChoice = sectionType === 'multiple_choice';
         
@@ -203,7 +219,7 @@ export default function AnalysisPage() {
           correct_answer: correctAnswer,
           correct_answer_array: correctAnswerArray,
           marks: q.marks || 4,
-          negative_marks: q.negative_marks ?? 0,
+          negative_marks: q.negative_marks ?? 1,
           subject: q.test_sections?.test_subjects?.name || "General",
           sectionType,
           difficulty: q.difficulty || "medium",
@@ -259,8 +275,9 @@ export default function AnalysisPage() {
             (Array.isArray(rawUserAnswer) && rawUserAnswer.length === 0)) {
           s.unattempted++; status = "skipped";
         } else if (isMultipleChoice) {
-          // Compare arrays for multiple choice
-          const isCorrect = JSON.stringify(userAnswerArray) === JSON.stringify((q as any).correct_answer_array);
+          // Compare arrays for multiple choice (both arrays are already sorted)
+          const isCorrect = userAnswerArray.length === q.correct_answer_array.length &&
+                            userAnswerArray.every((val, idx) => val === q.correct_answer_array[idx]);
           if (isCorrect) {
             s.correct++; s.marksObtained += q.marks; totalCorrect++; totalPositiveScore += q.marks;
             status = "correct"; userMarks = q.marks;
