@@ -250,10 +250,13 @@ function processTextCommands(text: string): string {
       const char = str[i];
       
       if (char === '\\' && i + 1 < str.length) {
-        // Skip escaped characters
+        // Skip escaped characters - add both the backslash and the next character
         content += char + str[i + 1];
-        i++;
-      } else if (char === '{') {
+        i++; // Skip the next character in the loop since we've already processed it
+        continue; // Continue to avoid processing the escaped character again
+      }
+      
+      if (char === '{') {
         depth++;
         content += char;
       } else if (char === '}') {
@@ -284,6 +287,8 @@ function processTextCommands(text: string): string {
     if (result[col1End + 1] === '{') {
       const { content: col2Content, endPos: col2End } = matchBraces(result, col2Start);
       
+      // Note: col1Content and col2Content will be sanitized by escapeHtml() later in the pipeline
+      // This is safe because all text content goes through escapeHtml before being rendered
       const columnsHtml = `<div class="grid grid-cols-2 gap-4 my-4"><div class="border-r pr-4">${col1Content}</div><div class="pl-4">${col2Content}</div></div>`;
       
       const beforeTwoCol = result.slice(0, twocolIndex);
@@ -347,15 +352,18 @@ function escapeHtml(text: string): string {
   // First process text-mode LaTeX commands
   const processed = processTextCommands(text);
   
-  // Then escape remaining HTML entities, but preserve the HTML tags we created
-  return processed
-    .replace(/&(?!(amp;|nbsp;|lt;|gt;|quot;|#039;))/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-    .replace(/\n/g, '<br/>')
-    // Restore the HTML tags we want to keep
+  // Escape HTML special characters
+  // We need to be careful not to double-escape, so we replace in a specific order
+  let escaped = processed
+    .replace(/&/g, '&amp;')  // Escape ampersands first
+    .replace(/</g, '&lt;')   // Then less-than signs
+    .replace(/>/g, '&gt;')   // Then greater-than signs
+    .replace(/"/g, '&quot;') // Then quotes
+    .replace(/'/g, '&#039;') // Then apostrophes
+    .replace(/\n/g, '<br/>'); // Convert newlines to breaks
+  
+  // Now restore the safe HTML tags we intentionally created
+  escaped = escaped
     .replace(/&lt;strong&gt;/g, '<strong>')
     .replace(/&lt;\/strong&gt;/g, '</strong>')
     .replace(/&lt;em&gt;/g, '<em>')
@@ -370,6 +378,8 @@ function escapeHtml(text: string): string {
     .replace(/&lt;div class=&quot;border-r pr-4&quot;&gt;/g, '<div class="border-r pr-4">')
     .replace(/&lt;div class=&quot;pl-4&quot;&gt;/g, '<div class="pl-4">')
     .replace(/&lt;\/div&gt;/g, '</div>');
+    
+  return escaped;
 }
 
 export default LatexRenderer;
