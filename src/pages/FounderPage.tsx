@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function FounderPage() {
-  const [imageLoaded, setImageLoaded] = useState(true);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const socialLinks = [
     {
       name: "LinkedIn",
@@ -59,14 +60,17 @@ export default function FounderPage() {
               className="w-48 h-48 rounded-full overflow-hidden border-4 border-primary/20 shadow-2xl mx-auto bg-gradient-to-br from-primary/20 to-accent/20"
             >
               {/* Profile image - replace /profile-picture.jpg with your actual image */}
-              {imageLoaded ? (
+              {!imageError && (
                 <img 
                   src="/profile-picture.jpg" 
                   alt="Adarsh Gupta" 
                   className="w-full h-full object-cover"
-                  onError={() => setImageLoaded(false)}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => setImageError(true)}
+                  style={{ display: imageLoaded ? 'block' : 'none' }}
                 />
-              ) : (
+              )}
+              {(!imageLoaded || imageError) && (
                 <div className="w-full h-full flex items-center justify-center text-6xl font-bold gradient-text">
                   AG
                 </div>
