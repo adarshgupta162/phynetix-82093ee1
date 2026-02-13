@@ -1,11 +1,13 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Github, Linkedin, Instagram, ExternalLink, Mail, MapPin, Briefcase, GraduationCap, Code } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export default function FounderPage() {
+  const [imageLoaded, setImageLoaded] = useState(true);
   const socialLinks = [
     {
       name: "LinkedIn",
@@ -57,16 +59,18 @@ export default function FounderPage() {
               className="w-48 h-48 rounded-full overflow-hidden border-4 border-primary/20 shadow-2xl mx-auto bg-gradient-to-br from-primary/20 to-accent/20"
             >
               {/* Profile image - replace /profile-picture.jpg with your actual image */}
-              <img 
-                src="/profile-picture.jpg" 
-                alt="Adarsh Gupta" 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  // Fallback to initials if image fails to load
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-6xl font-bold gradient-text">AG</div>';
-                }}
-              />
+              {imageLoaded ? (
+                <img 
+                  src="/profile-picture.jpg" 
+                  alt="Adarsh Gupta" 
+                  className="w-full h-full object-cover"
+                  onError={() => setImageLoaded(false)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-6xl font-bold gradient-text">
+                  AG
+                </div>
+              )}
             </motion.div>
             <motion.div
               initial={{ scale: 0 }}
