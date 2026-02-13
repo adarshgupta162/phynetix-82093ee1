@@ -56,16 +56,23 @@ export default function FounderPage() {
               transition={{ delay: 0.2, duration: 0.5 }}
               className="w-48 h-48 rounded-full overflow-hidden border-4 border-primary/20 shadow-2xl mx-auto bg-gradient-to-br from-primary/20 to-accent/20"
             >
-              {/* Placeholder for profile image - will be replaced with actual image */}
-              <div className="w-full h-full flex items-center justify-center text-6xl font-bold gradient-text">
-                AG
-              </div>
+              {/* Profile image - replace /profile-picture.jpg with your actual image */}
+              <img 
+                src="/profile-picture.jpg" 
+                alt="Adarsh Gupta" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // Fallback to initials if image fails to load
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-6xl font-bold gradient-text">AG</div>';
+                }}
+              />
             </motion.div>
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.4, type: "spring" }}
-              className="absolute -bottom-4 -right-4 w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center shadow-lg"
+              className="absolute -bottom-3 -right-3 w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center shadow-lg"
             >
               <Code className="w-6 h-6 text-primary-foreground" />
             </motion.div>
