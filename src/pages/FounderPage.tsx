@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Github, Linkedin, Instagram, ExternalLink, Mail, MapPin, Briefcase, GraduationCap, Code } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -310,11 +311,11 @@ export default function FounderPage() {
           transition={{ delay: 1.1, duration: 0.6 }}
           className="text-center mt-12"
         >
-          <a href="/">
+          <Link to="/">
             <Button variant="ghost" className="group">
               ← Back to PhyNetix Home
             </Button>
-          </a>
+          </Link>
         </motion.div>
       </div>
     </div>
