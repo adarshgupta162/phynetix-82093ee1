@@ -62,7 +62,7 @@ export default function FounderPage() {
               {/* Profile image - replace /profile-picture.jpg with your actual image */}
               {!imageError && (
                 <img 
-                  src="/profile-picture.jpg" 
+                  src="https://media.licdn.com/dms/image/v2/D5603AQFkh9VOJnGnPw/profile-displayphoto-shrink_200_200/B56ZxXbxqKG4AY-/0/1770993426014?e=1772668800&v=beta&t=wiPCC-WnwR8msRE5UMqcxoZLL3ILK44IWLErFPhbsMo" 
                   alt="Adarsh Gupta" 
                   className="w-full h-full object-cover"
                   onLoad={() => setImageLoaded(true)}
