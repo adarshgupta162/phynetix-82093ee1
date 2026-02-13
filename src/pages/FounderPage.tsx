@@ -65,7 +65,7 @@ export default function FounderPage() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.4, type: "spring" }}
-              className="absolute -bottom-2 -right-2 w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center shadow-lg"
+              className="absolute -bottom-4 -right-4 w-12 h-12 bg-gradient-primary rounded-full flex items-center justify-center shadow-lg"
             >
               <Code className="w-6 h-6 text-primary-foreground" />
             </motion.div>
