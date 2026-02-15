@@ -215,13 +215,13 @@ export default function CheckoutPage() {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Order Summary */}
-            <Card>
+            <Card className="liquid-glass-card border-0">
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
                 <CardDescription>Review your enrollment details</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-start gap-4 p-4 bg-secondary/30 rounded-lg">
+                <div className="flex items-start gap-4 p-4 liquid-glass rounded-lg">
                   <div className="flex-1">
                     <h3 className="font-semibold">{batch.name}</h3>
                     <p className="text-sm text-muted-foreground mt-1">
@@ -276,7 +276,7 @@ export default function CheckoutPage() {
             </Card>
 
             {/* Payment Card */}
-            <Card>
+            <Card className="liquid-glass-card border-0">
               <CardHeader>
                 <CardTitle>Payment</CardTitle>
                 <CardDescription>Complete your purchase</CardDescription>
@@ -315,7 +315,7 @@ export default function CheckoutPage() {
 
                 {/* Alert for price > 0 */}
                 {finalPrice > 0 && (
-                  <Alert>
+                  <Alert className="liquid-glass border-0">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       Please apply a valid coupon code to reduce the price to ₹0 for free enrollment. Payment gateway integration is coming soon.
@@ -325,7 +325,7 @@ export default function CheckoutPage() {
 
                 {/* Success message for price = 0 */}
                 {finalPrice === 0 && batch && batch.price > 0 && (
-                  <Alert className="border-primary/50 bg-primary/10">
+                  <Alert className="liquid-glass border-primary/50 bg-primary/10">
                     <CheckCircle className="h-4 w-4 text-primary" />
                     <AlertDescription className="text-primary">
                       Great! You can now enroll for free with your coupon code.
@@ -336,7 +336,7 @@ export default function CheckoutPage() {
                 <Separator />
 
                 {/* Payment Info */}
-                <div className="bg-secondary/30 rounded-lg p-4 space-y-3">
+                <div className="liquid-glass rounded-lg p-4 space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Shield className="w-4 h-4 text-primary" />
                     <span>Secure payment powered by Razorpay</span>
