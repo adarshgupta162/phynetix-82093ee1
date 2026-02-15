@@ -22,7 +22,8 @@ import {
   Phone,
   MoreHorizontal,
   CheckCircle,
-  XCircle
+  XCircle,
+  CalendarIcon
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,7 +58,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type EnrollmentWithBatch = BatchEnrollment & {
@@ -132,7 +132,12 @@ export default function OperationsDashboard() {
     // Validate that the new date is after the current expiry date
     if (selectedEnrollment.expires_at) {
       const currentExpiry = new Date(selectedEnrollment.expires_at);
-      if (extendDate <= currentExpiry) {
+      // Strip time for fair date comparison
+      currentExpiry.setHours(0, 0, 0, 0);
+      const newDate = new Date(extendDate);
+      newDate.setHours(0, 0, 0, 0);
+      
+      if (newDate <= currentExpiry) {
         toast.error("New expiry date must be after the current expiry date");
         return;
       }
