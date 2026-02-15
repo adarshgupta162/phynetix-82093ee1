@@ -272,6 +272,17 @@
     transform: translateY(-2px);
   }
 
+  /* Liquid Glass Variants */
+  .liquid-glass-borderless {
+    @apply liquid-glass;
+    border: none;
+  }
+
+  .liquid-glass-card-borderless {
+    @apply liquid-glass-card;
+    border: none;
+  }
+
   .gradient-text {
     background: var(--gradient-primary);
     -webkit-background-clip: text;

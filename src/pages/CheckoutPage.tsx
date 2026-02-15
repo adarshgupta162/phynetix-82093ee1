@@ -215,7 +215,7 @@ export default function CheckoutPage() {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Order Summary */}
-            <Card className="liquid-glass-card border-0">
+            <Card className="liquid-glass-card-borderless">
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
                 <CardDescription>Review your enrollment details</CardDescription>
@@ -276,7 +276,7 @@ export default function CheckoutPage() {
             </Card>
 
             {/* Payment Card */}
-            <Card className="liquid-glass-card border-0">
+            <Card className="liquid-glass-card-borderless">
               <CardHeader>
                 <CardTitle>Payment</CardTitle>
                 <CardDescription>Complete your purchase</CardDescription>
@@ -315,7 +315,7 @@ export default function CheckoutPage() {
 
                 {/* Alert for price > 0 */}
                 {finalPrice > 0 && (
-                  <Alert className="liquid-glass border-0">
+                  <Alert className="liquid-glass-borderless">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       Please apply a valid coupon code to reduce the price to ₹0 for free enrollment. Payment gateway integration is coming soon.
@@ -325,7 +325,7 @@ export default function CheckoutPage() {
 
                 {/* Success message for price = 0 */}
                 {finalPrice === 0 && batch && batch.price > 0 && (
-                  <Alert className="liquid-glass border-primary/50 bg-primary/10">
+                  <Alert className="liquid-glass-borderless bg-primary/10">
                     <CheckCircle className="h-4 w-4 text-primary" />
                     <AlertDescription className="text-primary">
                       Great! You can now enroll for free with your coupon code.
