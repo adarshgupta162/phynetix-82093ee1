@@ -70,6 +70,8 @@ export default function CheckoutPage() {
       }
 
       // Check if coupon has reached max uses
+      // Note: There is a potential race condition here if multiple users apply the same coupon simultaneously.
+      // In production, consider implementing atomic counters or database transactions to prevent exceeding max_uses.
       if (coupon.max_uses !== null && coupon.current_uses >= coupon.max_uses) {
         toast.error("This coupon has reached its usage limit");
         setIsApplyingCoupon(false);
@@ -115,9 +117,10 @@ export default function CheckoutPage() {
       } else {
         toast.success(`Coupon applied! Discount of ₹${discount.toLocaleString('en-IN')} applied.`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error applying coupon:', error);
-      toast.error(error.message || "Failed to apply coupon");
+      const errorMessage = error instanceof Error ? error.message : "Failed to apply coupon";
+      toast.error(errorMessage);
     } finally {
       setIsApplyingCoupon(false);
     }
@@ -155,8 +158,9 @@ export default function CheckoutPage() {
       
       toast.success("Enrollment successful!");
       navigate('/my-batches');
-    } catch (error: any) {
-      toast.error(error.message || "Failed to complete enrollment");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to complete enrollment";
+      toast.error(errorMessage);
     }
   };
 
@@ -290,13 +294,13 @@ export default function CheckoutPage() {
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                         className="pl-9"
-                        disabled={appliedDiscount > 0}
+                        disabled={!!appliedCouponCode}
                       />
                     </div>
                     <Button 
                       variant="secondary" 
                       onClick={handleApplyCoupon}
-                      disabled={isApplyingCoupon || !couponCode.trim() || appliedDiscount > 0}
+                      disabled={isApplyingCoupon || !couponCode.trim() || !!appliedCouponCode}
                     >
                       {isApplyingCoupon ? "Applying..." : "Apply"}
                     </Button>
@@ -320,7 +324,7 @@ export default function CheckoutPage() {
                 )}
 
                 {/* Success message for price = 0 */}
-                {finalPrice === 0 && batch.price > 0 && (
+                {finalPrice === 0 && batch && batch.price > 0 && (
                   <Alert className="border-primary/50 bg-primary/10">
                     <CheckCircle className="h-4 w-4 text-primary" />
                     <AlertDescription className="text-primary">
