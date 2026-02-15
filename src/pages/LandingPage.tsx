@@ -183,7 +183,7 @@ export default function LandingPage() {
       </div>
 
       {/* Header */}
-      <header className="relative z-50 border-b border-border/50 backdrop-blur-xl sticky top-0">
+      <header className="relative z-50 liquid-glass-header sticky top-0">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
@@ -222,7 +222,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-xl"
+            className="md:hidden border-t border-border/50 liquid-glass"
           >
             <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
               <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">Home</Link>
@@ -281,7 +281,7 @@ export default function LandingPage() {
       </section>
 
       {/* Trust Stats */}
-      <section className="relative z-10 py-12 border-y border-border/50 bg-muted/30 backdrop-blur-sm">
+      <section className="relative z-10 py-12 border-y border-border/50 liquid-glass">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {trustStats.map((stat, index) => (
@@ -308,7 +308,7 @@ export default function LandingPage() {
       <TestSeriesSection />
 
       {/* Features Section */}
-      <section className="relative z-10 py-20 bg-muted/30">
+      <section className="relative z-10 py-20 liquid-glass">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <motion.div
@@ -337,7 +337,7 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="p-6 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/50 transition-all"
+                className="liquid-glass-card-hover"
               >
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                   <feature.icon className="w-6 h-6 text-primary" />
@@ -378,7 +378,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             className="max-w-5xl mx-auto"
           >
-            <div className="relative rounded-2xl border border-border/50 overflow-hidden bg-card/50 backdrop-blur-sm p-8">
+            <div className="liquid-glass-card p-8">
               <div className="aspect-video bg-muted rounded-xl flex items-center justify-center">
                 <div className="text-center">
                   <BookOpen className="w-16 h-16 mx-auto mb-4 text-primary" />
@@ -394,7 +394,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="relative z-10 py-20 bg-muted/30">
+      <section className="relative z-10 py-20 liquid-glass">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
             <motion.div
@@ -423,7 +423,7 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="p-6 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm"
+                className="liquid-glass-card-hover"
               >
                 <div className="flex items-center gap-3 mb-4">
                   <div className="text-4xl">{testimonial.image}</div>
@@ -478,7 +478,7 @@ export default function LandingPage() {
                 <AccordionItem
                   key={index}
                   value={`item-${index}`}
-                  className="border border-border/50 rounded-xl px-6 bg-card/50 backdrop-blur-sm"
+                  className="liquid-glass-card"
                 >
                   <AccordionTrigger className="text-left hover:no-underline">
                     <span className="font-semibold">{faq.question}</span>
@@ -494,7 +494,7 @@ export default function LandingPage() {
       </section>
 
       {/* Privacy & Terms Section */}
-      <section className="relative z-10 py-20 bg-muted/30">
+      <section className="relative z-10 py-20 liquid-glass">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -502,7 +502,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: -20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                className="p-6 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm"
+                className="liquid-glass-card-hover"
               >
                 <Shield className="w-8 h-8 text-primary mb-4" />
                 <h3 className="text-xl font-bold mb-2">Privacy Policy</h3>
@@ -521,7 +521,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, x: 20 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
-                className="p-6 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm"
+                className="liquid-glass-card-hover"
               >
                 <FileText className="w-8 h-8 text-primary mb-4" />
                 <h3 className="text-xl font-bold mb-2">Terms & Conditions</h3>
@@ -547,7 +547,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-4xl mx-auto text-center p-12 rounded-3xl border border-border/50 bg-gradient-to-br from-primary/10 to-accent/10 backdrop-blur-sm"
+            className="max-w-4xl mx-auto text-center liquid-glass-card-hover p-12"
           >
             <Trophy className="w-16 h-16 mx-auto mb-6 text-primary" />
             <h2 className="text-3xl md:text-5xl font-bold font-display mb-6 gradient-text">
@@ -575,7 +575,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border/50 bg-muted/50 backdrop-blur-sm">
+      <footer className="relative z-10 border-t border-border/50 liquid-glass-header">
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
             {/* Company Info */}
