@@ -129,10 +129,23 @@ export default function OperationsDashboard() {
   const confirmExtendAccess = async () => {
     if (!selectedEnrollment || !extendDate) return;
 
+    // Validate that the new date is after the current expiry date
+    if (selectedEnrollment.expires_at) {
+      const currentExpiry = new Date(selectedEnrollment.expires_at);
+      if (extendDate <= currentExpiry) {
+        toast.error("New expiry date must be after the current expiry date");
+        return;
+      }
+    }
+
     try {
+      // Set time to end of day to include the full day in the access period
+      const endOfDay = new Date(extendDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      
       await updateEnrollment.mutateAsync({
         id: selectedEnrollment.id,
-        expires_at: extendDate.toISOString(),
+        expires_at: endOfDay.toISOString(),
       });
       toast.success("Access extended successfully");
       setExtendAccessOpen(false);
@@ -442,7 +455,7 @@ export default function OperationsDashboard() {
                   </div>
                   <div>
                     <Label className="font-semibold">Status</Label>
-                    <Badge className={selectedEnrollment.is_active ? "bg-primary/20 text-primary" : ""} variant={selectedEnrollment.is_active ? "default" : "secondary"}>
+                    <Badge variant={selectedEnrollment.is_active ? "default" : "secondary"}>
                       {selectedEnrollment.is_active ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
@@ -499,6 +512,13 @@ export default function OperationsDashboard() {
                       mode="single"
                       selected={extendDate}
                       onSelect={setExtendDate}
+                      disabled={(date) => {
+                        // Disable dates before current expiry date or today, whichever is later
+                        const minDate = selectedEnrollment?.expires_at 
+                          ? new Date(selectedEnrollment.expires_at)
+                          : new Date();
+                        return date <= minDate;
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
