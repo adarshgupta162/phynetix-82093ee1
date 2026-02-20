@@ -65,6 +65,10 @@ import RoleSelectorPage from "./pages/admin/RoleSelectorPage";
 import NotFound from "./pages/NotFound";
 import LatexTestPage from "./pages/LatexTestPage";
 import FounderPage from "./pages/FounderPage";
+import NTALogin from "./pages/nta/NTALogin";
+import NTAInstructions from "./pages/nta/NTAInstructions";
+import NTAImportantInstructions from "./pages/nta/NTAImportantInstructions";
+import NTAInterface from "./pages/nta/NTAInterface";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +112,10 @@ const App = () => (
                 <Route path="/pdf-tests" element={<PDFTestLibrary />} />
                 <Route path="/question-bank" element={<QuestionBankPage />} />
                 <Route path="/test/:testId" element={<NormalTestInterface />} />
+                <Route path="/test/:testId/nta-login" element={<NTALogin />} />
+                <Route path="/test/:testId/nta-instructions" element={<NTAInstructions />} />
+                <Route path="/test/:testId/nta-important-instructions" element={<NTAImportantInstructions />} />
+                <Route path="/test/:testId/nta" element={<NTAInterface />} />
                 <Route path="/pdf-test/:testId" element={<PDFTestInterface />} />
                 <Route path="/test/:testId/analysis" element={<AnalysisPage />} />
                 <Route path="/pdf-test/:testId/analysis" element={<DetailedAnalysis />} />
