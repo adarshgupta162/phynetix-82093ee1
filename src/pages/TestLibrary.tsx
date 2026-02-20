@@ -1,12 +1,19 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, Clock, BookOpen, Zap, Star, CheckCircle2, BarChart3, Lock } from "lucide-react";
+import { Search, Filter, Clock, BookOpen, Zap, Star, CheckCircle2, BarChart3, Lock, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface Course {
   id: string;
@@ -39,6 +46,7 @@ export default function TestLibrary() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uiChoiceTest, setUiChoiceTest] = useState<Test | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -142,8 +150,8 @@ export default function TestLibrary() {
       // Go to analysis page
       navigate(`/test/${test.id}/analysis`);
     } else {
-      // Go to test interface
-      navigate(`/test/${test.id}`);
+      // Show Old UI / New UI choice
+      setUiChoiceTest(test);
     }
   };
 
@@ -342,6 +350,53 @@ export default function TestLibrary() {
           </div>
         )}
       </div>
+
+      {/* Old UI / New UI choice dialog */}
+      <Dialog open={!!uiChoiceTest} onOpenChange={(open) => !open && setUiChoiceTest(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Choose Test Interface</DialogTitle>
+            <DialogDescription>
+              Select which UI you'd like to use for{" "}
+              <span className="font-medium text-foreground">{uiChoiceTest?.name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mt-2">
+            <Button
+              variant="outline"
+              className="flex items-center gap-3 justify-start px-4 py-6 h-auto"
+              onClick={() => {
+                if (uiChoiceTest) {
+                  navigate(`/test/${uiChoiceTest.id}`);
+                  setUiChoiceTest(null);
+                }
+              }}
+            >
+              <Monitor className="w-6 h-6 text-muted-foreground" />
+              <div className="text-left">
+                <div className="font-semibold">Old UI</div>
+                <div className="text-xs text-muted-foreground">Classic test interface</div>
+              </div>
+            </Button>
+            <Button
+              variant="gradient"
+              className="flex items-center gap-3 justify-start px-4 py-6 h-auto"
+              onClick={() => {
+                if (uiChoiceTest) {
+                  navigate(`/test/${uiChoiceTest.id}/nta-login`);
+                  setUiChoiceTest(null);
+                }
+              }}
+            >
+              <Zap className="w-6 h-6" />
+              <div className="text-left">
+                <div className="font-semibold">New UI</div>
+                <div className="text-xs text-white/80">NTA-style test interface</div>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
