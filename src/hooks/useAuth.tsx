@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { getRedirectUrl, isAdminDomain } from '@/utils/domain';
 
 interface AuthContextType {
   user: User | null;
@@ -148,22 +147,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!error && data.user) {
       // Check admin status immediately after sign in
       const adminStatus = await checkAdminRole(data.user.id);
-      
-      // Domain-aware redirect logic
-      // Only redirect to admin domain if user is admin
-      // In development (localhost), redirects are handled by routing, not domain changes
-      if (adminStatus && typeof window !== 'undefined') {
-        const onAdminDomain = isAdminDomain();
-        // If admin user is not on admin domain, redirect them
-        if (!onAdminDomain) {
-          const redirectUrl = getRedirectUrl(true);
-          // Only perform cross-domain redirect in production
-          if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-            window.location.href = redirectUrl;
-          }
-        }
-      }
-      
       return { error: null, isAdmin: adminStatus };
     }
     
@@ -175,18 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setViewMode('student');
     localStorage.removeItem('viewMode');
     await supabase.auth.signOut();
-    
-    // If signing out from admin domain, redirect to main domain
-    if (typeof window !== 'undefined') {
-      const onAdminDomain = isAdminDomain();
-      if (onAdminDomain) {
-        const redirectUrl = getRedirectUrl(false, '/');
-        // Only perform cross-domain redirect in production
-        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-          window.location.href = redirectUrl;
-        }
-      }
-    }
   };
 
   return (

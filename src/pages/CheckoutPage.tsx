@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useBatch } from "@/hooks/useBatches";
 import { useCreateEnrollment } from "@/hooks/useEnrollment";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,8 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { IndianRupee, ArrowLeft, Shield, Tag, CheckCircle, AlertCircle } from "lucide-react";
+import { IndianRupee, ArrowLeft, Shield, Tag, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -27,7 +25,6 @@ export default function CheckoutPage() {
   const [couponCode, setCouponCode] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [appliedDiscount, setAppliedDiscount] = useState(0);
-  const [appliedCouponCode, setAppliedCouponCode] = useState("");
 
   // For now, we'll implement a simple "demo" checkout that creates a manual enrollment
   // Real payment integration would connect to Razorpay/Stripe here
@@ -36,94 +33,11 @@ export default function CheckoutPage() {
     if (!couponCode.trim()) return;
     
     setIsApplyingCoupon(true);
-    
-    try {
-      // Query the coupons table to validate the coupon
-      const { data: coupon, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('code', couponCode.trim().toUpperCase())
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Coupon validation error:', error);
-        toast.error("Failed to validate coupon");
-        setIsApplyingCoupon(false);
-        return;
-      }
-
-      if (!coupon) {
-        toast.error("Invalid coupon code");
-        setIsApplyingCoupon(false);
-        return;
-      }
-
-      // Check if coupon is still valid (not expired)
-      if (coupon.valid_until) {
-        const expiryDate = new Date(coupon.valid_until);
-        if (expiryDate < new Date()) {
-          toast.error("This coupon has expired");
-          setIsApplyingCoupon(false);
-          return;
-        }
-      }
-
-      // Check if coupon has reached max uses
-      // Note: There is a potential race condition here if multiple users apply the same coupon simultaneously.
-      // In production, consider implementing atomic counters or database transactions to prevent exceeding max_uses.
-      if (coupon.max_uses !== null && coupon.current_uses >= coupon.max_uses) {
-        toast.error("This coupon has reached its usage limit");
-        setIsApplyingCoupon(false);
-        return;
-      }
-
-      // Check if batch price meets minimum purchase amount
-      if (coupon.min_purchase_amount && batch && batch.price < coupon.min_purchase_amount) {
-        toast.error(`Minimum purchase amount of ₹${coupon.min_purchase_amount} required`);
-        setIsApplyingCoupon(false);
-        return;
-      }
-
-      // Check if coupon is applicable to this batch
-      if (coupon.applicable_batches && coupon.applicable_batches.length > 0) {
-        if (!batchId || !coupon.applicable_batches.includes(batchId)) {
-          toast.error("This coupon is not applicable to this batch");
-          setIsApplyingCoupon(false);
-          return;
-        }
-      }
-
-      // Calculate discount
-      let discount = 0;
-      if (batch) {
-        if (coupon.discount_type === 'percentage') {
-          discount = (batch.price * coupon.discount_value) / 100;
-        } else if (coupon.discount_type === 'fixed') {
-          discount = coupon.discount_value;
-        }
-        
-        // Ensure discount doesn't exceed the batch price
-        discount = Math.min(discount, batch.price);
-      }
-
-      // Apply the discount
-      setAppliedDiscount(discount);
-      setAppliedCouponCode(coupon.code);
-      
-      const finalAmount = batch ? batch.price - discount : 0;
-      if (finalAmount === 0) {
-        toast.success(`Coupon applied! Price reduced to ₹0. You can now enroll for free.`);
-      } else {
-        toast.success(`Coupon applied! Discount of ₹${discount.toLocaleString('en-IN')} applied.`);
-      }
-    } catch (error: unknown) {
-      console.error('Error applying coupon:', error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to apply coupon";
-      toast.error(errorMessage);
-    } finally {
+    // TODO: Implement coupon validation
+    setTimeout(() => {
       setIsApplyingCoupon(false);
-    }
+      toast.error("Invalid coupon code");
+    }, 1000);
   };
 
   const handleProceedToPayment = async () => {
@@ -132,35 +46,19 @@ export default function CheckoutPage() {
       return;
     }
 
-    // CRITICAL: Only allow enrollment if final price is ₹0
-    // This prevents users from bypassing payment
-    if (finalPrice > 0) {
-      toast.error("Please apply a valid coupon code to reduce the price to ₹0 for free enrollment");
-      return;
-    }
-
-    // TODO: Future payment integration
-    // When payment gateway (Razorpay/Stripe) is integrated, this is where the payment flow will be initiated:
-    // 1. If finalPrice > 0, redirect to payment gateway
-    // 2. On successful payment callback, create enrollment with payment details
-    // 3. Update coupon usage count
-    // For now, we only allow free enrollments (finalPrice === 0)
-
-    // For demo purposes, create a manual enrollment when price is ₹0
+    // For demo purposes, create a manual enrollment
+    // In production, this would redirect to payment gateway
     try {
       await createEnrollment.mutateAsync({
         batchId,
         enrollmentType: 'manual', // Change to 'paid' when payment integration is ready
-        notes: appliedCouponCode 
-          ? `Free enrollment with coupon: ${appliedCouponCode}` 
-          : 'Demo enrollment - payment integration pending',
+        notes: 'Demo enrollment - payment integration pending',
       });
       
       toast.success("Enrollment successful!");
       navigate('/my-batches');
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to complete enrollment";
-      toast.error(errorMessage);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to complete enrollment");
     }
   };
 
@@ -294,44 +192,17 @@ export default function CheckoutPage() {
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                         className="pl-9"
-                        disabled={!!appliedCouponCode}
                       />
                     </div>
                     <Button 
                       variant="secondary" 
                       onClick={handleApplyCoupon}
-                      disabled={isApplyingCoupon || !couponCode.trim() || !!appliedCouponCode}
+                      disabled={isApplyingCoupon || !couponCode.trim()}
                     >
-                      {isApplyingCoupon ? "Applying..." : "Apply"}
+                      Apply
                     </Button>
                   </div>
-                  {appliedCouponCode && (
-                    <div className="flex items-center gap-2 text-sm text-primary">
-                      <CheckCircle className="w-4 h-4" />
-                      <span>Coupon "{appliedCouponCode}" applied successfully</span>
-                    </div>
-                  )}
                 </div>
-
-                {/* Alert for price > 0 */}
-                {finalPrice > 0 && (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Please apply a valid coupon code to reduce the price to ₹0 for free enrollment. Payment gateway integration is coming soon.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Success message for price = 0 */}
-                {finalPrice === 0 && batch && batch.price > 0 && (
-                  <Alert className="border-primary/50 bg-primary/10">
-                    <CheckCircle className="h-4 w-4 text-primary" />
-                    <AlertDescription className="text-primary">
-                      Great! You can now enroll for free with your coupon code.
-                    </AlertDescription>
-                  </Alert>
-                )}
 
                 <Separator />
 
@@ -348,27 +219,18 @@ export default function CheckoutPage() {
                 </div>
 
                 <Badge variant="outline" className="w-full justify-center py-2">
-                  Payment integration coming soon - use coupon codes for now
+                  Demo Mode - Click below for free enrollment
                 </Badge>
               </CardContent>
-              <CardFooter className="flex-col gap-2">
+              <CardFooter>
                 <Button 
                   className="w-full" 
                   size="lg"
                   onClick={handleProceedToPayment}
-                  disabled={createEnrollment.isPending || finalPrice > 0}
+                  disabled={createEnrollment.isPending}
                 >
-                  {createEnrollment.isPending 
-                    ? "Processing..." 
-                    : finalPrice > 0 
-                      ? `Apply Coupon to Enroll (₹${finalPrice.toLocaleString('en-IN')})` 
-                      : `Enroll Now - Free`}
+                  {createEnrollment.isPending ? "Processing..." : `Enroll Now - ₹${finalPrice.toLocaleString('en-IN')}`}
                 </Button>
-                {finalPrice > 0 && (
-                  <p className="text-sm text-muted-foreground text-center">
-                    Button will be enabled once price is ₹0
-                  </p>
-                )}
               </CardFooter>
             </Card>
           </div>

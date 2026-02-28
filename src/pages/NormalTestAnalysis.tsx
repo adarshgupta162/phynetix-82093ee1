@@ -238,7 +238,7 @@ export default function NormalTestAnalysis() {
       const userAnswer = userAnswers[sq.id];
       const correctAnswer = sq.correct_answer;
       const marks = sq.marks || 4;
-      const negativeMarks = sq.negative_marks ?? 1;
+      const negativeMarks = sq.negative_marks || 1;
 
       totalMaxMarks += marks;
 
@@ -353,7 +353,7 @@ export default function NormalTestAnalysis() {
         const userAnswer = userAnswers[q.id];
         const correctAnswer = q.correct_answer;
         const marks = q.marks || 4;
-        const negativeMarks = q.negative_marks ?? 1;
+        const negativeMarks = q.negative_marks || 1;
 
         totalMaxMarks += marks;
 
@@ -455,7 +455,7 @@ export default function NormalTestAnalysis() {
       const userAnswer = userAnswers[sq.id];
       const correctAnswer = sq.correct_answer;
       const marks = sq.marks || 4;
-      const negativeMarks = sq.negative_marks ?? 1;
+      const negativeMarks = sq.negative_marks || 1;
 
       totalMaxMarks += marks;
 
