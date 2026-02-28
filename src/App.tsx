@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { StaffRolesProvider } from "@/hooks/useStaffRoles";
 import AdminRoute from "@/components/AdminRoute";
 import ProfileGuard from "@/components/ProfileGuard";
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import LandingPage from "./pages/LandingPage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
@@ -75,6 +76,7 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <SpeedInsights />
           <BrowserRouter>
             <ProfileGuard>
               <Routes>
