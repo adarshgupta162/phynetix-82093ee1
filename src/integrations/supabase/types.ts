@@ -417,6 +417,180 @@ export type Database = {
         }
         Relationships: []
       }
+      dpp_attempts: {
+        Row: {
+          answers: Json | null
+          completed_at: string | null
+          dpp_id: string
+          id: string
+          score: number | null
+          started_at: string
+          time_taken_seconds: number | null
+          total_marks: number | null
+          user_id: string
+        }
+        Insert: {
+          answers?: Json | null
+          completed_at?: string | null
+          dpp_id: string
+          id?: string
+          score?: number | null
+          started_at?: string
+          time_taken_seconds?: number | null
+          total_marks?: number | null
+          user_id: string
+        }
+        Update: {
+          answers?: Json | null
+          completed_at?: string | null
+          dpp_id?: string
+          id?: string
+          score?: number | null
+          started_at?: string
+          time_taken_seconds?: number | null
+          total_marks?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dpp_attempts_dpp_id_fkey"
+            columns: ["dpp_id"]
+            isOneToOne: false
+            referencedRelation: "dpps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dpp_questions: {
+        Row: {
+          correct_answer: Json
+          created_at: string
+          difficulty: string | null
+          dpp_id: string
+          id: string
+          marks: number | null
+          negative_marks: number | null
+          options: Json | null
+          order_index: number | null
+          question_image_url: string | null
+          question_number: number
+          question_text: string | null
+          question_type: string
+          solution_image_url: string | null
+          solution_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          correct_answer: Json
+          created_at?: string
+          difficulty?: string | null
+          dpp_id: string
+          id?: string
+          marks?: number | null
+          negative_marks?: number | null
+          options?: Json | null
+          order_index?: number | null
+          question_image_url?: string | null
+          question_number: number
+          question_text?: string | null
+          question_type?: string
+          solution_image_url?: string | null
+          solution_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: Json
+          created_at?: string
+          difficulty?: string | null
+          dpp_id?: string
+          id?: string
+          marks?: number | null
+          negative_marks?: number | null
+          options?: Json | null
+          order_index?: number | null
+          question_image_url?: string | null
+          question_number?: number
+          question_text?: string | null
+          question_type?: string
+          solution_image_url?: string | null
+          solution_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dpp_questions_dpp_id_fkey"
+            columns: ["dpp_id"]
+            isOneToOne: false
+            referencedRelation: "dpps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dpps: {
+        Row: {
+          access_type: string | null
+          batch_id: string | null
+          chapter: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          difficulty: string | null
+          duration_minutes: number | null
+          id: string
+          is_published: boolean | null
+          is_timed: boolean | null
+          publish_date: string | null
+          subject: string
+          title: string
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_type?: string | null
+          batch_id?: string | null
+          chapter?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_published?: boolean | null
+          is_timed?: boolean | null
+          publish_date?: string | null
+          subject: string
+          title: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_type?: string | null
+          batch_id?: string | null
+          chapter?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          difficulty?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_published?: boolean | null
+          is_timed?: boolean | null
+          publish_date?: string | null
+          subject?: string
+          title?: string
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dpps_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -593,6 +767,27 @@ export type Database = {
           topic?: string | null
           updated_at?: string
           usage_count?: number | null
+        }
+        Relationships: []
+      }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
         }
         Relationships: []
       }

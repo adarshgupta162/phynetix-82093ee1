@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import AdminLayout from "@/components/layout/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 
 interface Profile {
   id: string;
@@ -54,6 +55,7 @@ export default function AdminSettings() {
   });
 
   const { toast } = useToast();
+  const { settings: platformSettingsDB, updateSetting } = usePlatformSettings();
 
   useEffect(() => {
     fetchProfiles();
@@ -390,10 +392,21 @@ export default function AdminSettings() {
             <div className="glass-card p-6">
               <h3 className="font-semibold mb-6 flex items-center gap-2">
                 <Shield className="w-5 h-5" />
-                Platform Configuration
+                Feature Toggles
               </h3>
               
               <div className="grid gap-6 md:grid-cols-2">
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                  <div>
+                    <div className="font-medium">Show PDF Tests</div>
+                    <div className="text-sm text-muted-foreground">Show/hide PDF tests from admin sidebar and student nav</div>
+                  </div>
+                  <Switch
+                    checked={platformSettingsDB.show_pdf_tests}
+                    onCheckedChange={(checked) => updateSetting('show_pdf_tests', checked)}
+                  />
+                </div>
+
                 <div className="flex items-center justify-between p-4 rounded-lg border border-border">
                   <div>
                     <div className="font-medium">Allow New Signups</div>

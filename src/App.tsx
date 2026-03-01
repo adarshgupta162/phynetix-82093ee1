@@ -58,6 +58,10 @@ import StaffRequests from "./pages/admin/StaffRequests";
 import PhyNetixLibrary from "./pages/admin/PhyNetixLibrary";
 import FullscreenTestEditor from "./pages/admin/FullscreenTestEditor";
 import FinanceDashboard from "./pages/admin/FinanceDashboard";
+import DPPManager from "./pages/admin/DPPManager";
+import DPPEditor from "./pages/admin/DPPEditor";
+import DPPPage from "./pages/DPPPage";
+import DPPPractice from "./pages/DPPPractice";
 import AcademicDashboard from "./pages/admin/AcademicDashboard";
 import OperationsDashboard from "./pages/admin/OperationsDashboard";
 import BatchManagement from "./pages/admin/BatchManagement";
@@ -111,6 +115,9 @@ const App = () => (
                 <Route path="/attempts" element={<MyAttempts />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                {/* DPP Routes */}
+                <Route path="/dpps" element={<DPPPage />} />
+                <Route path="/dpp/:dppId" element={<DPPPractice />} />
                 {/* Batch Pages - Student */}
                 <Route path="/batches" element={<BatchCatalogPage />} />
                 <Route path="/batches/:batchId" element={<BatchDetailsPage />} />
@@ -136,6 +143,8 @@ const App = () => (
                 <Route path="/admin/audit-logs" element={<AdminRoute><AuditLogs /></AdminRoute>} />
                 <Route path="/admin/requests" element={<AdminRoute><StaffRequests /></AdminRoute>} />
                 <Route path="/admin/phynetix-library" element={<AdminRoute><PhyNetixLibrary /></AdminRoute>} />
+                <Route path="/admin/dpps" element={<AdminRoute><DPPManager /></AdminRoute>} />
+                <Route path="/admin/dpp-editor/:dppId" element={<AdminRoute><DPPEditor /></AdminRoute>} />
                 <Route path="/admin/fullscreen-editor/:testId" element={<AdminRoute><FullscreenTestEditor /></AdminRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
