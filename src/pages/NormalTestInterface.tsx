@@ -729,7 +729,7 @@ export default function NormalTestInterface() {
                 onClick={() => setCurrentScreen(3)}
                 className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-6 py-1.5 text-sm"
               >
-                Next &gt;&gt;
+                Next »
               </Button>
             </div>
           </div>
