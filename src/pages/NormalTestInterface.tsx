@@ -577,6 +577,21 @@ export default function NormalTestInterface() {
     </header>
   );
 
+  const renderCandidatePanel = () => (
+    <div className="w-48 flex-shrink-0 bg-[#dde3ea] border-l border-gray-400 p-3 flex flex-col items-center">
+      <div className="w-24 h-28 bg-gray-200 border-2 border-gray-500 flex items-center justify-center overflow-hidden mb-2">
+        {studentAvatar ? (
+          <img src={studentAvatar} alt={studentName} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-5xl" role="img" aria-label="Candidate photo placeholder">👤</span>
+        )}
+      </div>
+      <p className="text-xs font-bold text-gray-800 text-center">{studentName}</p>
+      <p className="text-xs text-gray-600 text-center">Roll No: {studentRollNumber}</p>
+      <p className="text-xs text-gray-600 text-center mt-1">{testName}</p>
+    </div>
+  );
+
   // Screen 1: Login/Verification
   if (currentScreen === 1) {
     const handleSignIn = () => {
@@ -585,82 +600,65 @@ export default function NormalTestInterface() {
     };
 
     return (
-      <div className="min-h-screen bg-[#0a1628] flex flex-col">
+      <div className="min-h-screen bg-[#c8c8c8] flex flex-col">
         {renderHeader()}
-        
+
         {/* Disclaimer message */}
         <div className="bg-[#1e3a5f] text-white/90 px-6 py-3 text-center text-sm">
           Please contact the invigilator if there are any discrepancies in the Name and Photograph displayed on the screen, or if the photograph is not yours.
         </div>
-        
-        <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
-          {/* Student photo placeholder - top right */}
-          <div className="absolute top-8 right-8 w-40 h-40 bg-gray-300 rounded-lg flex items-center justify-center overflow-hidden shadow-lg">
-            {studentAvatar ? (
-              <img src={studentAvatar} alt={studentName} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-6xl" role="img" aria-label="User avatar placeholder">👤</span>
-            )}
-          </div>
 
-          {/* Login box */}
-          <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Login</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Username/ID
-                </label>
-                <input
-                  type="text"
-                  value={studentRollNumber}
-                  disabled
-                  readOnly
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
-                />
+        <div className="flex-1 flex flex-row">
+          {/* Left: Login form */}
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="w-full max-w-sm bg-white border border-gray-400 shadow p-6">
+              <div className="mb-4 text-sm text-gray-700 font-semibold border-b border-gray-300 pb-2">
+                {studentName}
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value="••••••••"
-                    disabled
-                    readOnly
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed pr-10"
-                  />
-                  <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value="••••••••"
-                    disabled
-                    readOnly
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed pr-10"
-                  />
-                  <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                </div>
-              </div>
-
-              <Button
-                onClick={handleSignIn}
-                className="w-full bg-[#1a73e8] hover:bg-[#1557b0] text-white py-3 text-lg mt-6"
-              >
-                Sign In
-              </Button>
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr>
+                    <td className="py-2 pr-3 text-gray-600 font-medium whitespace-nowrap">Username</td>
+                    <td className="py-2">
+                      <input
+                        type="text"
+                        value={studentRollNumber}
+                        disabled
+                        readOnly
+                        className="w-full px-2 py-1 border border-gray-300 bg-gray-50 text-gray-700 cursor-not-allowed text-sm"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-3 text-gray-600 font-medium whitespace-nowrap">Password</td>
+                    <td className="py-2">
+                      <input
+                        type="password"
+                        value="••••••••"
+                        disabled
+                        readOnly
+                        className="w-full px-2 py-1 border border-gray-300 bg-gray-50 text-gray-700 cursor-not-allowed text-sm"
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td className="py-3">
+                      <Button
+                        onClick={handleSignIn}
+                        className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-6 py-1.5 text-sm"
+                      >
+                        Sign In
+                      </Button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
+
+          {/* Right: Candidate panel */}
+          {renderCandidatePanel()}
         </div>
       </div>
     );
@@ -669,60 +667,50 @@ export default function NormalTestInterface() {
   // Screen 2: General Instructions
   if (currentScreen === 2) {
     return (
-      <div className="min-h-screen bg-[#0a1628] flex flex-col">
+      <div className="min-h-screen bg-[#c8c8c8] flex flex-col">
         {renderHeader()}
-        
-        <div className="flex-1 p-6 lg:p-10 overflow-y-auto">
-          <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
-            <div className="bg-[#1a73e8] text-white px-6 py-4">
-              <h2 className="text-xl font-bold">Instructions</h2>
-              <p className="text-white/80 text-sm">Please read the instructions carefully</p>
-            </div>
 
-            <div className="p-6 space-y-6">
+        <div className="flex-1 flex flex-row overflow-y-auto">
+          {/* Left: Instructions panel */}
+          <div className="flex-1 bg-white border border-gray-300 m-4 flex flex-col">
+            <div className="p-6 flex-1 overflow-y-auto space-y-6">
+              <h2 className="text-lg font-bold text-gray-800">General Instructions</h2>
+
               {testType === 'practice' && (
-                <div className="bg-red-100 border-2 border-red-500 rounded-lg p-4 text-center">
+                <div className="bg-red-100 border-2 border-red-500 p-4 text-center">
                   <p className="text-red-700 font-bold text-lg">
                     This Mock Exam is Only for Practice Purpose
                   </p>
                 </div>
               )}
 
-              {/* General Instructions */}
-              <div>
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-[#1a73e8]" />
-                  General Instructions
-                </h3>
-                <ul className="list-decimal ml-6 space-y-2 text-gray-700 text-sm">
-                  <li>Total duration of examination is <strong>{testDuration} minutes</strong>.</li>
-                  <li>The clock will be set at the server. The countdown timer will display the remaining time available for you to complete the examination. When the timer reaches zero, the examination will end by itself. You will not be required to end or submit your examination.</li>
-                  <li>The Question Palette displayed on the right side of screen will show the status of each question using one of the following symbols:</li>
-                </ul>
-              </div>
+              <ul className="list-decimal ml-6 space-y-2 text-gray-700 text-sm">
+                <li>Total duration of examination is <strong>{testDuration} minutes</strong>.</li>
+                <li>The clock will be set at the server. The countdown timer will display the remaining time available for you to complete the examination. When the timer reaches zero, the examination will end by itself. You will not be required to end or submit your examination.</li>
+                <li>The Question Palette displayed on the right side of screen will show the status of each question using one of the following symbols:</li>
+              </ul>
 
               {/* Question Palette Legend */}
               <div>
-                <h3 className="font-bold text-gray-800 mb-3">Legend:</h3>
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-[#d1d5db] flex items-center justify-center text-gray-700 font-bold">1</div>
+                    <div className="w-8 h-8 bg-[#d1d5db] flex items-center justify-center text-gray-700 font-bold text-sm">1</div>
                     <span className="text-gray-700">You have not visited the question yet</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-[#ef4444] text-white flex items-center justify-center font-bold">2</div>
+                    <div className="w-8 h-8 bg-[#ef4444] text-white flex items-center justify-center font-bold text-sm">2</div>
                     <span className="text-gray-700">You have not answered the question</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-[#22c55e] text-white flex items-center justify-center font-bold">3</div>
+                    <div className="w-8 h-8 bg-[#22c55e] text-white flex items-center justify-center font-bold text-sm">3</div>
                     <span className="text-gray-700">You have answered the question</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-[#a855f7] text-white flex items-center justify-center font-bold">4</div>
+                    <div className="w-8 h-8 bg-[#a855f7] text-white flex items-center justify-center font-bold text-sm">4</div>
                     <span className="text-gray-700">You have NOT answered the question, but have marked the question for review</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-[#a855f7] text-white flex items-center justify-center font-bold relative">
+                    <div className="w-8 h-8 bg-[#a855f7] text-white flex items-center justify-center font-bold text-sm relative">
                       5
                       <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-[#22c55e] rounded-full border-2 border-white"></span>
                     </div>
@@ -736,15 +724,18 @@ export default function NormalTestInterface() {
             </div>
 
             {/* Next Button */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+            <div className="px-6 py-3 border-t border-gray-200 flex justify-end bg-gray-50">
               <Button
                 onClick={() => setCurrentScreen(3)}
-                className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-8 py-2 text-lg"
+                className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-6 py-1.5 text-sm"
               >
-                Next
+                Next &gt;&gt;
               </Button>
             </div>
           </div>
+
+          {/* Right: Candidate panel */}
+          {renderCandidatePanel()}
         </div>
       </div>
     );
@@ -824,22 +815,20 @@ export default function NormalTestInterface() {
     };
 
     return (
-      <div className="min-h-screen bg-[#0a1628] flex flex-col">
+      <div className="min-h-screen bg-[#c8c8c8] flex flex-col">
         {renderHeader()}
-        
-        <div className="flex-1 p-6 lg:p-10 overflow-y-auto">
-          <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl overflow-hidden">
-            <div className="bg-[#1a73e8] text-white px-6 py-4">
-              <h2 className="text-xl font-bold">Other Important Instructions</h2>
-              <p className="text-white/80 text-sm">General instructions:</p>
-            </div>
 
-            <div className="p-6 space-y-6">
+        <div className="flex-1 flex flex-row overflow-y-auto">
+          {/* Left: Instructions panel */}
+          <div className="flex-1 bg-white border border-gray-300 m-4 flex flex-col">
+            <div className="p-6 flex-1 overflow-y-auto space-y-6">
+              <h2 className="text-lg font-bold text-gray-800">Other Important Instructions</h2>
+
               {getExamInstructions()}
 
               {/* Fullscreen Warning */}
               {fullscreenEnabled && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="bg-yellow-50 border border-yellow-200 p-4">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
                     <div>
@@ -872,18 +861,18 @@ export default function NormalTestInterface() {
             </div>
 
             {/* Action Buttons */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between">
+            <div className="px-6 py-3 border-t border-gray-200 bg-gray-50 flex justify-between">
               <Button
                 variant="outline"
                 onClick={() => setCurrentScreen(2)}
-                className="px-8 py-2 text-lg"
+                className="px-6 py-1.5 text-sm"
               >
                 Previous
               </Button>
               <Button
                 onClick={startTest}
                 disabled={!agreedToTerms || loading}
-                className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-8 py-2 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#1a73e8] hover:bg-[#1557b0] text-white px-6 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -893,6 +882,9 @@ export default function NormalTestInterface() {
               </Button>
             </div>
           </div>
+
+          {/* Right: Candidate panel */}
+          {renderCandidatePanel()}
         </div>
       </div>
     );
@@ -940,7 +932,7 @@ export default function NormalTestInterface() {
   const testContent = (
     <div className="min-h-screen bg-[#0a1628] flex flex-col pb-14 md:pb-16">
       {/* Header */}
-      <header className="bg-[#1a2332] text-white px-4 py-3 flex items-center justify-between">
+      <header className="bg-[#1e3a5f] text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <h1 className="text-base font-medium">{testName}</h1>
         </div>
@@ -1227,6 +1219,14 @@ export default function NormalTestInterface() {
           >
             <span className="hidden sm:inline">Clear Response</span>
             <span className="sm:hidden">Clear</span>
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={goToPrevQuestion} className="bg-white border-gray-400 text-gray-700 text-sm px-3">
+            « Back
+          </Button>
+          <Button variant="outline" onClick={goToNextQuestion} className="bg-white border-gray-400 text-gray-700 text-sm px-3">
+            Next »
           </Button>
         </div>
         <div className="flex items-center gap-2 md:gap-3">
