@@ -63,13 +63,14 @@ serve(async (req) => {
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - startedAt) / 1000);
       const totalSeconds = test.duration_minutes * 60;
-      const remainingMinutes = Math.max(0, Math.ceil((totalSeconds - elapsedSeconds) / 60));
+      const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
 
       return new Response(
         JSON.stringify({
           attempt_id: existingAttempt.id,
           test_name: test.name,
-          duration_minutes: remainingMinutes,
+          duration_minutes: test.duration_minutes,
+          remaining_seconds: remainingSeconds,
           fullscreen_exit_count: existingAttempt.fullscreen_exit_count || 0,
           existing_answers: existingAttempt.answers || {},
           existing_time_per_question: existingAttempt.time_per_question || {},

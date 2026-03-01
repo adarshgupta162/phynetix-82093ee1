@@ -169,6 +169,15 @@ export default function NormalTestInterface() {
       });
       return;
     }
+    // Request fullscreen from the user gesture (button click) so browsers allow it
+    if (fullscreenEnabled) {
+      const elem = document.documentElement;
+      (elem.requestFullscreen?.() ||
+        (elem as any).webkitRequestFullscreen?.() ||
+        (elem as any).mozRequestFullScreen?.() ||
+        (elem as any).msRequestFullscreen?.()
+      )?.catch?.(() => {/* silently ignore if blocked */});
+    }
     setCurrentScreen(4);
     setLoading(true);
     initializeTest();
@@ -197,7 +206,9 @@ export default function NormalTestInterface() {
 
       setAttemptId(startData.attempt_id);
       setTestName(startData.test_name);
-      setTimeLeft(startData.duration_minutes * 60);
+      // Use remaining_seconds from server if available (accurate for resumed tests),
+      // otherwise fall back to full duration in seconds
+      setTimeLeft(startData.remaining_seconds ?? startData.duration_minutes * 60);
       
       // Get existing fullscreen exit count if resuming
       if (startData.fullscreen_exit_count) {

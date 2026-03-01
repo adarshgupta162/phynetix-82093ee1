@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Maximize } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,12 @@ export default function FullscreenGuard({
 }: FullscreenGuardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [exitCount, setExitCount] = useState(initialExitCount);
+  // showWarning: user exited after being in fullscreen
   const [showWarning, setShowWarning] = useState(false);
+  // showEnterPrompt: not yet in fullscreen (initial state or mount without user gesture)
+  const [showEnterPrompt, setShowEnterPrompt] = useState(false);
+  // Track whether we've entered fullscreen at least once in this session
+  const hasBeenFullscreen = useRef(false);
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -36,6 +41,7 @@ export default function FullscreenGuard({
       }
       setIsFullscreen(true);
       setShowWarning(false);
+      setShowEnterPrompt(false);
     } catch (err) {
       console.error('Failed to enter fullscreen:', err);
     }
@@ -51,11 +57,16 @@ export default function FullscreenGuard({
 
     setIsFullscreen(isCurrentlyFullscreen);
 
-    if (!isCurrentlyFullscreen) {
+    if (isCurrentlyFullscreen) {
+      hasBeenFullscreen.current = true;
+      setShowEnterPrompt(false);
+      setShowWarning(false);
+    } else if (hasBeenFullscreen.current) {
+      // Only count as an exit if we were previously in fullscreen
       const newCount = exitCount + 1;
       setExitCount(newCount);
       onExitCountChange?.(newCount);
-      
+
       if (newCount >= maxExits) {
         onMaxExitsReached();
       } else {
@@ -78,22 +89,72 @@ export default function FullscreenGuard({
     };
   }, [handleFullscreenChange]);
 
-  // Auto-enter fullscreen on mount
+  // On mount: check if already fullscreen (e.g. triggered by button click before mount).
+  // If not, show the enter-fullscreen prompt so the user can click to enter.
   useEffect(() => {
-    // Small delay to ensure component is mounted
-    const timer = setTimeout(() => {
-      enterFullscreen();
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [enterFullscreen]);
+    const alreadyFullscreen = !!(
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).mozFullScreenElement ||
+      (document as any).msFullscreenElement
+    );
+    if (alreadyFullscreen) {
+      hasBeenFullscreen.current = true;
+      setIsFullscreen(true);
+    } else {
+      setShowEnterPrompt(true);
+    }
+  }, []);
+
+  const showOverlay = showWarning || showEnterPrompt;
 
   return (
     <>
-      <div className={`relative ${showWarning ? 'blur-lg pointer-events-none' : ''}`}>
+      <div className={`relative ${showOverlay ? 'blur-lg pointer-events-none' : ''}`}>
         {children}
       </div>
 
-      {/* Fullscreen Warning Modal */}
+      {/* Fullscreen Entry Prompt (initial - shown when not yet in fullscreen) */}
+      <AnimatePresence>
+        {showEnterPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-background/95 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-card p-8 max-w-md w-full text-center"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6">
+                <Maximize className="w-8 h-8 text-primary" />
+              </div>
+
+              <h2 className="text-2xl font-bold font-display mb-2">
+                Fullscreen Required
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                This test must be taken in fullscreen mode. Click the button below to enter fullscreen and begin.
+              </p>
+
+              <Button
+                variant="gradient"
+                size="lg"
+                className="w-full"
+                onClick={enterFullscreen}
+              >
+                <Maximize className="w-5 h-5 mr-2" />
+                Enter Full Screen
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Fullscreen Warning Modal (after exit) */}
       <AnimatePresence>
         {showWarning && (
           <motion.div
@@ -120,8 +181,8 @@ export default function FullscreenGuard({
               </p>
 
               <div className={`p-4 rounded-lg mb-6 ${
-                exitCount >= maxExits - 2 
-                  ? 'bg-destructive/20 text-destructive' 
+                exitCount >= maxExits - 2
+                  ? 'bg-destructive/20 text-destructive'
                   : 'bg-[hsl(45,93%,47%)]/20 text-[hsl(45,93%,47%)]'
               }`}>
                 <p className="font-semibold">
