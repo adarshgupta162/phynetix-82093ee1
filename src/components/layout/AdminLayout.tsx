@@ -30,6 +30,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { AtomIcon } from "@/components/icons/AtomIcon";
 import RoleSwitcher from "@/components/admin/RoleSwitcher";
+import { usePlatformSettings } from "@/hooks/usePlatformSettings";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -58,6 +59,7 @@ const allNavSections = {
         { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
         { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
         { icon: Library, label: "PhyNetix Library", path: "/admin/phynetix-library" },
+        { icon: BookOpen, label: "DPP Manager", path: "/admin/dpps" },
         { icon: Bell, label: "Batches", path: "/admin/batches" },
       ]
     },
@@ -172,9 +174,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const { user, isAdmin, isLoading, signOut, setViewMode } = useAuth();
   const { activeRole, userRoles } = useStaffRoles();
+  const { settings: platformSettings } = usePlatformSettings();
 
-  // Get navigation sections based on active role
-  const navSections = useMemo(() => getNavSections(activeRole), [activeRole]);
+  // Get navigation sections based on active role, filtered by platform settings
+  const navSections = useMemo(() => {
+    const sections = getNavSections(activeRole);
+    if (!platformSettings.show_pdf_tests) {
+      return sections.map(section => ({
+        ...section,
+        items: section.items.filter(item => item.path !== '/admin/pdf-tests'),
+      }));
+    }
+    return sections;
+  }, [activeRole, platformSettings.show_pdf_tests]);
 
   useEffect(() => {
     if (!isLoading && !user) {
