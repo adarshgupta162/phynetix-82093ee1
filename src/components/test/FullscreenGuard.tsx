@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Maximize } from 'lucide-react';
+import { AlertTriangle, Maximize, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface FullscreenGuardProps {
@@ -20,12 +20,15 @@ export default function FullscreenGuard({
 }: FullscreenGuardProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [exitCount, setExitCount] = useState(initialExitCount);
-  // showWarning: user exited after being in fullscreen
   const [showWarning, setShowWarning] = useState(false);
-  // showEnterPrompt: not yet in fullscreen (initial state or mount without user gesture)
   const [showEnterPrompt, setShowEnterPrompt] = useState(false);
-  // Track whether we've entered fullscreen at least once in this session
   const hasBeenFullscreen = useRef(false);
+  const exitCountRef = useRef(initialExitCount);
+
+  // Keep ref in sync
+  useEffect(() => {
+    exitCountRef.current = exitCount;
+  }, [exitCount]);
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -47,6 +50,19 @@ export default function FullscreenGuard({
     }
   }, []);
 
+  const incrementExit = useCallback(() => {
+    const newCount = exitCountRef.current + 1;
+    exitCountRef.current = newCount;
+    setExitCount(newCount);
+    onExitCountChange?.(newCount);
+
+    if (newCount >= maxExits) {
+      onMaxExitsReached();
+    } else {
+      setShowWarning(true);
+    }
+  }, [maxExits, onMaxExitsReached, onExitCountChange]);
+
   const handleFullscreenChange = useCallback(() => {
     const isCurrentlyFullscreen = !!(
       document.fullscreenElement ||
@@ -62,19 +78,11 @@ export default function FullscreenGuard({
       setShowEnterPrompt(false);
       setShowWarning(false);
     } else if (hasBeenFullscreen.current) {
-      // Only count as an exit if we were previously in fullscreen
-      const newCount = exitCount + 1;
-      setExitCount(newCount);
-      onExitCountChange?.(newCount);
-
-      if (newCount >= maxExits) {
-        onMaxExitsReached();
-      } else {
-        setShowWarning(true);
-      }
+      incrementExit();
     }
-  }, [exitCount, maxExits, onMaxExitsReached, onExitCountChange]);
+  }, [incrementExit]);
 
+  // Fullscreen change listeners
   useEffect(() => {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
@@ -89,8 +97,123 @@ export default function FullscreenGuard({
     };
   }, [handleFullscreenChange]);
 
-  // On mount: check if already fullscreen (e.g. triggered by button click before mount).
-  // If not, show the enter-fullscreen prompt so the user can click to enter.
+  // SECURITY: Detect tab switch / window blur via visibilitychange
+  useEffect(() => {
+    if (!hasBeenFullscreen.current) return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && hasBeenFullscreen.current) {
+        // Tab was switched - count as exit
+        incrementExit();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [incrementExit]);
+
+  // SECURITY: Detect window blur (Alt+Tab, clicking outside)
+  useEffect(() => {
+    if (!hasBeenFullscreen.current) return;
+
+    const handleBlur = () => {
+      if (hasBeenFullscreen.current && document.fullscreenElement) {
+        // Window lost focus while in fullscreen - suspicious
+        incrementExit();
+      }
+    };
+
+    window.addEventListener('blur', handleBlur);
+    return () => window.removeEventListener('blur', handleBlur);
+  }, [incrementExit]);
+
+  // SECURITY: Block right-click context menu
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      return false;
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => document.removeEventListener('contextmenu', handleContextMenu);
+  }, []);
+
+  // SECURITY: Block dangerous keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block F12 (DevTools)
+      if (e.key === 'F12') {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+Shift+I (DevTools)
+      if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+Shift+J (Console)
+      if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+U (View Source)
+      if (e.ctrlKey && e.key === 'u') {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+S (Save)
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+P (Print)
+      if (e.ctrlKey && e.key === 'p') {
+        e.preventDefault();
+        return;
+      }
+      // Block Ctrl+C (Copy) - prevent copying questions
+      if (e.ctrlKey && e.key === 'c') {
+        e.preventDefault();
+        return;
+      }
+      // Block PrintScreen
+      if (e.key === 'PrintScreen') {
+        e.preventDefault();
+        return;
+      }
+      // Block Escape (already handled by fullscreen exit, but prevent default)
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, []);
+
+  // SECURITY: Disable text selection and drag
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'fullscreen-guard-security';
+    style.textContent = `
+      body {
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        -webkit-touch-callout: none !important;
+      }
+      img { pointer-events: none !important; -webkit-user-drag: none !important; }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      const el = document.getElementById('fullscreen-guard-security');
+      if (el) el.remove();
+    };
+  }, []);
+
+  // On mount: check if already fullscreen
   useEffect(() => {
     const alreadyFullscreen = !!(
       document.fullscreenElement ||
@@ -114,7 +237,7 @@ export default function FullscreenGuard({
         {children}
       </div>
 
-      {/* Fullscreen Entry Prompt (initial - shown when not yet in fullscreen) */}
+      {/* Fullscreen Entry Prompt */}
       <AnimatePresence>
         {showEnterPrompt && (
           <motion.div
@@ -136,9 +259,13 @@ export default function FullscreenGuard({
               <h2 className="text-2xl font-bold font-display mb-2">
                 Fullscreen Required
               </h2>
-              <p className="text-muted-foreground mb-6">
+              <p className="text-muted-foreground mb-4">
                 This test must be taken in fullscreen mode. Click the button below to enter fullscreen and begin.
               </p>
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-6 text-sm text-destructive">
+                <ShieldAlert className="w-4 h-4 inline mr-1" />
+                Switching tabs, opening DevTools, or exiting fullscreen will be detected and counted.
+              </div>
 
               <Button
                 variant="gradient"
@@ -154,7 +281,7 @@ export default function FullscreenGuard({
         )}
       </AnimatePresence>
 
-      {/* Fullscreen Warning Modal (after exit) */}
+      {/* Fullscreen Warning Modal */}
       <AnimatePresence>
         {showWarning && (
           <motion.div
@@ -174,10 +301,10 @@ export default function FullscreenGuard({
               </div>
 
               <h2 className="text-2xl font-bold font-display mb-2">
-                Fullscreen Exit Detected
+                Security Violation Detected
               </h2>
               <p className="text-muted-foreground mb-4">
-                You have exited fullscreen mode. Please return to fullscreen to continue the test.
+                You exited fullscreen or switched away from the test. Return to fullscreen to continue.
               </p>
 
               <div className={`p-4 rounded-lg mb-6 ${
@@ -186,10 +313,10 @@ export default function FullscreenGuard({
                   : 'bg-[hsl(45,93%,47%)]/20 text-[hsl(45,93%,47%)]'
               }`}>
                 <p className="font-semibold">
-                  Warning: {exitCount} of {maxExits} exits used
+                  Warning: {exitCount} of {maxExits} violations used
                 </p>
                 <p className="text-sm mt-1">
-                  {maxExits - exitCount} exit{maxExits - exitCount !== 1 ? 's' : ''} remaining before auto-submit
+                  {maxExits - exitCount} remaining before auto-submit
                 </p>
               </div>
 

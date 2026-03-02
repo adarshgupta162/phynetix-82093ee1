@@ -249,9 +249,12 @@ serve(async (req) => {
                   subjectScores[subject].marks -= 2;
                 }
               } else {
-                // Keep existing behavior for non-Advanced multiple choice
+                // Non-Advanced multiple choice: apply negative marks for wrong answer
                 incorrect++;
+                score -= negativeMarks;
+                marksObtained = -negativeMarks;
                 subjectScores[subject].incorrect++;
+                subjectScores[subject].marks -= negativeMarks;
               }
             }
           } else if (sectionType === "integer") {
