@@ -281,14 +281,17 @@ export default function NormalTestInterface() {
     }
   };
 
+  // Track whether time has expired to trigger auto-submit outside the setter
+  const [timeExpired, setTimeExpired] = useState(false);
+
   useEffect(() => {
-    if (timeLeft <= 0 || loading) return;
+    if (timeLeft <= 0 || loading || currentScreen !== 4) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleSubmit();
+          setTimeExpired(true);
           return 0;
         }
         return prev - 1;
@@ -296,7 +299,14 @@ export default function NormalTestInterface() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [loading, timeLeft]);
+  }, [loading, currentScreen]);
+
+  // Auto-submit when time expires
+  useEffect(() => {
+    if (timeExpired && attemptId && !submitting) {
+      handleSubmit();
+    }
+  }, [timeExpired]);
 
   // Note: Auto-save useEffect is defined after saveProgress callback
 
@@ -495,7 +505,7 @@ export default function NormalTestInterface() {
         body: {
           attempt_id: attemptId,
           answers,
-          time_taken_seconds: Math.max(1, timeLeft > 0 ? (questions.length * 60 - timeLeft) : 1),
+          time_taken_seconds: Math.max(1, (testDuration * 60) - timeLeft),
           fullscreen_exit_count: fullscreenExitCount,
         },
       });
