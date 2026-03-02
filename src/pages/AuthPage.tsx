@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
-import { getAuthRedirectTo, getOAuthRedirectUri, isLovableDomain, CANONICAL_ORIGIN } from "@/lib/canonical";
+import { getAuthRedirectTo, getOAuthRedirectUri, isLovableDomain, CANONICAL_ORIGIN, STAGING_ORIGIN } from "@/lib/canonical";
 import { z } from "zod";
 
 const loginSchema = z.object({
@@ -49,6 +49,18 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signIn, signUp, user, isAdmin, isLoading: authLoading } = useAuth();
+
+  // Auto-trigger OAuth when redirected from custom domain with ?oauth=google/apple
+  useEffect(() => {
+    const oauthProvider = searchParams.get("oauth");
+    if (oauthProvider && isLovableDomain()) {
+      if (oauthProvider === "google") {
+        handleGoogleSignIn();
+      } else if (oauthProvider === "apple") {
+        handleAppleSignIn();
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check if returning from OAuth callback
   useEffect(() => {
@@ -124,7 +136,7 @@ export default function AuthPage() {
     localStorage.setItem('rememberMe', String(rememberMe));
     try {
       if (isLovableDomain()) {
-        // Use Lovable Cloud managed OAuth on Lovable domains
+        // On Lovable domains, use managed OAuth directly
         const { error } = await lovable.auth.signInWithOAuth("google", {
           redirect_uri: getOAuthRedirectUri(),
         });
@@ -132,18 +144,8 @@ export default function AuthPage() {
           toast({ title: "Error", description: error.message, variant: "destructive" });
         }
       } else {
-        // On Vercel / custom domain, use direct Supabase OAuth
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: `${CANONICAL_ORIGIN}/dashboard`,
-            skipBrowserRedirect: true,
-          },
-        });
-        if (error) throw error;
-        if (data?.url) {
-          window.location.href = data.url;
-        }
+        // On Vercel / custom domain, redirect to staging domain for OAuth
+        window.location.href = `${STAGING_ORIGIN}/auth?mode=login&oauth=google`;
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to sign in with Google", variant: "destructive" });
@@ -164,17 +166,7 @@ export default function AuthPage() {
           toast({ title: "Error", description: error.message, variant: "destructive" });
         }
       } else {
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: "apple",
-          options: {
-            redirectTo: `${CANONICAL_ORIGIN}/dashboard`,
-            skipBrowserRedirect: true,
-          },
-        });
-        if (error) throw error;
-        if (data?.url) {
-          window.location.href = data.url;
-        }
+        window.location.href = `${STAGING_ORIGIN}/auth?mode=login&oauth=apple`;
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Failed to sign in with Apple", variant: "destructive" });
