@@ -206,7 +206,18 @@ export default function AuthPage() {
       } else if (mode === 'login') {
         const { error, isAdmin: userIsAdmin } = await signIn(email, password);
         if (error) {
-          toast({ title: "Login failed", description: "Invalid email or password", variant: "destructive" });
+          const msg = error.message || "";
+          if (msg.includes("Invalid login credentials")) {
+            toast({ 
+              title: "Login failed", 
+              description: "Invalid email or password. If you signed up with Google, please use the Google sign-in button instead.", 
+              variant: "destructive" 
+            });
+          } else if (msg.includes("Email not confirmed")) {
+            toast({ title: "Email not verified", description: "Please check your inbox and verify your email before signing in.", variant: "destructive" });
+          } else {
+            toast({ title: "Login failed", description: msg || "Something went wrong. Please try again.", variant: "destructive" });
+          }
         } else {
           toast({
             title: "Welcome back!",
