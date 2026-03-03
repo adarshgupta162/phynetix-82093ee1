@@ -48,7 +48,7 @@ export default function AuthPage() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp, user, isAdmin, isLoading: authLoading } = useAuth();
+  const { signIn, signUp, user, isAdmin } = useAuth();
 
   // Auto-trigger OAuth when redirected from custom domain with ?oauth=google/apple
   useEffect(() => {
@@ -87,26 +87,18 @@ export default function AuthPage() {
   }, [rememberMe]);
 
   useEffect(() => {
-    if (!authLoading && user) {
+    if (user) {
       setIsRedirecting(true);
-      toast({
-        title: "Welcome!",
-        description: "Redirecting to your dashboard...",
-      });
-      const timer = setTimeout(() => {
-        const redirectPath = isAdmin ? "/admin" : "/dashboard";
-        const destination = getAuthRedirectTo(redirectPath);
+      const redirectPath = isAdmin ? "/admin" : "/dashboard";
+      const destination = getAuthRedirectTo(redirectPath);
 
-        // Full redirect when forcing canonical domain (phynetix.me)
-        if (new URL(destination).origin !== window.location.origin) {
-          window.location.href = destination;
-        } else {
-          navigate(redirectPath);
-        }
-      }, 500);
-      return () => clearTimeout(timer);
+      if (new URL(destination).origin !== window.location.origin) {
+        window.location.href = destination;
+      } else {
+        navigate(redirectPath);
+      }
     }
-  }, [user, isAdmin, authLoading, navigate, toast]);
+  }, [user, isAdmin, navigate]);
 
   const validateForm = () => {
     try {
@@ -182,10 +174,12 @@ export default function AuthPage() {
     
     setIsLoading(true);
     setMessage("");
-    
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedFullName = fullName.trim();
+
     try {
       if (mode === 'signup') {
-        const { error } = await signUp(email, password, fullName);
+        const { error } = await signUp(normalizedEmail, password, normalizedFullName);
         if (error) {
           if (error.message.includes("already registered")) {
             toast({
@@ -204,13 +198,13 @@ export default function AuthPage() {
           });
         }
       } else if (mode === 'login') {
-        const { error, isAdmin: userIsAdmin } = await signIn(email, password);
+        const { error } = await signIn(normalizedEmail, password);
         if (error) {
           const msg = error.message || "";
           if (msg.includes("Invalid login credentials")) {
             toast({ 
               title: "Login failed", 
-              description: "Invalid email or password. If you signed up with Google, please use the Google sign-in button instead.", 
+              description: "Invalid email or password. Please check for extra spaces/caps or use Forgot Password.", 
               variant: "destructive" 
             });
           } else if (msg.includes("Email not confirmed")) {
@@ -219,14 +213,10 @@ export default function AuthPage() {
             toast({ title: "Login failed", description: msg || "Something went wrong. Please try again.", variant: "destructive" });
           }
         } else {
-          toast({
-            title: "Welcome back!",
-            description: userIsAdmin ? "Redirecting to admin dashboard..." : "You've been successfully logged in.",
-          });
-          navigate(userIsAdmin ? "/admin" : "/dashboard");
+          setIsRedirecting(true);
         }
       } else if (mode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
           redirectTo: getAuthRedirectTo('/auth?mode=reset'),
         });
         if (error) {
