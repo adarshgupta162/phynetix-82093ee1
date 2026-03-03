@@ -201,10 +201,16 @@ export default function AuthPage() {
         const { error } = await signIn(normalizedEmail, password);
         if (error) {
           const msg = error.message || "";
-          if (msg.includes("Invalid login credentials")) {
+          if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("Load failed")) {
+            toast({
+              title: "Network issue during login",
+              description: `Could not reach auth server from preview. Please open ${CANONICAL_ORIGIN}/auth and sign in there.` ,
+              variant: "destructive",
+            });
+          } else if (msg.includes("Invalid login credentials")) {
             toast({ 
               title: "Login failed", 
-              description: "Invalid email or password. Please check for extra spaces/caps or use Forgot Password.", 
+              description: "Invalid email or password. Double-check characters (example: accidental leading *), or use Forgot Password.", 
               variant: "destructive" 
             });
           } else if (msg.includes("Email not confirmed")) {
@@ -226,6 +232,15 @@ export default function AuthPage() {
           toast({ title: "Email sent", description: "Check your inbox for the reset link" });
         }
       }
+    } catch (err: any) {
+      const msg = err?.message || "";
+      toast({
+        title: "Login error",
+        description: msg.includes("Failed to fetch")
+          ? `Network error in preview. Try signing in at ${CANONICAL_ORIGIN}/auth`
+          : msg || "Unexpected error. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
