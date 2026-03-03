@@ -139,12 +139,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
+    const normalizedEmail = email.trim().toLowerCase();
+    const cleanedPassword = password
+      .replace(/\u00A0/g, " ")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "");
+
+    const primaryAttempt = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password: cleanedPassword,
     });
 
-    return { error };
+    if (!primaryAttempt.error) {
+      return { error: null };
+    }
+
+    const canRetryWithTrimmedPassword =
+      primaryAttempt.error.message?.includes("Invalid login credentials") &&
+      cleanedPassword !== cleanedPassword.trim();
+
+    if (canRetryWithTrimmedPassword) {
+      const retryAttempt = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: cleanedPassword.trim(),
+      });
+      return { error: retryAttempt.error };
+    }
+
+    return { error: primaryAttempt.error };
   };
 
   const signOut = async () => {
