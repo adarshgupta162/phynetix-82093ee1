@@ -139,33 +139,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    const cleanedPassword = password
-      .replace(/\u00A0/g, " ")
-      .replace(/[\u200B-\u200D\uFEFF]/g, "");
-
-    const primaryAttempt = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password: cleanedPassword,
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
     });
-
-    if (!primaryAttempt.error) {
-      return { error: null };
+    
+    if (!error && data.user) {
+      // Check admin status immediately after sign in
+      const adminStatus = await checkAdminRole(data.user.id);
+      return { error: null, isAdmin: adminStatus };
     }
-
-    const canRetryWithTrimmedPassword =
-      primaryAttempt.error.message?.includes("Invalid login credentials") &&
-      cleanedPassword !== cleanedPassword.trim();
-
-    if (canRetryWithTrimmedPassword) {
-      const retryAttempt = await supabase.auth.signInWithPassword({
-        email: normalizedEmail,
-        password: cleanedPassword.trim(),
-      });
-      return { error: retryAttempt.error };
-    }
-
-    return { error: primaryAttempt.error };
+    
+    return { error };
   };
 
   const signOut = async () => {

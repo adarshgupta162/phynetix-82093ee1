@@ -48,7 +48,7 @@ export default function AuthPage() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signIn, signUp, user, isAdmin } = useAuth();
+  const { signIn, signUp, user, isAdmin, isLoading: authLoading } = useAuth();
 
   // Auto-trigger OAuth when redirected from custom domain with ?oauth=google/apple
   useEffect(() => {
@@ -87,18 +87,26 @@ export default function AuthPage() {
   }, [rememberMe]);
 
   useEffect(() => {
-    if (user) {
+    if (!authLoading && user) {
       setIsRedirecting(true);
-      const redirectPath = isAdmin ? "/admin" : "/dashboard";
-      const destination = getAuthRedirectTo(redirectPath);
+      toast({
+        title: "Welcome!",
+        description: "Redirecting to your dashboard...",
+      });
+      const timer = setTimeout(() => {
+        const redirectPath = isAdmin ? "/admin" : "/dashboard";
+        const destination = getAuthRedirectTo(redirectPath);
 
-      if (new URL(destination).origin !== window.location.origin) {
-        window.location.href = destination;
-      } else {
-        navigate(redirectPath);
-      }
+        // Full redirect when forcing canonical domain (phynetix.me)
+        if (new URL(destination).origin !== window.location.origin) {
+          window.location.href = destination;
+        } else {
+          navigate(redirectPath);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
     }
-  }, [user, isAdmin, navigate]);
+  }, [user, isAdmin, authLoading, navigate, toast]);
 
   const validateForm = () => {
     try {
@@ -174,12 +182,10 @@ export default function AuthPage() {
     
     setIsLoading(true);
     setMessage("");
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedFullName = fullName.trim();
-
+    
     try {
       if (mode === 'signup') {
-        const { error } = await signUp(normalizedEmail, password, normalizedFullName);
+        const { error } = await signUp(email, password, fullName);
         if (error) {
           if (error.message.includes("already registered")) {
             toast({
@@ -198,31 +204,18 @@ export default function AuthPage() {
           });
         }
       } else if (mode === 'login') {
-        const { error } = await signIn(normalizedEmail, password);
+        const { error, isAdmin: userIsAdmin } = await signIn(email, password);
         if (error) {
-          const msg = error.message || "";
-          if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("Load failed")) {
-            toast({
-              title: "Network issue during login",
-              description: `Could not reach auth server from preview. Please open ${CANONICAL_ORIGIN}/auth and sign in there.` ,
-              variant: "destructive",
-            });
-          } else if (msg.includes("Invalid login credentials")) {
-            toast({ 
-              title: "Login failed", 
-              description: "Invalid email or password. Double-check characters, and if this account was created with Google/Apple, use social sign-in.", 
-              variant: "destructive" 
-            });
-          } else if (msg.includes("Email not confirmed")) {
-            toast({ title: "Email not verified", description: "Please check your inbox and verify your email before signing in.", variant: "destructive" });
-          } else {
-            toast({ title: "Login failed", description: msg || "Something went wrong. Please try again.", variant: "destructive" });
-          }
+          toast({ title: "Login failed", description: "Invalid email or password", variant: "destructive" });
         } else {
-          setIsRedirecting(true);
+          toast({
+            title: "Welcome back!",
+            description: userIsAdmin ? "Redirecting to admin dashboard..." : "You've been successfully logged in.",
+          });
+          navigate(userIsAdmin ? "/admin" : "/dashboard");
         }
       } else if (mode === 'forgot') {
-        const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: getAuthRedirectTo('/auth?mode=reset'),
         });
         if (error) {
@@ -232,15 +225,6 @@ export default function AuthPage() {
           toast({ title: "Email sent", description: "Check your inbox for the reset link" });
         }
       }
-    } catch (err: any) {
-      const msg = err?.message || "";
-      toast({
-        title: "Login error",
-        description: msg.includes("Failed to fetch")
-          ? `Network error in preview. Try signing in at ${CANONICAL_ORIGIN}/auth`
-          : msg || "Unexpected error. Please try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -270,8 +254,8 @@ export default function AuthPage() {
     }
   };
 
-  // Show full-page loading only when we have a confirmed user session being set up
-  if (isRedirecting) {
+  // Show full-page loading when redirecting after OAuth
+  if (isRedirecting || (authLoading && !user)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
         <div className="fixed inset-0 pointer-events-none">
@@ -414,11 +398,6 @@ export default function AuthPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-12"
-                    autoComplete="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    inputMode="email"
                   />
                 </div>
                 {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
@@ -435,10 +414,6 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-12 pr-12"
-                      autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      spellCheck={false}
                     />
                     <button
                       type="button"
