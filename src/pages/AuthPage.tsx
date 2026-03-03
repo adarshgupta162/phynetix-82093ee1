@@ -210,7 +210,7 @@ export default function AuthPage() {
           } else if (msg.includes("Invalid login credentials")) {
             toast({ 
               title: "Login failed", 
-              description: "Invalid email or password. Double-check characters (example: accidental leading *), or use Forgot Password.", 
+              description: "Invalid email or password. Double-check characters, and if this account was created with Google/Apple, use social sign-in.", 
               variant: "destructive" 
             });
           } else if (msg.includes("Email not confirmed")) {
@@ -414,6 +414,11 @@ export default function AuthPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-12"
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    inputMode="email"
                   />
                 </div>
                 {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
@@ -430,6 +435,10 @@ export default function AuthPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="pl-12 pr-12"
+                      autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                     />
                     <button
                       type="button"
