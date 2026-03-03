@@ -254,8 +254,8 @@ export default function AuthPage() {
     }
   };
 
-  // Show full-page loading when redirecting after OAuth
-  if (isRedirecting || (authLoading && !user)) {
+  // Show full-page loading only when we have a confirmed user session being set up
+  if (isRedirecting) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
         <div className="fixed inset-0 pointer-events-none">
