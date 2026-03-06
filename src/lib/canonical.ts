@@ -35,24 +35,29 @@ export function getAuthRedirectTo(path: string): string {
 
 /**
  * Safety net: if anyone hits the published Lovable domain, forward them to the canonical domain.
+ * Skips redirect when an OAuth callback is in progress (access_token in hash or ~oauth path).
  */
 export function maybeRedirectToCanonical(): void {
   if (window.location.hostname !== STAGING_HOST) return;
 
-  const target = `${CANONICAL_ORIGIN}${window.location.pathname}${window.location.search}${window.location.hash}`;
+  // Don't redirect during OAuth callbacks
+  const hash = window.location.hash;
+  const path = window.location.pathname;
+  if (hash.includes("access_token") || path.startsWith("/~oauth")) return;
+
+  const target = `${CANONICAL_ORIGIN}${path}${window.location.search}${hash}`;
   if (window.location.href === target) return;
 
   window.location.replace(target);
 }
 
-/**
- * OAuth redirect URI — only used for Lovable Cloud managed OAuth.
- */
-export function getOAuthRedirectUri(): string {
+/** Check if we're on a custom domain (not lovable, not localhost) */
+export function isCustomDomain(): boolean {
   const hostname = window.location.hostname;
-
-  if (CANONICAL_HOSTS.has(hostname)) return STAGING_ORIGIN;
-  if (hostname === STAGING_HOST) return STAGING_ORIGIN;
-
-  return window.location.origin;
+  return (
+    !hostname.includes("lovable.app") &&
+    !hostname.includes("lovableproject.com") &&
+    hostname !== "localhost" &&
+    hostname !== "127.0.0.1"
+  );
 }
