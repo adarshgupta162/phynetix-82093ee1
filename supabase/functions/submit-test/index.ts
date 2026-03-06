@@ -217,45 +217,55 @@ serve(async (req) => {
               .map((a: any) => indexToLetter(a))
               .sort();
 
-            if (JSON.stringify(correctArr) === JSON.stringify(userArr)) {
+            const correctSet = new Set(correctArr);
+            const userSet = new Set(userArr);
+            const correctCount = [...userSet].filter((a) => correctSet.has(a)).length;
+            const wrongCount = [...userSet].filter((a) => !correctSet.has(a)).length;
+            const totalCorrect = correctArr.length;
+
+            if (wrongCount > 0) {
+              // Any wrong option selected → -2
+              incorrect++;
+              marksObtained = -2;
+              score -= 2;
+              subjectScores[subject].incorrect++;
+              subjectScores[subject].marks -= 2;
+            } else if (correctCount === totalCorrect) {
+              // All correct options chosen → +4
               isCorrect = true;
               correct++;
-              score += marks;
               marksObtained = marks;
+              score += marks;
               subjectScores[subject].correct++;
               subjectScores[subject].marks += marks;
+            } else if (correctCount === totalCorrect - 1 && totalCorrect >= 4) {
+              // 4 correct, only 3 chosen → +3
+              marksObtained = 3;
+              score += 3;
+              correct++;
+              subjectScores[subject].correct++;
+              subjectScores[subject].marks += 3;
+            } else if (correctCount === 2 && totalCorrect >= 3) {
+              // 3+ correct, only 2 chosen → +2
+              marksObtained = 2;
+              score += 2;
+              correct++;
+              subjectScores[subject].correct++;
+              subjectScores[subject].marks += 2;
+            } else if (correctCount === 1 && totalCorrect >= 2) {
+              // 2+ correct, only 1 chosen → +1
+              marksObtained = 1;
+              score += 1;
+              correct++;
+              subjectScores[subject].correct++;
+              subjectScores[subject].marks += 1;
             } else {
-              if (test?.exam_type === "jee_advanced") {
-                const correctSet = new Set(correctArr);
-                const userSet = new Set(userArr);
-                const correctCount = [...userSet].filter((a) => correctSet.has(a)).length;
-                const wrongCount = [...userSet].filter((a) => !correctSet.has(a)).length;
-
-                if (wrongCount === 0 && correctCount > 0) {
-                  marksObtained = Math.floor((correctCount / correctArr.length) * marks);
-                  score += marksObtained;
-                  subjectScores[subject].marks += marksObtained;
-
-                  if (correctCount === correctArr.length) {
-                    isCorrect = true;
-                    correct++;
-                    subjectScores[subject].correct++;
-                  }
-                } else {
-                  incorrect++;
-                  score -= 2;
-                  marksObtained = -2;
-                  subjectScores[subject].incorrect++;
-                  subjectScores[subject].marks -= 2;
-                }
-              } else {
-                // Non-Advanced multiple choice: apply negative marks for wrong answer
-                incorrect++;
-                score -= negativeMarks;
-                marksObtained = -negativeMarks;
-                subjectScores[subject].incorrect++;
-                subjectScores[subject].marks -= negativeMarks;
-              }
+              // Fallback → -2
+              incorrect++;
+              marksObtained = -2;
+              score -= 2;
+              subjectScores[subject].incorrect++;
+              subjectScores[subject].marks -= 2;
             }
           } else if (sectionType === "integer") {
             const correctNum = parseFloat(String(correctAnswer));
@@ -276,7 +286,7 @@ serve(async (req) => {
               subjectScores[subject].marks -= negativeMarks;
             }
           } else {
-            // Single choice: user answer is index (0, 1, 2), correct answer is letter (A, B, C)
+            // Single choice
             const userLetter = indexToLetter(userAnswer);
             const correctLetter = String(correctAnswer).toUpperCase();
             
