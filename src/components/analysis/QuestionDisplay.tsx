@@ -147,13 +147,21 @@ export function QuestionDisplay({
         </div>
       )}
 
-      {imageUrl && (
-        <img
-          src={imageUrl}
-          alt={`Question ${questionNumber}`}
-          className="max-w-full max-h-64 object-contain rounded-lg bg-secondary/20"
-        />
-      )}
+      {(() => {
+        const allImages = imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : [];
+        return allImages.length > 0 && (
+          <div className="space-y-2">
+            {allImages.map((url, idx) => (
+              <img
+                key={idx}
+                src={url}
+                alt={`Question ${questionNumber} image ${idx + 1}`}
+                className="max-w-full max-h-64 object-contain rounded-lg bg-secondary/20"
+              />
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Options with Stats - Only for MCQ types */}
       {!isIntegerType && options.length > 0 && (
