@@ -18,6 +18,7 @@ interface QuestionDisplayProps {
   questionNumber: number;
   questionText?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   marks: number;
   userMarks: number;
   difficulty: "easy" | "medium" | "tough";
