@@ -67,6 +67,7 @@ serve(async (req) => {
           order_index,
           pdf_page,
           image_url,
+          image_urls,
           section:test_sections(
             id,
             name,
