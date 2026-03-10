@@ -174,6 +174,7 @@ serve(async (req) => {
             negative_marks,
             order_index,
             image_url,
+            image_urls,
             section:test_sections(
               id,
               name,
