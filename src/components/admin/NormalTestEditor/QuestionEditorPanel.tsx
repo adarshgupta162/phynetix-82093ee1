@@ -142,9 +142,11 @@ export function QuestionEditorPanel({
       marks: localQuestion.marks,
       negative_marks: localQuestion.negative_marks,
       is_bonus: localQuestion.is_bonus,
-      image_url: localQuestion.image_url,
+      image_url: null, // Clear legacy single image
+      image_urls: localQuestion.image_urls || [],
       solution_text: localQuestion.solution_text,
-      solution_image_url: localQuestion.solution_image_url,
+      solution_image_url: null, // Clear legacy single image
+      solution_image_urls: localQuestion.solution_image_urls || [],
       difficulty: localQuestion.difficulty,
       time_seconds: localQuestion.time_seconds
     });
