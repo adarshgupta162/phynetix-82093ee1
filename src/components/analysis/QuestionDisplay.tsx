@@ -45,6 +45,7 @@ export function QuestionDisplay({
   questionNumber,
   questionText,
   imageUrl,
+  imageUrls,
   marks,
   userMarks,
   difficulty,
