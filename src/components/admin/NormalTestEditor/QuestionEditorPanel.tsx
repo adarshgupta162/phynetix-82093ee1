@@ -29,8 +29,10 @@ interface Question {
   order_index: number;
   is_bonus?: boolean;
   image_url?: string | null;
+  image_urls?: string[] | null;
   solution_text?: string | null;
   solution_image_url?: string | null;
+  solution_image_urls?: string[] | null;
   difficulty?: string;
   time_seconds?: number;
 }
