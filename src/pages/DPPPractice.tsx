@@ -273,9 +273,12 @@ export default function DPPPractice() {
                 </div>
               )}
 
-              {q.question_image_url && (
-                <img src={q.question_image_url} alt="Question" className="max-h-60 rounded-lg border border-border mb-4" />
-              )}
+              {(() => {
+                const imgs = q.question_image_urls?.length ? q.question_image_urls : q.question_image_url ? [q.question_image_url] : [];
+                return imgs.map((url, idx) => (
+                  <img key={idx} src={url} alt={`Question ${idx+1}`} className="max-h-60 rounded-lg border border-border mb-4" />
+                ));
+              })()}
 
               {/* Answer Input */}
               <div className="mt-6">
