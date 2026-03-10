@@ -367,7 +367,7 @@ export default function DPPPractice() {
               </div>
 
               {/* Solution (show after submit or on demand) */}
-              {(submitted || showSolution[q.id]) && (q.solution_text || q.solution_image_url) && (
+              {(submitted || showSolution[q.id]) && (q.solution_text || q.solution_image_url || q.solution_image_urls?.length) && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -377,7 +377,12 @@ export default function DPPPractice() {
                     <Eye className="w-4 h-4" />Solution
                   </h4>
                   {q.solution_text && <LatexRenderer content={q.solution_text} />}
-                  {q.solution_image_url && <img src={q.solution_image_url} alt="Solution" className="max-h-60 rounded-lg mt-2" />}
+                  {(() => {
+                    const imgs = q.solution_image_urls?.length ? q.solution_image_urls : q.solution_image_url ? [q.solution_image_url] : [];
+                    return imgs.map((url, idx) => (
+                      <img key={idx} src={url} alt={`Solution ${idx+1}`} className="max-h-60 rounded-lg mt-2" />
+                    ));
+                  })()}
                 </motion.div>
               )}
 
