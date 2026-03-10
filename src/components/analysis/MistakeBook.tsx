@@ -11,6 +11,7 @@ interface MistakeQuestion {
   questionId: string;
   questionText?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   subject: string;
   difficulty?: string;
   marks: number;
@@ -22,6 +23,7 @@ interface MistakeQuestion {
   sectionType?: string;
   solutionText?: string;
   solutionImageUrl?: string;
+  solutionImageUrls?: string[];
   isBookmarked: boolean;
 }
 
