@@ -78,7 +78,9 @@ export function QuestionEditorPanel({
     if (question) {
       setLocalQuestion({
         ...question,
-        options: question.options || DEFAULT_OPTIONS
+        options: question.options || DEFAULT_OPTIONS,
+        image_urls: mergeImageUrls(question.image_url, question.image_urls),
+        solution_image_urls: mergeImageUrls(question.solution_image_url, question.solution_image_urls),
       });
     }
   }, [question?.id]);
