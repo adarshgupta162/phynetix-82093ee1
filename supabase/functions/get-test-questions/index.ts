@@ -200,20 +200,30 @@ serve(async (req) => {
             return (a.question_number ?? 0) - (b.question_number ?? 0);
           });
 
-          questions = sorted.map((q: any, index: number) => ({
-            id: q.id,
-            order: index,
-            question_text: q.question_text || null,
-            options: q.options,
-            difficulty: "medium",
-            marks: q.marks ?? 4,
-            negative_marks: q.negative_marks ?? 1,
-            question_type: q.section?.section_type || "single_choice",
-            subject: q.section?.subject?.name ?? "General",
-            chapter: q.section?.name ?? "General",
-            image_url: q.image_url || null,
-            correct_answer: q.correct_answer
-          }));
+          questions = sorted.map((q: any, index: number) => {
+            const imageUrls: string[] = [];
+            if (q.image_url) imageUrls.push(q.image_url);
+            if (Array.isArray(q.image_urls)) {
+              for (const u of q.image_urls) {
+                if (u && !imageUrls.includes(u)) imageUrls.push(u);
+              }
+            }
+            return {
+              id: q.id,
+              order: index,
+              question_text: q.question_text || null,
+              options: q.options,
+              difficulty: "medium",
+              marks: q.marks ?? 4,
+              negative_marks: q.negative_marks ?? 1,
+              question_type: q.section?.section_type || "single_choice",
+              subject: q.section?.subject?.name ?? "General",
+              chapter: q.section?.name ?? "General",
+              image_url: imageUrls[0] || null,
+              image_urls: imageUrls,
+              correct_answer: q.correct_answer
+            };
+          });
           
           console.log("Sample question data:", JSON.stringify(questions[0]));
         }
