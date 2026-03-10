@@ -14,6 +14,7 @@ interface SolutionSectionProps {
   isAttemptMode?: boolean;
   onShowSolution?: () => void;
   solutionImageUrl?: string;
+  solutionImageUrls?: string[];
 }
 
 export function SolutionSection({
@@ -25,6 +26,7 @@ export function SolutionSection({
   isAttemptMode = false,
   onShowSolution,
   solutionImageUrl,
+  solutionImageUrls,
 }: SolutionSectionProps) {
   const [showWorking, setShowWorking] = useState(true);
 
