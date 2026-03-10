@@ -14,6 +14,7 @@ interface SolutionSectionProps {
   isAttemptMode?: boolean;
   onShowSolution?: () => void;
   solutionImageUrl?: string;
+  solutionImageUrls?: string[];
 }
 
 export function SolutionSection({
@@ -25,6 +26,7 @@ export function SolutionSection({
   isAttemptMode = false,
   onShowSolution,
   solutionImageUrl,
+  solutionImageUrls,
 }: SolutionSectionProps) {
   const [showWorking, setShowWorking] = useState(true);
 
@@ -90,16 +92,18 @@ export function SolutionSection({
             exit={{ height: 0, opacity: 0 }}
             className="space-y-4 overflow-hidden"
           >
-            {/* Given/Setup info */}
-            {solutionImageUrl && (
-              <div className="rounded-lg overflow-hidden border border-border/50">
-                <img 
-                  src={solutionImageUrl} 
-                  alt="Solution" 
-                  className="max-w-full mx-auto"
-                />
-              </div>
-            )}
+            {(() => {
+              const allImages = solutionImageUrls?.length ? solutionImageUrls : solutionImageUrl ? [solutionImageUrl] : [];
+              return allImages.length > 0 && (
+                <div className="space-y-2">
+                  {allImages.map((url, idx) => (
+                    <div key={idx} className="rounded-lg overflow-hidden border border-border/50">
+                      <img src={url} alt={`Solution ${idx + 1}`} className="max-w-full mx-auto" />
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {solutionText && (
               <div className="p-4 rounded-lg bg-secondary/30 border border-border/50">

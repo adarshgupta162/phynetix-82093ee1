@@ -11,6 +11,7 @@ interface MistakeQuestion {
   questionId: string;
   questionText?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   subject: string;
   difficulty?: string;
   marks: number;
@@ -22,6 +23,7 @@ interface MistakeQuestion {
   sectionType?: string;
   solutionText?: string;
   solutionImageUrl?: string;
+  solutionImageUrls?: string[];
   isBookmarked: boolean;
 }
 
@@ -189,9 +191,12 @@ export function MistakeBook({ mistakes, onBookmark, onViewSolution }: MistakeBoo
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4 space-y-3 border-t border-border/30 pt-3">
-                        {q.imageUrl && (
-                          <img src={q.imageUrl} alt={`Q${q.questionNumber}`} className="max-h-48 object-contain rounded-lg bg-secondary/20" />
-                        )}
+                        {(() => {
+                          const imgs = q.imageUrls?.length ? q.imageUrls : q.imageUrl ? [q.imageUrl] : [];
+                          return imgs.map((url, idx) => (
+                            <img key={idx} src={url} alt={`Q${q.questionNumber} img ${idx+1}`} className="max-h-48 object-contain rounded-lg bg-secondary/20" />
+                          ));
+                        })()}
                         {q.questionText && (
                           <div className="text-sm"><LatexRenderer content={q.questionText} /></div>
                         )}
@@ -213,10 +218,15 @@ export function MistakeBook({ mistakes, onBookmark, onViewSolution }: MistakeBoo
                             </div>
                           )}
                         </div>
-                        {(q.solutionText || q.solutionImageUrl) && (
+                        {(q.solutionText || q.solutionImageUrl || q.solutionImageUrls?.length) && (
                           <div className="p-3 rounded-lg bg-secondary/30 border border-border/50">
                             <p className="text-xs font-medium text-muted-foreground mb-2">Solution:</p>
-                            {q.solutionImageUrl && <img src={q.solutionImageUrl} alt="Solution" className="max-h-40 object-contain rounded mb-2" />}
+                            {(() => {
+                              const imgs = q.solutionImageUrls?.length ? q.solutionImageUrls : q.solutionImageUrl ? [q.solutionImageUrl] : [];
+                              return imgs.map((url, idx) => (
+                                <img key={idx} src={url} alt={`Solution ${idx+1}`} className="max-h-40 object-contain rounded mb-2" />
+                              ));
+                            })()}
                             {q.solutionText && <div className="text-sm"><LatexRenderer content={q.solutionText} /></div>}
                           </div>
                         )}

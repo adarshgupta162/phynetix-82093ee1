@@ -11,6 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { QuestionImageUpload } from "../QuestionImageUpload";
+import { MultiImageUpload } from "../MultiImageUpload";
+import { mergeImageUrls } from "@/lib/imageUtils";
 import { cn } from "@/lib/utils";
 
 interface Question {
@@ -27,8 +29,10 @@ interface Question {
   order_index: number;
   is_bonus?: boolean;
   image_url?: string | null;
+  image_urls?: string[] | null;
   solution_text?: string | null;
   solution_image_url?: string | null;
+  solution_image_urls?: string[] | null;
   difficulty?: string;
   time_seconds?: number;
 }
@@ -74,7 +78,9 @@ export function QuestionEditorPanel({
     if (question) {
       setLocalQuestion({
         ...question,
-        options: question.options || DEFAULT_OPTIONS
+        options: question.options || DEFAULT_OPTIONS,
+        image_urls: mergeImageUrls(question.image_url, question.image_urls),
+        solution_image_urls: mergeImageUrls(question.solution_image_url, question.solution_image_urls),
       });
     }
   }, [question?.id]);
@@ -138,9 +144,11 @@ export function QuestionEditorPanel({
       marks: localQuestion.marks,
       negative_marks: localQuestion.negative_marks,
       is_bonus: localQuestion.is_bonus,
-      image_url: localQuestion.image_url,
+      image_url: null, // Clear legacy single image
+      image_urls: localQuestion.image_urls || [],
       solution_text: localQuestion.solution_text,
-      solution_image_url: localQuestion.solution_image_url,
+      solution_image_url: null, // Clear legacy single image
+      solution_image_urls: localQuestion.solution_image_urls || [],
       difficulty: localQuestion.difficulty,
       time_seconds: localQuestion.time_seconds
     });
@@ -214,10 +222,11 @@ export function QuestionEditorPanel({
             placeholder="Enter question text... Use LaTeX: $\frac{a}{b}$ for fractions"
             className="min-h-[120px] font-mono text-sm"
           />
-          <QuestionImageUpload
-            value={localQuestion.image_url}
-            onChange={(url) => handleFieldChange('image_url', url)}
+          <MultiImageUpload
+            value={localQuestion.image_urls || []}
+            onChange={(urls) => handleFieldChange('image_urls', urls)}
             compact
+            label="Question Images"
           />
         </div>
 
@@ -372,10 +381,11 @@ export function QuestionEditorPanel({
             placeholder="Enter solution explanation... Supports LaTeX"
             className="min-h-[100px] font-mono text-sm"
           />
-          <QuestionImageUpload
-            value={localQuestion.solution_image_url}
-            onChange={(url) => handleFieldChange('solution_image_url', url)}
+          <MultiImageUpload
+            value={localQuestion.solution_image_urls || []}
+            onChange={(urls) => handleFieldChange('solution_image_urls', urls)}
             compact
+            label="Solution Images"
           />
         </div>
       </div>

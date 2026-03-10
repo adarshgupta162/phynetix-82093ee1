@@ -177,19 +177,33 @@ export default function AnalysisPage() {
 
       const { data: sectionQuestions } = await supabase
         .from("test_section_questions")
-        .select(`id, question_number, correct_answer, marks, negative_marks, section_id, question_text, image_url, difficulty, solution_text, solution_image_url, test_sections!inner(name, section_type, test_subjects!inner(name))`)
+        .select(`id, question_number, correct_answer, marks, negative_marks, section_id, question_text, image_url, image_urls, difficulty, solution_text, solution_image_url, solution_image_urls, test_sections!inner(name, section_type, test_subjects!inner(name))`)
         .eq("test_id", testId).order("question_number");
 
-      const questionsData = (sectionQuestions || []).map((q: any) => ({
-        id: q.id, question_number: q.question_number,
-        correct_answer: typeof q.correct_answer === 'object' ? (q.correct_answer as any)?.answer || String(q.correct_answer) : String(q.correct_answer || ""),
-        marks: q.marks || 4, negative_marks: q.negative_marks || 1,
-        subject: q.test_sections?.test_subjects?.name || "General",
-        sectionType: q.test_sections?.section_type || "single_choice",
-        difficulty: q.difficulty || "medium",
-        questionText: q.question_text, imageUrl: q.image_url,
-        solutionText: q.solution_text, solutionImageUrl: q.solution_image_url,
-      }));
+      const questionsData = (sectionQuestions || []).map((q: any) => {
+        // Merge legacy single + multi images
+        const imageUrls: string[] = [];
+        if (q.image_url) imageUrls.push(q.image_url);
+        if (Array.isArray(q.image_urls)) {
+          for (const u of q.image_urls) { if (u && !imageUrls.includes(u)) imageUrls.push(u); }
+        }
+        const solutionImageUrls: string[] = [];
+        if (q.solution_image_url) solutionImageUrls.push(q.solution_image_url);
+        if (Array.isArray(q.solution_image_urls)) {
+          for (const u of q.solution_image_urls) { if (u && !solutionImageUrls.includes(u)) solutionImageUrls.push(u); }
+        }
+        return {
+          id: q.id, question_number: q.question_number,
+          correct_answer: typeof q.correct_answer === 'object' ? (q.correct_answer as any)?.answer || String(q.correct_answer) : String(q.correct_answer || ""),
+          marks: q.marks || 4, negative_marks: q.negative_marks || 1,
+          subject: q.test_sections?.test_subjects?.name || "General",
+          sectionType: q.test_sections?.section_type || "single_choice",
+          difficulty: q.difficulty || "medium",
+          questionText: q.question_text, imageUrl: q.image_url,
+          imageUrls, solutionImageUrls,
+          solutionText: q.solution_text, solutionImageUrl: q.solution_image_url,
+        };
+      });
 
       const userAnswers = (attempt.answers as Record<string, any>) || {};
 

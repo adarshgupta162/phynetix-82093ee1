@@ -473,10 +473,12 @@ export type Database = {
           options: Json | null
           order_index: number | null
           question_image_url: string | null
+          question_image_urls: Json | null
           question_number: number
           question_text: string | null
           question_type: string
           solution_image_url: string | null
+          solution_image_urls: Json | null
           solution_text: string | null
           updated_at: string
         }
@@ -491,10 +493,12 @@ export type Database = {
           options?: Json | null
           order_index?: number | null
           question_image_url?: string | null
+          question_image_urls?: Json | null
           question_number: number
           question_text?: string | null
           question_type?: string
           solution_image_url?: string | null
+          solution_image_urls?: Json | null
           solution_text?: string | null
           updated_at?: string
         }
@@ -509,10 +513,12 @@ export type Database = {
           options?: Json | null
           order_index?: number | null
           question_image_url?: string | null
+          question_image_urls?: Json | null
           question_number?: number
           question_text?: string | null
           question_type?: string
           solution_image_url?: string | null
+          solution_image_urls?: Json | null
           solution_text?: string | null
           updated_at?: string
         }
@@ -709,9 +715,11 @@ export type Database = {
           negative_marks: number | null
           options: Json | null
           question_image_url: string | null
+          question_image_urls: Json | null
           question_text: string | null
           question_type: string
           solution_image_url: string | null
+          solution_image_urls: Json | null
           solution_text: string | null
           subject: string
           tags: string[] | null
@@ -733,9 +741,11 @@ export type Database = {
           negative_marks?: number | null
           options?: Json | null
           question_image_url?: string | null
+          question_image_urls?: Json | null
           question_text?: string | null
           question_type?: string
           solution_image_url?: string | null
+          solution_image_urls?: Json | null
           solution_text?: string | null
           subject: string
           tags?: string[] | null
@@ -757,9 +767,11 @@ export type Database = {
           negative_marks?: number | null
           options?: Json | null
           question_image_url?: string | null
+          question_image_urls?: Json | null
           question_text?: string | null
           question_type?: string
           solution_image_url?: string | null
+          solution_image_urls?: Json | null
           solution_text?: string | null
           subject?: string
           tags?: string[] | null
@@ -1316,6 +1328,7 @@ export type Database = {
           difficulty: string | null
           id: string
           image_url: string | null
+          image_urls: Json | null
           is_bonus: boolean | null
           library_question_id: string | null
           marks: number | null
@@ -1327,6 +1340,7 @@ export type Database = {
           question_text: string | null
           section_id: string
           solution_image_url: string | null
+          solution_image_urls: Json | null
           solution_text: string | null
           test_id: string
           time_seconds: number | null
@@ -1340,6 +1354,7 @@ export type Database = {
           difficulty?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: Json | null
           is_bonus?: boolean | null
           library_question_id?: string | null
           marks?: number | null
@@ -1351,6 +1366,7 @@ export type Database = {
           question_text?: string | null
           section_id: string
           solution_image_url?: string | null
+          solution_image_urls?: Json | null
           solution_text?: string | null
           test_id: string
           time_seconds?: number | null
@@ -1364,6 +1380,7 @@ export type Database = {
           difficulty?: string | null
           id?: string
           image_url?: string | null
+          image_urls?: Json | null
           is_bonus?: boolean | null
           library_question_id?: string | null
           marks?: number | null
@@ -1375,6 +1392,7 @@ export type Database = {
           question_text?: string | null
           section_id?: string
           solution_image_url?: string | null
+          solution_image_urls?: Json | null
           solution_text?: string | null
           test_id?: string
           time_seconds?: number | null

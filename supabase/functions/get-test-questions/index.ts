@@ -67,6 +67,7 @@ serve(async (req) => {
           order_index,
           pdf_page,
           image_url,
+          image_urls,
           section:test_sections(
             id,
             name,
@@ -82,21 +83,32 @@ serve(async (req) => {
         throw new Error("Failed to fetch questions");
       }
 
-      questions = (sectionQuestions || []).map((q: any, index: number) => ({
-        id: q.id,
-        order: q.order_index ?? q.question_number ?? index,
-        question_text: q.question_text || `Question ${q.question_number}`,
-        options: q.options,
-        difficulty: "medium",
-        marks: q.marks ?? 4,
-        negative_marks: q.negative_marks ?? 1,
-        question_type: q.section?.section_type || "single_choice",
-        subject: q.section?.subject?.name ?? "General",
-        chapter: q.section?.name ?? "General",
-        pdf_page: q.pdf_page,
-        image_url: q.image_url,
-        correct_answer: q.correct_answer
-      }));
+      questions = (sectionQuestions || []).map((q: any, index: number) => {
+        // Merge legacy image_url with image_urls array
+        const imageUrls: string[] = [];
+        if (q.image_url) imageUrls.push(q.image_url);
+        if (Array.isArray(q.image_urls)) {
+          for (const u of q.image_urls) {
+            if (u && !imageUrls.includes(u)) imageUrls.push(u);
+          }
+        }
+        return {
+          id: q.id,
+          order: q.order_index ?? q.question_number ?? index,
+          question_text: q.question_text || `Question ${q.question_number}`,
+          options: q.options,
+          difficulty: "medium",
+          marks: q.marks ?? 4,
+          negative_marks: q.negative_marks ?? 1,
+          question_type: q.section?.section_type || "single_choice",
+          subject: q.section?.subject?.name ?? "General",
+          chapter: q.section?.name ?? "General",
+          pdf_page: q.pdf_page,
+          image_url: imageUrls[0] || null,
+          image_urls: imageUrls,
+          correct_answer: q.correct_answer
+        };
+      });
     } else {
       // Normal Tests: Fetch from test_questions joined with questions table
       const { data: testQuestions, error: questionsError } = await supabaseClient
@@ -162,6 +174,7 @@ serve(async (req) => {
             negative_marks,
             order_index,
             image_url,
+            image_urls,
             section:test_sections(
               id,
               name,
@@ -187,20 +200,30 @@ serve(async (req) => {
             return (a.question_number ?? 0) - (b.question_number ?? 0);
           });
 
-          questions = sorted.map((q: any, index: number) => ({
-            id: q.id,
-            order: index,
-            question_text: q.question_text || null,
-            options: q.options,
-            difficulty: "medium",
-            marks: q.marks ?? 4,
-            negative_marks: q.negative_marks ?? 1,
-            question_type: q.section?.section_type || "single_choice",
-            subject: q.section?.subject?.name ?? "General",
-            chapter: q.section?.name ?? "General",
-            image_url: q.image_url || null,
-            correct_answer: q.correct_answer
-          }));
+          questions = sorted.map((q: any, index: number) => {
+            const imageUrls: string[] = [];
+            if (q.image_url) imageUrls.push(q.image_url);
+            if (Array.isArray(q.image_urls)) {
+              for (const u of q.image_urls) {
+                if (u && !imageUrls.includes(u)) imageUrls.push(u);
+              }
+            }
+            return {
+              id: q.id,
+              order: index,
+              question_text: q.question_text || null,
+              options: q.options,
+              difficulty: "medium",
+              marks: q.marks ?? 4,
+              negative_marks: q.negative_marks ?? 1,
+              question_type: q.section?.section_type || "single_choice",
+              subject: q.section?.subject?.name ?? "General",
+              chapter: q.section?.name ?? "General",
+              image_url: imageUrls[0] || null,
+              image_urls: imageUrls,
+              correct_answer: q.correct_answer
+            };
+          });
           
           console.log("Sample question data:", JSON.stringify(questions[0]));
         }
