@@ -36,6 +36,7 @@ interface Question {
   subject: string;
   chapter: string;
   image_url?: string;
+  image_urls?: string[];
   section_type?: string;
 }
 
