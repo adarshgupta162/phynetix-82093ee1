@@ -191,9 +191,12 @@ export function MistakeBook({ mistakes, onBookmark, onViewSolution }: MistakeBoo
                       className="overflow-hidden"
                     >
                       <div className="px-4 pb-4 space-y-3 border-t border-border/30 pt-3">
-                        {q.imageUrl && (
-                          <img src={q.imageUrl} alt={`Q${q.questionNumber}`} className="max-h-48 object-contain rounded-lg bg-secondary/20" />
-                        )}
+                        {(() => {
+                          const imgs = q.imageUrls?.length ? q.imageUrls : q.imageUrl ? [q.imageUrl] : [];
+                          return imgs.map((url, idx) => (
+                            <img key={idx} src={url} alt={`Q${q.questionNumber} img ${idx+1}`} className="max-h-48 object-contain rounded-lg bg-secondary/20" />
+                          ));
+                        })()}
                         {q.questionText && (
                           <div className="text-sm"><LatexRenderer content={q.questionText} /></div>
                         )}
