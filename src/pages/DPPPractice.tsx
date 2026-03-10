@@ -21,6 +21,7 @@ interface DPPQuestion {
   question_number: number;
   question_text: string | null;
   question_image_url: string | null;
+  question_image_urls?: string[] | null;
   question_type: string;
   options: any[];
   correct_answer: any;
@@ -28,6 +29,7 @@ interface DPPQuestion {
   negative_marks: number;
   solution_text: string | null;
   solution_image_url: string | null;
+  solution_image_urls?: string[] | null;
   difficulty: string;
 }
 
