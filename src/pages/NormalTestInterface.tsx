@@ -1054,19 +1054,29 @@ export default function NormalTestInterface() {
               </span>
             </div>
 
-            {currentQuestion?.image_url && (
-              <div className="mb-4">
-                <img 
-                  src={currentQuestion.image_url} 
-                  alt="Question" 
-                  className="max-w-full h-auto rounded-lg border border-gray-200"
-                  onError={(e) => {
-                    console.error('Image failed to load:', currentQuestion.image_url);
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
+            {/* Question Images - show all images below text */}
+            {(() => {
+              const allImages = currentQuestion?.image_urls?.length 
+                ? currentQuestion.image_urls 
+                : currentQuestion?.image_url 
+                  ? [currentQuestion.image_url] 
+                  : [];
+              return allImages.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  {allImages.map((imgUrl, imgIdx) => (
+                    <img
+                      key={imgIdx}
+                      src={imgUrl}
+                      alt={`Question image ${imgIdx + 1}`}
+                      className="max-w-full h-auto rounded-lg border border-border"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ))}
+                </div>
+              );
+            })()}
             
             {currentQuestion?.question_text && (
               <div className="text-base leading-relaxed text-gray-800 mb-6">
