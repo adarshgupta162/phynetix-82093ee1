@@ -381,10 +381,11 @@ export function QuestionEditorPanel({
             placeholder="Enter solution explanation... Supports LaTeX"
             className="min-h-[100px] font-mono text-sm"
           />
-          <QuestionImageUpload
-            value={localQuestion.solution_image_url}
-            onChange={(url) => handleFieldChange('solution_image_url', url)}
+          <MultiImageUpload
+            value={localQuestion.solution_image_urls || []}
+            onChange={(urls) => handleFieldChange('solution_image_urls', urls)}
             compact
+            label="Solution Images"
           />
         </div>
       </div>
