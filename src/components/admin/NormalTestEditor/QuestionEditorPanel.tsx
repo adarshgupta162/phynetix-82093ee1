@@ -222,10 +222,11 @@ export function QuestionEditorPanel({
             placeholder="Enter question text... Use LaTeX: $\frac{a}{b}$ for fractions"
             className="min-h-[120px] font-mono text-sm"
           />
-          <QuestionImageUpload
-            value={localQuestion.image_url}
-            onChange={(url) => handleFieldChange('image_url', url)}
+          <MultiImageUpload
+            value={localQuestion.image_urls || []}
+            onChange={(urls) => handleFieldChange('image_urls', urls)}
             compact
+            label="Question Images"
           />
         </div>
 
