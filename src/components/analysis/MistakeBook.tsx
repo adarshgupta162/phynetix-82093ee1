@@ -218,10 +218,15 @@ export function MistakeBook({ mistakes, onBookmark, onViewSolution }: MistakeBoo
                             </div>
                           )}
                         </div>
-                        {(q.solutionText || q.solutionImageUrl) && (
+                        {(q.solutionText || q.solutionImageUrl || q.solutionImageUrls?.length) && (
                           <div className="p-3 rounded-lg bg-secondary/30 border border-border/50">
                             <p className="text-xs font-medium text-muted-foreground mb-2">Solution:</p>
-                            {q.solutionImageUrl && <img src={q.solutionImageUrl} alt="Solution" className="max-h-40 object-contain rounded mb-2" />}
+                            {(() => {
+                              const imgs = q.solutionImageUrls?.length ? q.solutionImageUrls : q.solutionImageUrl ? [q.solutionImageUrl] : [];
+                              return imgs.map((url, idx) => (
+                                <img key={idx} src={url} alt={`Solution ${idx+1}`} className="max-h-40 object-contain rounded mb-2" />
+                              ));
+                            })()}
                             {q.solutionText && <div className="text-sm"><LatexRenderer content={q.solutionText} /></div>}
                           </div>
                         )}
