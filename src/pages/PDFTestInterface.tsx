@@ -8,6 +8,7 @@ import ScrollPDFViewer from '@/components/test/ScrollPDFViewer';
 import EnhancedOMRPanel from '@/components/test/EnhancedOMRPanel';
 import SectionTaskbar from '@/components/test/SectionTaskbar';
 import FullscreenGuard from '@/components/test/FullscreenGuard';
+import AccessibilityToolbar from '@/components/test/AccessibilityToolbar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileText, AlertTriangle, Play, Clock } from 'lucide-react';
