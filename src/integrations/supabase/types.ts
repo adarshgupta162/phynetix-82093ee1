@@ -1112,6 +1112,57 @@ export type Database = {
           },
         ]
       }
+      question_paragraphs: {
+        Row: {
+          created_at: string
+          id: string
+          order_index: number | null
+          paragraph_image_url: string | null
+          paragraph_image_urls: Json | null
+          paragraph_text: string | null
+          section_id: string
+          test_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_index?: number | null
+          paragraph_image_url?: string | null
+          paragraph_image_urls?: Json | null
+          paragraph_text?: string | null
+          section_id: string
+          test_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_index?: number | null
+          paragraph_image_url?: string | null
+          paragraph_image_urls?: Json | null
+          paragraph_text?: string | null
+          section_id?: string
+          test_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_paragraphs_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "test_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_paragraphs_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           chapter_id: string
@@ -1335,6 +1386,7 @@ export type Database = {
           negative_marks: number | null
           options: Json | null
           order_index: number | null
+          paragraph_id: string | null
           pdf_page: number | null
           question_number: number
           question_text: string | null
@@ -1361,6 +1413,7 @@ export type Database = {
           negative_marks?: number | null
           options?: Json | null
           order_index?: number | null
+          paragraph_id?: string | null
           pdf_page?: number | null
           question_number: number
           question_text?: string | null
@@ -1387,6 +1440,7 @@ export type Database = {
           negative_marks?: number | null
           options?: Json | null
           order_index?: number | null
+          paragraph_id?: string | null
           pdf_page?: number | null
           question_number?: number
           question_text?: string | null
@@ -1405,6 +1459,13 @@ export type Database = {
             columns: ["library_question_id"]
             isOneToOne: false
             referencedRelation: "phynetix_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "test_section_questions_paragraph_id_fkey"
+            columns: ["paragraph_id"]
+            isOneToOne: false
+            referencedRelation: "question_paragraphs"
             referencedColumns: ["id"]
           },
           {
