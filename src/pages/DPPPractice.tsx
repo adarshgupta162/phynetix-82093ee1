@@ -187,7 +187,7 @@ export default function DPPPractice() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Bar */}
+      <AccessibilityToolbar />
       <div className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">
         <div className="flex items-center justify-between px-4 py-3 max-w-6xl mx-auto">
           <div className="flex items-center gap-3">
