@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import FullscreenGuard from "@/components/test/FullscreenGuard";
+import AccessibilityToolbar from "@/components/test/AccessibilityToolbar";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
 
 interface Question {
