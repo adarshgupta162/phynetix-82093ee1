@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import LatexRenderer from "@/components/ui/latex-renderer";
+import AccessibilityToolbar from "@/components/test/AccessibilityToolbar";
 
 interface DPPQuestion {
   id: string;
