@@ -1015,7 +1015,7 @@ export default function NormalTestInterface() {
         </div>
       </div>
 
-      <div className="flex-1 flex">
+      <div className="flex-1 flex" data-test-content>
         {/* Main Question Area */}
         <main className="flex-1 bg-white p-6 overflow-y-auto">
           {/* Section Instructions */}
