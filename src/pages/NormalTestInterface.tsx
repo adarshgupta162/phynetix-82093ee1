@@ -39,6 +39,9 @@ interface Question {
   image_url?: string;
   image_urls?: string[];
   section_type?: string;
+  paragraph_id?: string;
+  paragraph_text?: string;
+  paragraph_image_urls?: string[];
 }
 
 interface Section {
@@ -240,20 +243,27 @@ export default function NormalTestInterface() {
       const allQuestions: Question[] = questionsData.questions;
       setQuestions(allQuestions);
 
-      // Group by subject
-      const subjectMap = new Map<string, Question[]>();
+      // Group by subject + section_type (e.g. Physics(SCQ), Physics(MCQ), Physics(Integer))
+      const sectionMap = new Map<string, Question[]>();
       allQuestions.forEach((q: Question) => {
         const subj = q.subject || "General";
-        if (!subjectMap.has(subj)) {
-          subjectMap.set(subj, []);
+        const qType = q.question_type || q.section_type || "single_choice";
+        const typeLabel = qType === 'single_choice' ? 'SCQ' 
+          : qType === 'multiple_choice' || qType === 'multi' ? 'MCQ' 
+          : qType === 'integer' || qType === 'numerical' ? 'Integer'
+          : 'SCQ';
+        const sectionKey = `${subj}(${typeLabel})`;
+        if (!sectionMap.has(sectionKey)) {
+          sectionMap.set(sectionKey, []);
         }
-        subjectMap.get(subj)!.push(q);
+        sectionMap.get(sectionKey)!.push(q);
       });
 
-      const sectionsList: Section[] = Array.from(subjectMap.entries()).map(([name, qs]) => ({
-        id: name.toLowerCase().replace(/\s+/g, '-'),
+      const sectionsList: Section[] = Array.from(sectionMap.entries()).map(([name, qs]) => ({
+        id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         name,
-        questions: qs.sort((a, b) => a.order - b.order)
+        questions: qs.sort((a, b) => a.order - b.order),
+        section_type: qs[0]?.question_type || qs[0]?.section_type || 'single_choice'
       }));
 
       setSections(sectionsList);
@@ -954,13 +964,15 @@ export default function NormalTestInterface() {
 
   const testContent = (
     <div className="min-h-screen bg-[#0a1628] flex flex-col pb-14 md:pb-16">
-      <AccessibilityToolbar />
       {/* Header */}
       <header className="bg-[#1e3a5f] text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <h1 className="text-base font-medium">{testName}</h1>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          {/* Accessibility Controls - inline in header */}
+          <AccessibilityToolbar inline />
+          
           <div className={cn(
             "flex items-center gap-2 px-4 py-2 rounded font-mono font-bold text-sm",
             timeLeft < 300 ? "bg-[#ef4444] text-white" : "bg-white text-black"
@@ -1006,7 +1018,7 @@ export default function NormalTestInterface() {
         </div>
       </div>
 
-      <div className="flex-1 flex">
+      <div className="flex-1 flex" data-test-content>
         {/* Main Question Area */}
         <main className="flex-1 bg-white p-6 overflow-y-auto">
           {/* Section Instructions */}
@@ -1054,7 +1066,30 @@ export default function NormalTestInterface() {
               <span className="text-xs text-gray-500">
                 {isIntegerQuestion ? 'Integer Type' : isMultipleChoice ? 'Multiple Choice' : 'Single Choice'}
               </span>
+              {currentQuestion?.paragraph_id && (
+                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+                  Paragraph Based
+                </span>
+              )}
             </div>
+
+            {/* Paragraph Context - shown above question if linked */}
+            {currentQuestion?.paragraph_text && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs font-semibold text-amber-700 mb-2 uppercase">Paragraph</p>
+                <div className="text-sm text-gray-800 leading-relaxed">
+                  <LatexRenderer content={currentQuestion.paragraph_text} />
+                </div>
+                {currentQuestion.paragraph_image_urls && currentQuestion.paragraph_image_urls.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {currentQuestion.paragraph_image_urls.map((imgUrl: string, idx: number) => (
+                      <img key={idx} src={imgUrl} alt={`Paragraph image ${idx + 1}`} 
+                        className="max-w-full h-auto rounded border border-amber-200" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Question Images - show all images below text */}
             {(() => {

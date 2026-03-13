@@ -68,6 +68,7 @@ serve(async (req) => {
           pdf_page,
           image_url,
           image_urls,
+          paragraph_id,
           section:test_sections(
             id,
             name,
@@ -83,6 +84,17 @@ serve(async (req) => {
         throw new Error("Failed to fetch questions");
       }
 
+      // Fetch paragraphs for this test
+      const { data: paragraphs } = await supabaseClient
+        .from("question_paragraphs")
+        .select("*")
+        .eq("test_id", test_id);
+      
+      const paragraphMap: Record<string, any> = {};
+      (paragraphs || []).forEach((p: any) => {
+        paragraphMap[p.id] = p;
+      });
+
       questions = (sectionQuestions || []).map((q: any, index: number) => {
         // Merge legacy image_url with image_urls array
         const imageUrls: string[] = [];
@@ -92,6 +104,7 @@ serve(async (req) => {
             if (u && !imageUrls.includes(u)) imageUrls.push(u);
           }
         }
+        const paragraph = q.paragraph_id ? paragraphMap[q.paragraph_id] : null;
         return {
           id: q.id,
           order: q.order_index ?? q.question_number ?? index,
@@ -106,7 +119,10 @@ serve(async (req) => {
           pdf_page: q.pdf_page,
           image_url: imageUrls[0] || null,
           image_urls: imageUrls,
-          correct_answer: q.correct_answer
+          correct_answer: q.correct_answer,
+          paragraph_id: q.paragraph_id,
+          paragraph_text: paragraph?.paragraph_text || null,
+          paragraph_image_urls: paragraph?.paragraph_image_urls || [],
         };
       });
     } else {
@@ -175,6 +191,7 @@ serve(async (req) => {
             order_index,
             image_url,
             image_urls,
+            paragraph_id,
             section:test_sections(
               id,
               name,
@@ -185,6 +202,17 @@ serve(async (req) => {
           `)
           .eq("test_id", test_id)
           .order("question_number");
+
+        // Fetch paragraphs for this test
+        const { data: paragraphs2 } = await supabaseClient
+          .from("question_paragraphs")
+          .select("*")
+          .eq("test_id", test_id);
+        
+        const paragraphMap2: Record<string, any> = {};
+        (paragraphs2 || []).forEach((p: any) => {
+          paragraphMap2[p.id] = p;
+        });
 
         if (!sqError && sectionQuestions && sectionQuestions.length > 0) {
           // Sort by subject order, then section order, then question number
@@ -208,6 +236,7 @@ serve(async (req) => {
                 if (u && !imageUrls.includes(u)) imageUrls.push(u);
               }
             }
+            const paragraph = q.paragraph_id ? paragraphMap2[q.paragraph_id] : null;
             return {
               id: q.id,
               order: index,
@@ -221,7 +250,10 @@ serve(async (req) => {
               chapter: q.section?.name ?? "General",
               image_url: imageUrls[0] || null,
               image_urls: imageUrls,
-              correct_answer: q.correct_answer
+              correct_answer: q.correct_answer,
+              paragraph_id: q.paragraph_id,
+              paragraph_text: paragraph?.paragraph_text || null,
+              paragraph_image_urls: paragraph?.paragraph_image_urls || [],
             };
           });
           

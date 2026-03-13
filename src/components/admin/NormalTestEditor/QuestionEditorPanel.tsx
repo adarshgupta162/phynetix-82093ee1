@@ -35,6 +35,7 @@ interface Question {
   solution_image_urls?: string[] | null;
   difficulty?: string;
   time_seconds?: number;
+  paragraph_id?: string | null;
 }
 
 interface QuestionEditorPanelProps {
