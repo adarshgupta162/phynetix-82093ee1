@@ -89,7 +89,7 @@ export default function TestEditor() {
   const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
 
   // Auto-save timer
-  const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!testId) return;
