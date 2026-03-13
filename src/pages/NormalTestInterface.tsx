@@ -39,6 +39,9 @@ interface Question {
   image_url?: string;
   image_urls?: string[];
   section_type?: string;
+  paragraph_id?: string;
+  paragraph_text?: string;
+  paragraph_image_urls?: string[];
 }
 
 interface Section {
