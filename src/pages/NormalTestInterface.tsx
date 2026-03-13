@@ -961,13 +961,15 @@ export default function NormalTestInterface() {
 
   const testContent = (
     <div className="min-h-screen bg-[#0a1628] flex flex-col pb-14 md:pb-16">
-      <AccessibilityToolbar />
       {/* Header */}
       <header className="bg-[#1e3a5f] text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <h1 className="text-base font-medium">{testName}</h1>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          {/* Accessibility Controls - inline in header */}
+          <AccessibilityToolbar inline />
+          
           <div className={cn(
             "flex items-center gap-2 px-4 py-2 rounded font-mono font-bold text-sm",
             timeLeft < 300 ? "bg-[#ef4444] text-white" : "bg-white text-black"
