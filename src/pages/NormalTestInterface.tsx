@@ -1066,7 +1066,30 @@ export default function NormalTestInterface() {
               <span className="text-xs text-gray-500">
                 {isIntegerQuestion ? 'Integer Type' : isMultipleChoice ? 'Multiple Choice' : 'Single Choice'}
               </span>
+              {currentQuestion?.paragraph_id && (
+                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+                  Paragraph Based
+                </span>
+              )}
             </div>
+
+            {/* Paragraph Context - shown above question if linked */}
+            {currentQuestion?.paragraph_text && (
+              <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs font-semibold text-amber-700 mb-2 uppercase">Paragraph</p>
+                <div className="text-sm text-gray-800 leading-relaxed">
+                  <LatexRenderer content={currentQuestion.paragraph_text} />
+                </div>
+                {currentQuestion.paragraph_image_urls && currentQuestion.paragraph_image_urls.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {currentQuestion.paragraph_image_urls.map((imgUrl: string, idx: number) => (
+                      <img key={idx} src={imgUrl} alt={`Paragraph image ${idx + 1}`} 
+                        className="max-w-full h-auto rounded border border-amber-200" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Question Images - show all images below text */}
             {(() => {
