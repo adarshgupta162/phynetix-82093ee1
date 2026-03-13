@@ -954,6 +954,7 @@ export default function NormalTestInterface() {
 
   const testContent = (
     <div className="min-h-screen bg-[#0a1628] flex flex-col pb-14 md:pb-16">
+      <AccessibilityToolbar />
       {/* Header */}
       <header className="bg-[#1e3a5f] text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">

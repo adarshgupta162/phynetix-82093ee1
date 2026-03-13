@@ -713,6 +713,7 @@ export default function PDFTestInterface() {
   // Test phase
   const TestContent = (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
+      <AccessibilityToolbar />
       {/* Section Taskbar */}
       <SectionTaskbar
         sections={sections}
