@@ -240,20 +240,27 @@ export default function NormalTestInterface() {
       const allQuestions: Question[] = questionsData.questions;
       setQuestions(allQuestions);
 
-      // Group by subject
-      const subjectMap = new Map<string, Question[]>();
+      // Group by subject + section_type (e.g. Physics(SCQ), Physics(MCQ), Physics(Integer))
+      const sectionMap = new Map<string, Question[]>();
       allQuestions.forEach((q: Question) => {
         const subj = q.subject || "General";
-        if (!subjectMap.has(subj)) {
-          subjectMap.set(subj, []);
+        const qType = q.question_type || q.section_type || "single_choice";
+        const typeLabel = qType === 'single_choice' ? 'SCQ' 
+          : qType === 'multiple_choice' || qType === 'multi' ? 'MCQ' 
+          : qType === 'integer' || qType === 'numerical' ? 'Integer'
+          : 'SCQ';
+        const sectionKey = `${subj}(${typeLabel})`;
+        if (!sectionMap.has(sectionKey)) {
+          sectionMap.set(sectionKey, []);
         }
-        subjectMap.get(subj)!.push(q);
+        sectionMap.get(sectionKey)!.push(q);
       });
 
-      const sectionsList: Section[] = Array.from(subjectMap.entries()).map(([name, qs]) => ({
-        id: name.toLowerCase().replace(/\s+/g, '-'),
+      const sectionsList: Section[] = Array.from(sectionMap.entries()).map(([name, qs]) => ({
+        id: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
         name,
-        questions: qs.sort((a, b) => a.order - b.order)
+        questions: qs.sort((a, b) => a.order - b.order),
+        section_type: qs[0]?.question_type || qs[0]?.section_type || 'single_choice'
       }));
 
       setSections(sectionsList);
