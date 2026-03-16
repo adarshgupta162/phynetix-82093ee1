@@ -1,20 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Clock,
-  Flag,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-  CheckCircle2,
-  XCircle,
-  Menu,
-  X,
-  Loader2,
-  RotateCcw,
-  Eye,
-  EyeOff,
-  KeyRound
+  Clock, Flag, ChevronLeft, ChevronRight, AlertCircle,
+  CheckCircle2, XCircle, Menu, X, Loader2, RotateCcw, Eye, EyeOff, KeyRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate, useParams } from "react-router-dom";
@@ -25,394 +13,285 @@ import FullscreenGuard from "@/components/test/FullscreenGuard";
 import AccessibilityToolbar from "@/components/test/AccessibilityToolbar";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
 
-/* ─────────────────────────────────────────────
-   TYPES  (unchanged)
-───────────────────────────────────────────── */
+/* ─── TYPES (unchanged) ─── */
 interface Question {
-  id: string;
-  order: number;
-  question_text: string;
-  options: string[] | null;
-  difficulty: string;
-  marks: number;
-  negative_marks: number;
-  question_type: string;
-  subject: string;
-  chapter: string;
-  image_url?: string;
-  image_urls?: string[];
-  section_type?: string;
-  paragraph_id?: string;
-  paragraph_text?: string;
+  id: string; order: number; question_text: string;
+  options: string[] | null; difficulty: string; marks: number;
+  negative_marks: number; question_type: string; subject: string;
+  chapter: string; image_url?: string; image_urls?: string[];
+  section_type?: string; paragraph_id?: string; paragraph_text?: string;
   paragraph_image_urls?: string[];
 }
+interface Section { id: string; name: string; questions: Question[]; section_type?: string; }
 
-interface Section {
-  id: string;
-  name: string;
-  questions: Question[];
-  section_type?: string;
+/* ═══════════════════════════════════════════════════════
+   EXACT PIXEL COLOURS picked from screenshots
+═══════════════════════════════════════════════════════ */
+// Screen 1-3
+const BLUE_STRIPE   = "#4a90d9";   // top blue bar on screens 1-3
+const HEADER_GREY   = "#636363";   // grey header bg
+const YELLOW        = "#f5c518";   // system name / candidate name
+const INST_HDR      = "#add8e6";   // light-blue "Instructions" bar
+const VERSION_BLUE  = "#4a90d9";   // bottom version bar bg
+const SIGN_IN_BLUE  = "#29abe2";   // Sign In button
+const LOGIN_CARD    = "#e8e8e8";   // login card bg
+const LOGIN_HDR     = "#d0d0d0";   // login card header
+
+// Screen 4
+const TOPBAR_DARK   = "#1a1a2e";   // very dark top bar
+const SEC_TAB_BG    = "#f0f0f0";   // section tab row bg
+const SEC_ACT       = "#2979c5";   // active section tab
+const SEC_INACT     = "#dce8f4";   // inactive section tab
+const SIDEBAR_BG    = "#dce8f5";   // sidebar light blue
+const SIDEBAR_TITLE = "#2979c5";   // "SUPR" title row
+const BOTTOM_BG     = "#f0f0f0";   // bottom action bar
+const SAVE_BTN      = "#2979c5";   // Save & Next / Submit buttons
+
+// Palette — exact from screenshot 4
+// Not-visited: light grey SQUARE (border-radius ~3px)
+// Not-answered/Current: ORANGE-RED SHIELD (pentagon, rounded top corners only)
+// Answered: GREEN CIRCLE
+// Marked: PURPLE CIRCLE
+// Answered+Marked: PURPLE CIRCLE + small green dot bottom-right
+const PAL_GREY      = "#c8c8c8";
+const PAL_ORANGE    = "#e05c1a";   // orange-red shield (not answered / current)
+const PAL_GREEN     = "#26a65b";   // green circle (answered)
+const PAL_PURPLE    = "#7b2fbf";   // purple circle (marked)
+
+/* ═══════════════════════════════════════════════════════
+   PALETTE BUTTON — exact shape per status
+═══════════════════════════════════════════════════════ */
+function PaletteBtn({ num, status, onClick }: { num: number; status: string; onClick: () => void }) {
+  let bg = PAL_GREY, color = "#555", borderRadius = "3px", border = "1px solid #aaa";
+  let outline = "none";
+
+  if (status === "not-answered" || status === "current") {
+    bg = PAL_ORANGE; color = "#fff";
+    // Shield = rounded top, straight bottom
+    borderRadius = "8px 8px 2px 2px";
+    border = "none";
+    if (status === "current") outline = "3px solid #e05c1a";
+  } else if (status === "answered") {
+    bg = PAL_GREEN; color = "#fff"; borderRadius = "50%"; border = "none";
+  } else if (status === "marked" || status === "answered-marked") {
+    bg = PAL_PURPLE; color = "#fff"; borderRadius = "50%"; border = "none";
+  }
+
+  return (
+    <div onClick={onClick} style={{
+      width: 36, height: 36, background: bg, color, borderRadius, border,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: 13, fontWeight: "bold", cursor: "pointer",
+      fontFamily: "Arial,sans-serif", position: "relative", flexShrink: 0,
+      outline, outlineOffset: "2px", boxSizing: "border-box",
+      userSelect: "none",
+    }}>
+      {num}
+      {status === "answered-marked" && (
+        <span style={{
+          position: "absolute", bottom: -2, right: -2,
+          width: 11, height: 11, background: PAL_GREEN,
+          borderRadius: "50%", border: "2px solid #fff",
+        }} />
+      )}
+    </div>
+  );
 }
 
-/* ─────────────────────────────────────────────
-   NTA COLOUR TOKENS
-───────────────────────────────────────────── */
-const NTA = {
-  topbarBg:   "#1e3a5f",   // deep navy
-  sectionBg:  "#d6e4f0",   // light blue-grey tab bar
-  sectionAct: "#1a5276",   // active section tab
-  timerRed:   "#cc0000",
-  btnPrimary: "#1a5276",
-  btnSave:    "#1a5276",
-  btnSubmit:  "#cc0000",
-  btnReview:  "#7b2d8b",
-  btnClear:   "#555555",
-  palGreen:   "#339900",
-  palRed:     "#cc3300",
-  palGray:    "#8d8d8d",
-  palPurple:  "#6a1b9a",
-  palCurrent: "#f39c12",
-  sidebarBg:  "#eaf0f7",
-  borderGray: "#b0bec5",
-};
-
-/* ─────────────────────────────────────────────
-   SHARED NTA HEADER (screens 1–3)
-───────────────────────────────────────────── */
-const NTAHeader = ({
-  systemId, studentName, testName, studentAvatar
-}: {
-  systemId: string; studentName: string; testName: string; studentAvatar: string | null;
-}) => (
-  <div style={{ background: "#4a4a4a", color: "#fff", fontFamily: "Arial, sans-serif" }}>
-    {/* Top blue stripe */}
-    <div style={{ height: 8, background: NTA.topbarBg }} />
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 14px" }}>
-      {/* Left */}
-      <div>
-        <div style={{ fontSize: 12, color: "#ccc" }}>System Name :</div>
-        <div style={{ fontSize: 22, fontWeight: "bold", color: "#f5c518", letterSpacing: 1 }}>
-          {systemId || "C001"}
-        </div>
-        <div style={{ fontSize: 11, color: "#ccc", marginTop: 2 }}>
-          Kindly contact the invigilator if there are any discrepancies in the Name and Photograph displayed on the screen or if the photograph is not yours
-        </div>
-      </div>
-      {/* Right */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 12, color: "#ccc" }}>Candidate Name :</div>
-          <div style={{ fontSize: 20, fontWeight: "bold", color: "#f5c518" }}>{studentName}</div>
-          <div style={{ fontSize: 12, color: "#ccc" }}>
-            Subject : <span style={{ color: "#f5c518" }}>{testName}</span>
-          </div>
-        </div>
-        {/* Photo box */}
-        <div style={{
-          width: 70, height: 80, border: "2px solid #888",
-          background: "#ccc", overflow: "hidden", display: "flex",
-          alignItems: "center", justifyContent: "center", flexShrink: 0
-        }}>
-          {studentAvatar
-            ? <img src={studentAvatar} alt={studentName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            : <span style={{ fontSize: 40 }}>👤</span>}
-        </div>
-      </div>
+/* ═══════════════════════════════════════════════════════
+   LEGEND ICON — coloured shapes for legend in sidebar
+═══════════════════════════════════════════════════════ */
+function LegendIcon({ n, type }: { n: number; type: "answered"|"notans"|"notvisit"|"marked"|"ansmarked" }) {
+  const s = {
+    answered:  { bg: PAL_GREEN,  color:"#fff", borderRadius:"50%",         border:"none" },
+    notans:    { bg: PAL_ORANGE, color:"#fff", borderRadius:"8px 8px 2px 2px", border:"none" },
+    notvisit:  { bg: PAL_GREY,   color:"#555", borderRadius:"3px",          border:"1px solid #aaa" },
+    marked:    { bg: PAL_PURPLE, color:"#fff", borderRadius:"50%",          border:"none" },
+    ansmarked: { bg: PAL_PURPLE, color:"#fff", borderRadius:"50%",          border:"none" },
+  }[type];
+  return (
+    <div style={{ position:"relative", width:26, height:26, background:s.bg, color:s.color, borderRadius:s.borderRadius, border:s.border, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:"bold", flexShrink:0 }}>
+      {n}
+      {type === "ansmarked" && <span style={{ position:"absolute", bottom:-2, right:-2, width:9, height:9, background:PAL_GREEN, borderRadius:"50%", border:"2px solid #fff" }} />}
     </div>
-  </div>
-);
+  );
+}
 
-/* ─────────────────────────────────────────────
-   NTA VERSION BAR
-───────────────────────────────────────────── */
-const NTAVersionBar = () => (
-  <div style={{
-    background: NTA.topbarBg, color: "#fff", textAlign: "center",
-    fontSize: 11, padding: "3px 0", position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 9999
-  }}>
-    Version : 17.07.00
-  </div>
-);
-
-/* ─────────────────────────────────────────────
-   PALETTE BUTTON STATUS STYLES
-───────────────────────────────────────────── */
-const palStyle = (status: string): React.CSSProperties => {
-  const base: React.CSSProperties = {
-    width: 34, height: 34, border: "1px solid #999",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    fontSize: 12, fontWeight: "bold", cursor: "pointer",
-    fontFamily: "Arial, sans-serif", position: "relative",
-    transition: "transform .1s"
-  };
-  switch (status) {
-    case "answered":       return { ...base, background: NTA.palGreen,  color: "#fff", borderRadius: "50%", borderColor: "#226600" };
-    case "not-answered":   return { ...base, background: NTA.palRed,    color: "#fff", borderRadius: "50%", borderColor: "#aa2200" };
-    case "marked":         return { ...base, background: NTA.palPurple, color: "#fff", borderRadius: "50%", borderColor: "#4a148c" };
-    case "answered-marked":return { ...base, background: NTA.palPurple, color: "#fff", borderRadius: "50%", borderColor: "#4a148c" };
-    case "current":        return { ...base, background: NTA.palRed,    color: "#fff", borderRadius: "50%", borderColor: "#aa2200", boxShadow: `0 0 0 3px ${NTA.palCurrent}` };
-    default:               return { ...base, background: NTA.palGray,   color: "#fff", borderRadius: 3 };
-  }
-};
-
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════
    MAIN COMPONENT
-───────────────────────────────────────────── */
+═══════════════════════════════════════════════════════ */
 export default function NormalTestInterface() {
   const { testId } = useParams();
   const navigate = useNavigate();
 
-  /* ── ALL STATE (100% identical to original) ── */
-  const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [testName, setTestName] = useState("Loading...");
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [sections, setSections] = useState<Section[]>([]);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  /* ── STATE (100% identical to original) ── */
+  const [attemptId, setAttemptId]             = useState<string | null>(null);
+  const [testName, setTestName]               = useState("Loading...");
+  const [questions, setQuestions]             = useState<Question[]>([]);
+  const [sections, setSections]               = useState<Section[]>([]);
+  const [activeSection, setActiveSection]     = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [answers, setAnswers]                 = useState<Record<string, string | string[]>>({});
   const [markedForReview, setMarkedForReview] = useState<Set<string>>(new Set());
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(new Set());
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [showPalette, setShowPalette] = useState(true);
+  const [timeLeft, setTimeLeft]               = useState(0);
+  const [showPalette, setShowPalette]         = useState(true);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading]                 = useState(true);
+  const [submitting, setSubmitting]           = useState(false);
   const [fullscreenEnabled, setFullscreenEnabled] = useState(true);
   const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
-  const [currentScreen, setCurrentScreen] = useState(1);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [testDuration, setTestDuration] = useState(0);
+  const [currentScreen, setCurrentScreen]     = useState(1);
+  const [agreedToTerms, setAgreedToTerms]     = useState(false);
+  const [testDuration, setTestDuration]       = useState(0);
   const [hasExistingAttempt, setHasExistingAttempt] = useState(false);
-  const [systemId, setSystemId] = useState("");
-  const [studentName, setStudentName] = useState("Student");
-  const [studentAvatar, setStudentAvatar] = useState<string | null>(null);
-  const [examType, setExamType] = useState<string>("custom");
-  const [testType, setTestType] = useState<string>("full");
+  const [systemId, setSystemId]               = useState("");
+  const [studentName, setStudentName]         = useState("Student");
+  const [studentAvatar, setStudentAvatar]     = useState<string | null>(null);
+  const [examType, setExamType]               = useState<string>("custom");
+  const [testType, setTestType]               = useState<string>("full");
   const [studentRollNumber, setStudentRollNumber] = useState("");
   const [timePerQuestion, setTimePerQuestion] = useState<Record<string, number>>({});
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
-  const [isSaving, setIsSaving] = useState(false);
-  const [timeExpired, setTimeExpired] = useState(false);
+  const [isSaving, setIsSaving]               = useState(false);
+  const [timeExpired, setTimeExpired]         = useState(false);
 
-  /* ── ALL BACKEND / API LOGIC (100% identical to original) ── */
+  /* ════ ALL API / BACKEND LOGIC — 100% IDENTICAL TO ORIGINAL ════ */
 
-  useEffect(() => {
-    if (testId) checkExistingAttemptFn();
-  }, [testId]);
+  useEffect(() => { if (testId) checkExistingAttemptFn(); }, [testId]);
 
   const checkExistingAttemptFn = async () => {
     try {
-      const { data: testData } = await supabase
-        .from("tests")
+      const { data: testData } = await supabase.from("tests")
         .select("name, duration_minutes, fullscreen_enabled, exam_type, test_type")
-        .eq("id", testId)
-        .single();
-
+        .eq("id", testId).single();
       if (testData) {
-        setTestName(testData.name);
-        setTestDuration(testData.duration_minutes);
+        setTestName(testData.name); setTestDuration(testData.duration_minutes);
         setFullscreenEnabled(testData.fullscreen_enabled ?? true);
-        setExamType(testData.exam_type || "custom");
-        setTestType(testData.test_type || "full");
+        setExamType(testData.exam_type || "custom"); setTestType(testData.test_type || "full");
       }
-
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, avatar_url, roll_number")
-          .eq("id", user.id)
-          .single();
-
+        const { data: profile } = await supabase.from("profiles")
+          .select("full_name, avatar_url, roll_number").eq("id", user.id).single();
         setStudentName(profile?.full_name || "Student");
         setStudentAvatar(profile?.avatar_url);
         setStudentRollNumber(profile?.roll_number || user.id.substring(0, 8));
-
         const storageKey = `systemId_${testId}`;
-        let storedSystemId = localStorage.getItem(storageKey);
-        if (!storedSystemId) {
-          storedSystemId = `C${Math.floor(100 + Math.random() * 900)}`;
-          localStorage.setItem(storageKey, storedSystemId);
-        }
-        setSystemId(storedSystemId);
-
-        const { data: existingAttempt } = await supabase
-          .from("test_attempts")
+        let sid = localStorage.getItem(storageKey);
+        if (!sid) { sid = `C${Math.floor(100 + Math.random() * 900)}`; localStorage.setItem(storageKey, sid); }
+        setSystemId(sid);
+        const { data: ea } = await supabase.from("test_attempts")
           .select("id, completed_at, fullscreen_exit_count")
-          .eq("test_id", testId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (existingAttempt) {
-          if (existingAttempt.completed_at) {
-            navigate(`/test/${testId}/analysis`);
-            return;
-          }
-          setHasExistingAttempt(true);
-          setCurrentScreen(4);
-          setFullscreenExitCount(existingAttempt.fullscreen_exit_count || 0);
-          initializeTest();
-          return;
+          .eq("test_id", testId).eq("user_id", user.id).maybeSingle();
+        if (ea) {
+          if (ea.completed_at) { navigate(`/test/${testId}/analysis`); return; }
+          setHasExistingAttempt(true); setCurrentScreen(4);
+          setFullscreenExitCount(ea.fullscreen_exit_count || 0);
+          initializeTest(); return;
         }
       }
       setLoading(false);
-    } catch (error) {
-      console.error("Error checking attempt:", error);
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); setLoading(false); }
   };
 
   const startTest = () => {
     if (!agreedToTerms) {
-      toast({ title: "Please agree to the terms", description: "You must agree to the test rules before starting.", variant: "destructive" });
-      return;
+      toast({ title: "Please agree to the terms", description: "You must agree to the test rules before starting.", variant: "destructive" }); return;
     }
     if (fullscreenEnabled) {
-      const elem = document.documentElement;
-      (elem.requestFullscreen?.() ||
-        (elem as any).webkitRequestFullscreen?.() ||
-        (elem as any).mozRequestFullScreen?.() ||
-        (elem as any).msRequestFullscreen?.()
-      )?.catch?.(() => {});
+      const el = document.documentElement;
+      (el.requestFullscreen?.() || (el as any).webkitRequestFullscreen?.() || (el as any).mozRequestFullScreen?.() || (el as any).msRequestFullscreen?.())?.catch?.(() => {});
     }
-    setCurrentScreen(4);
-    setLoading(true);
-    initializeTest();
+    setCurrentScreen(4); setLoading(true); initializeTest();
   };
 
   const initializeTest = async () => {
     try {
-      const { data: testData } = await supabase
-        .from("tests").select("fullscreen_enabled").eq("id", testId).single();
-      if (testData) setFullscreenEnabled(testData.fullscreen_enabled ?? true);
-
-      const { data: startData, error: startError } = await supabase.functions.invoke("start-test", {
-        body: { test_id: testId },
-      });
+      const { data: td } = await supabase.from("tests").select("fullscreen_enabled").eq("id", testId).single();
+      if (td) setFullscreenEnabled(td.fullscreen_enabled ?? true);
+      const { data: startData, error: startError } = await supabase.functions.invoke("start-test", { body: { test_id: testId } });
       if (startError || startData?.error) throw new Error(startData?.error || startError?.message || "Failed to start test");
-
-      setAttemptId(startData.attempt_id);
-      setTestName(startData.test_name);
+      setAttemptId(startData.attempt_id); setTestName(startData.test_name);
       setTimeLeft(startData.remaining_seconds ?? startData.duration_minutes * 60);
       if (startData.fullscreen_exit_count) setFullscreenExitCount(startData.fullscreen_exit_count);
       if (startData.is_resume && startData.existing_answers) setAnswers(startData.existing_answers);
       if (startData.is_resume && startData.existing_time_per_question) setTimePerQuestion(startData.existing_time_per_question);
-
-      const { data: questionsData, error: questionsError } = await supabase.functions.invoke("get-test-questions", {
-        body: { test_id: testId },
-      });
-      if (questionsError || questionsData?.error) throw new Error(questionsData?.error || questionsError?.message || "Failed to load questions");
-      if (!questionsData.questions || questionsData.questions.length === 0) throw new Error("No questions found for this test");
-
-      const allQuestions: Question[] = questionsData.questions;
-      setQuestions(allQuestions);
-
-      const sectionMap = new Map<string, Question[]>();
-      allQuestions.forEach((q: Question) => {
+      const { data: qData, error: qErr } = await supabase.functions.invoke("get-test-questions", { body: { test_id: testId } });
+      if (qErr || qData?.error) throw new Error(qData?.error || qErr?.message || "Failed to load questions");
+      if (!qData.questions?.length) throw new Error("No questions found for this test");
+      const allQ: Question[] = qData.questions;
+      setQuestions(allQ);
+      const secMap = new Map<string, Question[]>();
+      allQ.forEach((q: Question) => {
         const subj = q.subject || "General";
-        const qType = q.question_type || q.section_type || "single_choice";
-        const typeLabel = qType === "single_choice" ? "SCQ"
-          : qType === "multiple_choice" || qType === "multi" ? "MCQ"
-          : qType === "integer" || qType === "numerical" ? "Integer"
-          : "SCQ";
-        const sectionKey = `${subj}(${typeLabel})`;
-        if (!sectionMap.has(sectionKey)) sectionMap.set(sectionKey, []);
-        sectionMap.get(sectionKey)!.push(q);
+        const qt = q.question_type || q.section_type || "single_choice";
+        const label = qt === "single_choice" ? "SCQ" : qt === "multiple_choice" || qt === "multi" ? "MCQ" : qt === "integer" || qt === "numerical" ? "Integer" : "SCQ";
+        const key = `${subj}(${label})`;
+        if (!secMap.has(key)) secMap.set(key, []);
+        secMap.get(key)!.push(q);
       });
-
-      const sectionsList: Section[] = Array.from(sectionMap.entries()).map(([name, qs]) => ({
-        id: name.toLowerCase().replace(/[^a-z0-9]/g, "-"),
-        name,
+      const secList: Section[] = Array.from(secMap.entries()).map(([name, qs]) => ({
+        id: name.toLowerCase().replace(/[^a-z0-9]/g, "-"), name,
         questions: qs.sort((a, b) => a.order - b.order),
         section_type: qs[0]?.question_type || qs[0]?.section_type || "single_choice"
       }));
-
-      setSections(sectionsList);
-      if (sectionsList.length > 0) setActiveSection(sectionsList[0].id);
-
-      if (allQuestions.length > 0) {
-        if (startData.is_resume && startData.existing_answers) {
-          setVisitedQuestions(new Set([allQuestions[0].id, ...Object.keys(startData.existing_answers)]));
-        } else {
-          setVisitedQuestions(new Set([allQuestions[0].id]));
-        }
+      setSections(secList);
+      if (secList.length) setActiveSection(secList[0].id);
+      if (allQ.length) {
+        if (startData.is_resume && startData.existing_answers)
+          setVisitedQuestions(new Set([allQ[0].id, ...Object.keys(startData.existing_answers)]));
+        else setVisitedQuestions(new Set([allQ[0].id]));
       }
       setLoading(false);
-    } catch (error: any) {
-      console.error("Failed to initialize test:", error);
-      toast({ title: "Error", description: error.message || "Failed to start test. Please try again.", variant: "destructive" });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Error", description: e.message || "Failed to start test.", variant: "destructive" });
       navigate("/tests");
     }
   };
 
   useEffect(() => {
     if (timeLeft <= 0 || loading || currentScreen !== 4) return;
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) { clearInterval(timer); setTimeExpired(true); return 0; }
-        return prev - 1;
-      });
+    const t = setInterval(() => {
+      setTimeLeft(p => { if (p <= 1) { clearInterval(t); setTimeExpired(true); return 0; } return p - 1; });
     }, 1000);
-    return () => clearInterval(timer);
+    return () => clearInterval(t);
   }, [loading, currentScreen]);
 
-  useEffect(() => {
-    if (timeExpired && attemptId && !submitting) handleSubmit();
-  }, [timeExpired]);
+  useEffect(() => { if (timeExpired && attemptId && !submitting) handleSubmit(); }, [timeExpired]);
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
+  const formatTime = (s: number) => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
 
-  const currentSection = sections.find(s => s.id === activeSection);
+  const currentSection  = sections.find(s => s.id === activeSection);
   const currentQuestion = currentSection?.questions[currentQuestionIndex];
+  const isMultipleChoice = ["multiple_choice","multi"].includes(currentQuestion?.question_type||"") || ["multiple_choice","multi"].includes(currentQuestion?.section_type||"");
+  const isIntegerQuestion = ["integer","numerical"].includes(currentQuestion?.question_type||"");
 
-  const isMultipleChoice = currentQuestion?.question_type === "multiple_choice" ||
-    currentQuestion?.question_type === "multi" ||
-    currentQuestion?.section_type === "multiple_choice" ||
-    currentQuestion?.section_type === "multi";
-
-  const handleAnswer = (optionIndex: number) => {
-    if (currentQuestion) {
-      if (isMultipleChoice) {
-        const currentAnswers = Array.isArray(answers[currentQuestion.id])
-          ? answers[currentQuestion.id] as string[]
-          : answers[currentQuestion.id] ? [answers[currentQuestion.id] as string] : [];
-        const optionStr = String(optionIndex);
-        const newAnswers = currentAnswers.includes(optionStr)
-          ? currentAnswers.filter(a => a !== optionStr)
-          : [...currentAnswers, optionStr];
-        setAnswers({ ...answers, [currentQuestion.id]: newAnswers });
-      } else {
-        setAnswers({ ...answers, [currentQuestion.id]: String(optionIndex) });
-      }
+  const handleAnswer = (idx: number) => {
+    if (!currentQuestion) return;
+    if (isMultipleChoice) {
+      const cur = Array.isArray(answers[currentQuestion.id]) ? answers[currentQuestion.id] as string[] : answers[currentQuestion.id] ? [answers[currentQuestion.id] as string] : [];
+      const s = String(idx);
+      setAnswers({ ...answers, [currentQuestion.id]: cur.includes(s) ? cur.filter(a => a !== s) : [...cur, s] });
+    } else {
+      setAnswers({ ...answers, [currentQuestion.id]: String(idx) });
     }
   };
 
-  const handleIntegerAnswer = (value: string) => {
-    if (currentQuestion) {
-      const sanitized = value.replace(/[^0-9-]/g, "");
-      setAnswers({ ...answers, [currentQuestion.id]: sanitized });
-    }
+  const handleIntegerAnswer = (v: string) => {
+    if (currentQuestion) setAnswers({ ...answers, [currentQuestion.id]: v.replace(/[^0-9-]/g,"") });
   };
 
   const clearResponse = () => {
-    if (currentQuestion) {
-      const newAnswers = { ...answers };
-      delete newAnswers[currentQuestion.id];
-      setAnswers(newAnswers);
-    }
+    if (!currentQuestion) return;
+    const na = { ...answers }; delete na[currentQuestion.id]; setAnswers(na);
   };
 
   const updateTimeForCurrentQuestion = useCallback(() => {
     if (currentQuestion) {
-      const timeSpent = Math.floor((Date.now() - questionStartTime) / 1000);
-      setTimePerQuestion(prev => ({
-        ...prev,
-        [currentQuestion.id]: (prev[currentQuestion.id] || 0) + timeSpent
-      }));
+      const t = Math.floor((Date.now() - questionStartTime) / 1000);
+      setTimePerQuestion(p => ({ ...p, [currentQuestion.id]: (p[currentQuestion.id]||0) + t }));
     }
   }, [currentQuestion, questionStartTime]);
 
@@ -420,106 +299,65 @@ export default function NormalTestInterface() {
     if (!attemptId || isSaving) return;
     setIsSaving(true);
     try {
-      const currentTimeSpent = currentQuestion ? Math.floor((Date.now() - questionStartTime) / 1000) : 0;
-      const updatedTimePerQuestion = currentQuestion
-        ? { ...timePerQuestion, [currentQuestion.id]: (timePerQuestion[currentQuestion.id] || 0) + currentTimeSpent }
-        : timePerQuestion;
-      const { error } = await supabase
-        .from("test_attempts")
-        .update({ answers, time_per_question: updatedTimePerQuestion })
-        .eq("id", attemptId);
-      if (error) console.error("Failed to auto-save:", error);
-    } catch (error) {
-      console.error("Error saving progress:", error);
-    } finally {
-      setIsSaving(false);
-    }
+      const ct = currentQuestion ? Math.floor((Date.now() - questionStartTime) / 1000) : 0;
+      const upd = currentQuestion ? { ...timePerQuestion, [currentQuestion.id]: (timePerQuestion[currentQuestion.id]||0) + ct } : timePerQuestion;
+      const { error } = await supabase.from("test_attempts").update({ answers, time_per_question: upd }).eq("id", attemptId);
+      if (error) console.error("Auto-save failed:", error);
+    } catch (e) { console.error(e); } finally { setIsSaving(false); }
   }, [attemptId, answers, timePerQuestion, currentQuestion, questionStartTime, isSaving]);
 
   useEffect(() => {
     if (currentScreen !== 4 || !attemptId || loading) return;
-    const interval = setInterval(() => { saveProgress(); }, 10000);
-    return () => clearInterval(interval);
+    const i = setInterval(() => saveProgress(), 10000);
+    return () => clearInterval(i);
   }, [currentScreen, attemptId, loading, saveProgress]);
 
+  /* SAVE & NEXT — saves only on button click */
   const saveAndNext = async () => {
-    updateTimeForCurrentQuestion();
-    setQuestionStartTime(Date.now());
-    await saveProgress();
-    goToNextQuestion();
+    updateTimeForCurrentQuestion(); setQuestionStartTime(Date.now());
+    await saveProgress(); goToNextQuestion();
   };
 
   const markForReviewAndNext = async () => {
-    if (currentQuestion) {
-      const newMarked = new Set(markedForReview);
-      newMarked.add(currentQuestion.id);
-      setMarkedForReview(newMarked);
-    }
-    updateTimeForCurrentQuestion();
-    setQuestionStartTime(Date.now());
-    await saveProgress();
-    goToNextQuestion();
+    if (currentQuestion) { const nm = new Set(markedForReview); nm.add(currentQuestion.id); setMarkedForReview(nm); }
+    updateTimeForCurrentQuestion(); setQuestionStartTime(Date.now());
+    await saveProgress(); goToNextQuestion();
   };
 
   const goToNextQuestion = () => {
     if (!currentSection) return;
     if (currentQuestionIndex < currentSection.questions.length - 1) {
-      const nextIndex = currentQuestionIndex + 1;
-      setCurrentQuestionIndex(nextIndex);
-      const nextQ = currentSection.questions[nextIndex];
-      if (nextQ) setVisitedQuestions(prev => new Set([...prev, nextQ.id]));
+      const ni = currentQuestionIndex + 1; setCurrentQuestionIndex(ni);
+      const nq = currentSection.questions[ni];
+      if (nq) setVisitedQuestions(p => new Set([...p, nq.id]));
     } else {
-      const currentSectionIdx = sections.findIndex(s => s.id === activeSection);
-      if (currentSectionIdx < sections.length - 1) {
-        const nextSection = sections[currentSectionIdx + 1];
-        setActiveSection(nextSection.id);
-        setCurrentQuestionIndex(0);
-        if (nextSection.questions[0]) setVisitedQuestions(prev => new Set([...prev, nextSection.questions[0].id]));
+      const ci = sections.findIndex(s => s.id === activeSection);
+      if (ci < sections.length - 1) {
+        const ns = sections[ci+1]; setActiveSection(ns.id); setCurrentQuestionIndex(0);
+        if (ns.questions[0]) setVisitedQuestions(p => new Set([...p, ns.questions[0].id]));
       }
     }
   };
 
-  const goToPrevQuestion = () => {
-    if (!currentSection) return;
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    } else {
-      const currentSectionIdx = sections.findIndex(s => s.id === activeSection);
-      if (currentSectionIdx > 0) {
-        const prevSection = sections[currentSectionIdx - 1];
-        setActiveSection(prevSection.id);
-        setCurrentQuestionIndex(prevSection.questions.length - 1);
-      }
-    }
-  };
-
-  const handleSubmit = useCallback(async (fromFullscreenMax = false) => {
+  const handleSubmit = useCallback(async (fromMax = false) => {
     if (!attemptId || submitting) return;
     setSubmitting(true);
     try {
       const { data, error } = await supabase.functions.invoke("submit-test", {
-        body: {
-          attempt_id: attemptId,
-          answers,
-          time_taken_seconds: Math.max(1, (testDuration * 60) - timeLeft),
-          fullscreen_exit_count: fullscreenExitCount,
-        },
+        body: { attempt_id: attemptId, answers, time_taken_seconds: Math.max(1,(testDuration*60)-timeLeft), fullscreen_exit_count: fullscreenExitCount },
       });
       if (error || data?.error) throw new Error(data?.error || error?.message || "Failed to submit test");
       navigate(`/test/${testId}/analysis`, { state: { results: data, testName } });
-    } catch (error: any) {
-      console.error("Failed to submit test:", error);
-      toast({ title: "Error", description: error.message || "Failed to submit test. Please try again.", variant: "destructive" });
+    } catch (e: any) {
+      console.error(e);
+      toast({ title: "Error", description: e.message || "Failed to submit test.", variant: "destructive" });
       setSubmitting(false);
     }
   }, [attemptId, answers, timeLeft, testId, testName, navigate, submitting, questions, fullscreenExitCount]);
 
   const handleFullscreenExitCountChange = useCallback((count: number) => {
     setFullscreenExitCount(count);
-    if (attemptId) {
-      supabase.from("test_attempts").update({ fullscreen_exit_count: count }).eq("id", attemptId)
-        .then(({ error }) => { if (error) console.error("Failed to update fullscreen count:", error); });
-    }
+    if (attemptId) supabase.from("test_attempts").update({ fullscreen_exit_count: count }).eq("id", attemptId).then(({ error }) => { if (error) console.error(error); });
   }, [attemptId]);
 
   const handleMaxFullscreenExits = useCallback(() => {
@@ -527,486 +365,419 @@ export default function NormalTestInterface() {
     handleSubmit(true);
   }, [handleSubmit]);
 
-  const getQuestionStatus = (questionId: string) => {
-    if (currentQuestion?.id === questionId) return "current";
-    if (markedForReview.has(questionId) && answers[questionId] !== undefined) return "answered-marked";
-    if (markedForReview.has(questionId)) return "marked";
-    if (answers[questionId] !== undefined) return "answered";
-    if (visitedQuestions.has(questionId)) return "not-answered";
+  const getQuestionStatus = (qid: string) => {
+    if (currentQuestion?.id === qid) return "current";
+    if (markedForReview.has(qid) && answers[qid] !== undefined) return "answered-marked";
+    if (markedForReview.has(qid)) return "marked";
+    if (answers[qid] !== undefined) return "answered";
+    if (visitedQuestions.has(qid)) return "not-answered";
     return "not-visited";
   };
 
   const getStatusCounts = () => {
-    const answered = Object.keys(answers).length;
-    const notAnswered = questions.filter(q => visitedQuestions.has(q.id) && answers[q.id] === undefined).length;
-    const markedCount = markedForReview.size;
-    const answeredMarked = questions.filter(q => markedForReview.has(q.id) && answers[q.id] !== undefined).length;
-    const notVisited = questions.length - visitedQuestions.size;
+    const answered      = Object.keys(answers).length;
+    const notAnswered   = questions.filter(q => visitedQuestions.has(q.id) && answers[q.id] === undefined).length;
+    const markedCount   = markedForReview.size;
+    const answeredMarked= questions.filter(q => markedForReview.has(q.id) && answers[q.id] !== undefined).length;
+    const notVisited    = questions.length - visitedQuestions.size;
     return { answered, notAnswered, markedCount, answeredMarked, notVisited };
   };
 
-  /* ── LOADING SCREEN ── */
+  const options = Array.isArray(currentQuestion?.options)
+    ? currentQuestion.options.map((o: any) => typeof o==="object"&&o!==null ? { text: o.text||o.label||"", image_url: o.image_url||null } : { text: o, image_url: null }).filter((o: any) => o.text?.trim())
+    : typeof currentQuestion?.options==="object"&&currentQuestion?.options!==null
+      ? Object.values(currentQuestion.options as Record<string,any>).map((o: any) => typeof o==="object"&&o!==null ? { text: o.text||o.label||"", image_url: o.image_url||null } : { text: o, image_url: null }).filter((o: any) => o.text?.trim())
+      : [];
+
+  /* ── LOADING ── */
   if (loading && currentScreen === 4) {
     return (
-      <div style={{ minHeight: "100vh", background: "#eaf0f7", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
-        <Loader2 style={{ width: 48, height: 48, color: NTA.topbarBg }} className="animate-spin" />
-        <p style={{ color: "#555", fontFamily: "Arial, sans-serif" }}>Loading test, please wait…</p>
+      <div style={{ minHeight:"100vh", background:"#eaf0f7", display:"flex", alignItems:"center", justifyContent:"center", flexDirection:"column", gap:14, fontFamily:"Arial,sans-serif" }}>
+        <Loader2 style={{ width:48, height:48, color: SEC_ACT }} className="animate-spin" />
+        <p style={{ color:"#555" }}>Loading test, please wait…</p>
       </div>
     );
   }
 
-  /* ════════════════════════════════════════════
-     SCREEN 1 — NTA Login / Verification
-  ════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════
+     SHARED HEADER for screens 1–3
+     Exact replica of Screenshot 1 header:
+     - top blue stripe (40px)
+     - grey bar: left=system name yellow, right=candidate name yellow + photo box
+  ══════════════════════════════════════════ */
+  const renderHeader = () => (
+    <>
+      <div style={{ height:40, background: BLUE_STRIPE }} />
+      <div style={{ background: HEADER_GREY, display:"flex", alignItems:"stretch" }}>
+        {/* Left */}
+        <div style={{ flex:1, padding:"10px 16px", fontFamily:"Arial,sans-serif", color:"#fff" }}>
+          <div style={{ fontSize:13, color:"#ccc" }}>System Name :</div>
+          <div style={{ fontSize:30, fontWeight:"bold", color: YELLOW, lineHeight:1.2, letterSpacing:1 }}>{systemId||"C001"}</div>
+          <div style={{ fontSize:11, color:"#ccc", marginTop:5 }}>Kindly contact the invigilator if there are any discrepancies in the Name and Photograph displayed on the screen or if the photograph is not yours</div>
+        </div>
+        {/* Right */}
+        <div style={{ display:"flex", alignItems:"center", gap:0, padding:"10px 0" }}>
+          <div style={{ textAlign:"right", paddingRight:12, fontFamily:"Arial,sans-serif" }}>
+            <div style={{ fontSize:13, color:"#ccc" }}>Candidate Name :</div>
+            <div style={{ fontSize:26, fontWeight:"bold", color: YELLOW }}>{studentName}</div>
+            <div style={{ fontSize:13, color:"#ccc" }}>Subject : <span style={{ color: YELLOW }}>{testName}</span></div>
+          </div>
+          {/* Photo — white border box as in screenshot */}
+          <div style={{ width:76, height:88, border:"3px solid #ccc", background:"#d8d8d8", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            {studentAvatar ? <img src={studentAvatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:46 }}>👤</span>}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  /* Version bar — bottom, same blue */
+  const VersionBar = () => (
+    <div style={{ background: VERSION_BLUE, color:"#fff", textAlign:"center", fontSize:12, padding:"4px 0", width:"100%" }}>
+      Version : 17.07.00
+    </div>
+  );
+
+  /* ══════════════════════════════════════════
+     SCREEN 1 — Login (exact duplicate screenshot 1)
+  ══════════════════════════════════════════ */
   if (currentScreen === 1) {
     return (
-      <div style={{ minHeight: "100vh", background: "#c8d8e8", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif" }}>
-        <NTAHeader systemId={systemId} studentName={studentName} testName={testName} studentAvatar={studentAvatar} />
-
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {/* Login card */}
-          <div style={{
-            background: "#f0f0f0", border: "1px solid #aaa", width: 360, padding: 0,
-            boxShadow: "2px 2px 8px rgba(0,0,0,.2)"
-          }}>
-            {/* Card header */}
-            <div style={{ background: "#d0d8e0", padding: "8px 14px", borderBottom: "1px solid #aaa", fontSize: 14, fontWeight: "bold", color: "#333" }}>
-              Login
-            </div>
-            <div style={{ padding: "18px 16px" }}>
-              {/* Username row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <div style={{ width: 36, height: 36, background: "#ccc", border: "1px solid #aaa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>👤</div>
-                <input
-                  type="text" value={studentRollNumber} disabled readOnly
-                  style={{ flex: 1, padding: "7px 10px", border: "1px solid #bbb", background: "#fafafa", fontSize: 13, color: "#333" }}
-                />
-                <div style={{ width: 36, height: 36, background: "#ddd", border: "1px solid #aaa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, cursor: "pointer" }}>⌨</div>
+      <div style={{ minHeight:"100vh", background:"#fff", display:"flex", flexDirection:"column", fontFamily:"Arial,sans-serif" }}>
+        {renderHeader()}
+        {/* White body — card centred */}
+        <div style={{ flex:1, background:"#fff", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {/* Login card: grey bg, border, shadow */}
+          <div style={{ width:370, background: LOGIN_CARD, border:"1px solid #bbb", boxShadow:"2px 2px 8px rgba(0,0,0,.18)", borderRadius:2 }}>
+            <div style={{ background: LOGIN_HDR, padding:"8px 14px", borderBottom:"1px solid #bbb", fontSize:13, fontWeight:"bold", color:"#333" }}>Login</div>
+            <div style={{ padding:"18px 16px" }}>
+              {/* Row 1: username */}
+              <div style={{ display:"flex", alignItems:"center", gap:3, marginBottom:10 }}>
+                <div style={{ width:40, height:36, background:"#d0d0d0", border:"1px solid #aaa", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, color:"#555", flexShrink:0 }}>👤</div>
+                <input type="text" value={studentRollNumber} disabled readOnly style={{ flex:1, height:36, padding:"0 8px", border:"1px solid #bbb", background:"#f5f5f5", fontSize:13, color:"#444", outline:"none" }} />
+                <div style={{ width:40, height:36, background:"#d0d0d0", border:"1px solid #aaa", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:"#555", cursor:"pointer", flexShrink:0 }}>⌨</div>
               </div>
-              {/* Password row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
-                <div style={{ width: 36, height: 36, background: "#ccc", border: "1px solid #aaa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔒</div>
-                <input
-                  type="password" value="••••" disabled readOnly
-                  style={{ flex: 1, padding: "7px 10px", border: "1px solid #bbb", background: "#fafafa", fontSize: 13, color: "#555" }}
-                />
-                <div style={{ width: 36, height: 36, background: "#ddd", border: "1px solid #aaa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, cursor: "pointer" }}>⌨</div>
+              {/* Row 2: password */}
+              <div style={{ display:"flex", alignItems:"center", gap:3, marginBottom:22 }}>
+                <div style={{ width:40, height:36, background:"#d0d0d0", border:"1px solid #aaa", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, color:"#555", flexShrink:0 }}>🔒</div>
+                <input type="password" value="•••••" disabled readOnly style={{ flex:1, height:36, padding:"0 8px", border:"1px solid #bbb", background:"#f5f5f5", fontSize:13, color:"#666", outline:"none" }} />
+                <div style={{ width:40, height:36, background:"#d0d0d0", border:"1px solid #aaa", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, color:"#555", cursor:"pointer", flexShrink:0 }}>⌨</div>
               </div>
-              {/* Sign In button */}
-              <button
-                onClick={() => setCurrentScreen(2)}
-                style={{
-                  width: "100%", padding: "10px 0", background: "#4da6e8",
-                  border: "none", color: "#fff", fontSize: 15, fontWeight: "bold",
-                  cursor: "pointer", letterSpacing: 0.5
-                }}
-              >
+              {/* Sign In */}
+              <button onClick={() => setCurrentScreen(2)} style={{ width:"100%", height:44, background: SIGN_IN_BLUE, border:"none", color:"#fff", fontSize:16, fontWeight:"bold", cursor:"pointer", borderRadius:2, letterSpacing:.5 }}>
                 Sign In
               </button>
             </div>
           </div>
         </div>
-
-        <NTAVersionBar />
+        <VersionBar />
       </div>
     );
   }
 
-  /* ════════════════════════════════════════════
+  /* ══════════════════════════════════════════
      SCREEN 2 — General Instructions
-  ════════════════════════════════════════════ */
+     Left: white scrollable panel with light-blue header
+     Right: white panel, BLACK left border, candidate photo centred
+  ══════════════════════════════════════════ */
   if (currentScreen === 2) {
     return (
-      <div style={{ minHeight: "100vh", background: "#c8d8e8", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif" }}>
-        {/* Top nav bar */}
-        <div style={{ height: 8, background: NTA.topbarBg }} />
+      <div style={{ minHeight:"100vh", background:"#fff", display:"flex", flexDirection:"column", fontFamily:"Arial,sans-serif" }}>
+        {/* Just the blue stripe — no grey header on instructions screens */}
+        <div style={{ height:40, background: BLUE_STRIPE }} />
 
-        <div style={{ flex: 1, display: "flex", overflow: "hidden", padding: 0 }}>
-          {/* Left panel */}
-          <div style={{ flex: 1, background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {/* Panel header */}
-            <div style={{ background: "#b8d4ea", padding: "8px 16px", fontSize: 15, fontWeight: "bold", color: "#1a3a5c", borderBottom: "1px solid #aac" }}>
+        <div style={{ flex:1, display:"flex", overflow:"hidden", minHeight:0 }}>
+          {/* LEFT panel */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+            {/* Light-blue header */}
+            <div style={{ background: INST_HDR, padding:"7px 16px", fontSize:14, fontWeight:"bold", color:"#222", borderBottom:"1px solid #90c0d8" }}>
               Instructions
             </div>
-            {/* Scrollable body */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", fontSize: 13, color: "#222", lineHeight: 1.7 }}>
-              <p style={{ fontWeight: "bold", fontSize: 14 }}>Please read the instructions carefully</p>
-              {testType === "practice" && (
-                <p style={{ color: "#cc2200", fontWeight: "bold", fontSize: 13, margin: "6px 0 14px" }}>
-                  This Mock Exam Only for Practice Purpose
-                </p>
-              )}
+            <div style={{ flex:1, overflowY:"auto", padding:"22px 28px", fontSize:13, color:"#1a1a1a", lineHeight:1.85, background:"#fff" }}>
+              <p style={{ fontWeight:"bold", fontSize:14 }}>Please read the instructions carefully</p>
+              <p style={{ color:"#cc2200", fontWeight:"bold", fontSize:13, marginTop:3 }}>This Mock Exam Only for Practice Purpose</p>
 
-              <p style={{ fontWeight: "bold", textDecoration: "underline", margin: "16px 0 8px" }}>General Instructions:</p>
-              <ol style={{ marginLeft: 22, lineHeight: 2 }}>
-                <li>Total duration of examination is <strong>{testDuration} minutes</strong>.</li>
+              <p style={{ fontWeight:"bold", textDecoration:"underline", marginTop:24, marginBottom:10, fontSize:13 }}>General Instructions:</p>
+              <ol style={{ marginLeft:22, lineHeight:2.1 }}>
+                <li>Total duration of examination is <strong>{testDuration||180} minutes</strong>.</li>
                 <li>The clock will be set at the server. The countdown timer in the top right corner of screen will display the remaining time available for you to complete the examination. When the timer reaches zero, the examination will end by itself. You will not be required to end or submit your examination.</li>
                 <li>The Question Palette displayed on the right side of screen will show the status of each question using one of the following symbols:</li>
               </ol>
 
-              {/* Legend */}
-              <div style={{ marginLeft: 30, marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  { bg: NTA.palGray,   round: false, label: "You have not visited the question yet.", num: 1 },
-                  { bg: NTA.palRed,    round: true,  label: "You have not answered the question.", num: 2 },
-                  { bg: NTA.palGreen,  round: true,  label: "You have answered the question.", num: 3 },
-                  { bg: NTA.palPurple, round: true,  label: "You have NOT answered the question, but have marked the question for review.", num: 4 },
-                  { bg: NTA.palPurple, round: true,  label: 'The question(s) "Answered and Marked for Review" will be considered for evaluation.', num: 5, greenDot: true },
-                ].map(item => (
-                  <div key={item.num} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <div style={{
-                      width: 28, height: 28, background: item.bg, color: "#fff",
-                      borderRadius: item.round ? "50%" : 4,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 12, fontWeight: "bold", flexShrink: 0, position: "relative"
-                    }}>
-                      {item.num}
-                      {item.greenDot && (
-                        <span style={{ position: "absolute", bottom: -2, right: -2, width: 9, height: 9, background: NTA.palGreen, borderRadius: "50%", border: "1.5px solid #fff" }} />
-                      )}
-                    </div>
-                    <span style={{ fontSize: 13 }}>{item.label}</span>
+              <div style={{ marginLeft:30, marginTop:18, display:"flex", flexDirection:"column", gap:14 }}>
+                {/* 1 not-visited: grey square */}
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:28, height:28, background: PAL_GREY, border:"1px solid #aaa", borderRadius:3, display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", color:"#555", flexShrink:0 }}>1</div>
+                  <span>You have not visited the question yet.</span>
+                </div>
+                {/* 2 not-answered: orange shield */}
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:28, height:28, background: PAL_ORANGE, borderRadius:"8px 8px 2px 2px", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", color:"#fff", flexShrink:0 }}>2</div>
+                  <span>You have not answered the question.</span>
+                </div>
+                {/* 3 answered: green circle */}
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:28, height:28, background: PAL_GREEN, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", color:"#fff", flexShrink:0 }}>3</div>
+                  <span>You have answered the question.</span>
+                </div>
+                {/* 4 marked: purple circle */}
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ width:28, height:28, background: PAL_PURPLE, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", color:"#fff", flexShrink:0 }}>4</div>
+                  <span>You have NOT answered the question, but have marked the question for review.</span>
+                </div>
+                {/* 5 answered+marked: purple circle + green dot */}
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <div style={{ position:"relative", width:28, height:28, background: PAL_PURPLE, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, fontWeight:"bold", color:"#fff", flexShrink:0 }}>
+                    5
+                    <span style={{ position:"absolute", bottom:-2, right:-2, width:10, height:10, background: PAL_GREEN, borderRadius:"50%", border:"2px solid #fff" }} />
                   </div>
-                ))}
+                  <span>The question(s) "Answered and Marked for Review" will be considered for evaluation.</span>
+                </div>
               </div>
-              <p style={{ marginTop: 14, fontSize: 12, fontStyle: "italic", color: "#555" }}>
-                The Marked for Review status for a question simply indicates that you would like to look at that question again.
-              </p>
+              <p style={{ marginTop:16, fontSize:12, color:"#555" }}>The Marked for Review status for a question simply indicates that you would like to look at that question again.</p>
             </div>
-            {/* Footer */}
-            <div style={{ padding: "10px 16px", borderTop: "1px solid #ccc", background: "#f5f5f5", display: "flex", justifyContent: "flex-end" }}>
-              <button
-                onClick={() => setCurrentScreen(3)}
-                style={{ padding: "7px 22px", background: "#fff", border: "1px solid #888", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-              >
+            {/* Next button */}
+            <div style={{ padding:"10px 16px", borderTop:"1px solid #ddd", display:"flex", justifyContent:"flex-end", background:"#fff" }}>
+              <button onClick={() => setCurrentScreen(3)} style={{ padding:"6px 22px", background:"#fff", border:"1px solid #999", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
                 Next &gt;
               </button>
             </div>
           </div>
-
-          {/* Right: candidate panel */}
-          <div style={{ width: 160, background: "#dde8f0", borderLeft: "1px solid #aaa", display: "flex", flexDirection: "column", alignItems: "center", padding: 14 }}>
-            <div style={{ width: 90, height: 100, background: "#ccc", border: "2px solid #888", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-              {studentAvatar ? <img src={studentAvatar} alt={studentName} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 44 }}>👤</span>}
+          {/* RIGHT panel — white, thick black left border */}
+          <div style={{ width:190, borderLeft:"2px solid #000", background:"#fff", display:"flex", flexDirection:"column", alignItems:"center", paddingTop:26 }}>
+            <div style={{ width:100, height:112, background:"#e0e0e0", border:"2px solid #aaa", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>
+              {studentAvatar ? <img src={studentAvatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:54 }}>👤</span>}
             </div>
-            <p style={{ fontSize: 13, fontWeight: "bold", textAlign: "center", color: "#1a3a5c" }}>{studentName}</p>
+            <p style={{ fontSize:13, fontWeight:"bold", color:"#1a1a1a", textAlign:"center", padding:"0 8px" }}>{studentName}</p>
           </div>
         </div>
-
-        <NTAVersionBar />
+        <VersionBar />
       </div>
     );
   }
 
-  /* ════════════════════════════════════════════
-     SCREEN 3 — Other Important Instructions
-  ════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════
+     SCREEN 3 — Other Important Instructions (JEE Mains specific)
+  ══════════════════════════════════════════ */
   if (currentScreen === 3) {
-    const getExamInstructions = () => {
-      if (examType === "jee_mains") {
-        return (
-          <div style={{ fontSize: 13, lineHeight: 1.8, color: "#222" }}>
-            <p>The motive for enabling this mock SAMPLE test is to familiarize the candidates with the Computer Based Test (CBT) environment of the UGEE conducted by IIIT Hyderabad.</p>
-            <p style={{ marginTop: 10 }}>The types of questions and marking scheme is only illustrative and is in no way indicative or representation of the type of questions and marking scheme of the UGEE question paper.</p>
-            <p style={{ marginTop: 10, fontWeight: "bold" }}>Section wise Instructions</p>
-            <p style={{ fontStyle: "italic" }}>Note: There will be 25% negative marking in both the sections.</p>
-            <p style={{ marginTop: 6 }}><strong>SECTION 1:</strong> Subject Proficiency Test (Subject Code 101)<br />Maximum marks: 50</p>
-            <p style={{ marginTop: 6 }}><strong>SECTION 2:</strong> Research Aptitude Test (Subject Code 102)<br />Maximum marks: 100</p>
-            <p style={{ marginTop: 10 }}>No clarification will be provided during the exam.</p>
-            <p style={{ marginTop: 6 }}>Calculators and other electronic devices are not allowed during the exam. Rough sheets and pens will be provided in the exam center. A virtual on-screen calculator is available for use.</p>
-            <p style={{ marginTop: 6 }}>Some questions may have more than one answer correct. Points will be given only when <strong>ALL</strong> the correct answers are marked and <strong>NONE</strong> of the incorrect are marked.</p>
-          </div>
-        );
-      } else if (examType === "jee_advanced") {
-        return (
-          <div style={{ fontSize: 13, lineHeight: 1.8, color: "#222" }}>
-            <p>The test consists of multiple subjects with section-wise questions. Each section may have different marking schemes.</p>
-            <p style={{ marginTop: 10, fontWeight: "bold" }}>Section wise Instructions</p>
-            <ul style={{ marginLeft: 20, marginTop: 6 }}>
-              <li>For single correct answer questions: +3 marks for correct answer, -1 for incorrect answer.</li>
-              <li>For multiple correct answer questions: +4 marks for all correct answers (partial marking applies), 0 for incorrect.</li>
-              <li>For numerical questions: +3 marks for correct answer, 0 for incorrect.</li>
-            </ul>
-            <p style={{ marginTop: 10 }}>No clarification will be provided during the exam.</p>
-            <p style={{ marginTop: 6 }}>Calculators and other electronic devices are not allowed during the exam. A virtual on-screen calculator is available for use.</p>
-          </div>
-        );
-      } else {
-        const sampleMarks = questions.length > 0 ? questions[0].marks : 4;
-        const sampleNeg   = questions.length > 0 ? questions[0].negative_marks : 1;
-        return (
-          <div style={{ fontSize: 13, lineHeight: 1.8, color: "#222" }}>
-            <p style={{ fontWeight: "bold" }}>General Test Instructions:</p>
-            <p style={{ marginTop: 8 }}>This test contains questions of various types. Please read each question carefully before answering.</p>
-            <p style={{ marginTop: 10, fontWeight: "bold" }}>Marking Scheme:</p>
-            <ul style={{ marginLeft: 20 }}>
-              <li>Correct Answer: +{sampleMarks} marks</li>
-              <li>Incorrect Answer: -{sampleNeg} marks</li>
-              <li>Unattempted: 0 marks</li>
-            </ul>
-            <p style={{ marginTop: 10 }}>You can navigate freely between all questions during the test.</p>
-            <p>Use the question palette on the right to track your progress.</p>
-            <p>Mark questions for review if you want to revisit them.</p>
-          </div>
-        );
-      }
-    };
-
     return (
-      <div style={{ minHeight: "100vh", background: "#c8d8e8", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif" }}>
-        <div style={{ height: 8, background: NTA.topbarBg }} />
-
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          {/* Left panel */}
-          <div style={{ flex: 1, background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            <div style={{ background: "#b8d4ea", padding: "8px 16px", fontSize: 15, fontWeight: "bold", color: "#1a3a5c", borderBottom: "1px solid #aac" }}>
+      <div style={{ minHeight:"100vh", background:"#fff", display:"flex", flexDirection:"column", fontFamily:"Arial,sans-serif" }}>
+        <div style={{ height:40, background: BLUE_STRIPE }} />
+        <div style={{ flex:1, display:"flex", overflow:"hidden", minHeight:0 }}>
+          {/* LEFT panel */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+            <div style={{ background: INST_HDR, padding:"7px 16px", fontSize:14, fontWeight:"bold", color:"#222", borderBottom:"1px solid #90c0d8" }}>
               Other Important Instructions
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-              {getExamInstructions()}
+            <div style={{ flex:1, overflowY:"auto", padding:"20px 28px", fontSize:13, color:"#1a1a1a", lineHeight:1.9, background:"#fff" }}>
+              <p style={{ textAlign:"center", fontWeight:"bold", marginBottom:20 }}>General instructions:</p>
 
-              {fullscreenEnabled && (
-                <div style={{ marginTop: 18, padding: "10px 14px", background: "#fff8e1", border: "1px solid #f0c040", fontSize: 12, color: "#7a5500" }}>
-                  <strong>⚠ Fullscreen Mode Required:</strong> This test requires fullscreen mode. Exiting fullscreen more than 7 times will auto-submit your test.
-                </div>
-              )}
+              <p style={{ fontWeight:"bold" }}>The motive for enabling this mock SAMPLE test is to familiarize the candidates with the Computer Based Test (CBT) environment of the JEE Main conducted by NTA.</p>
+              <br />
+              <p style={{ fontWeight:"bold" }}>The types of questions and marking scheme is only illustrative and is in no way indicative or representative of the actual JEE Main question paper.</p>
+              <br />
+              <p style={{ fontWeight:"bold" }}>Section wise Instructions</p>
+              <br />
+              <p style={{ fontWeight:"bold" }}>Note: There will be 25% negative marking for MCQ (Section A) only. No negative marking for Integer type (Section B).</p>
+              <p style={{ fontWeight:"bold" }}>
+                SECTION A: Multiple Choice Questions — Each question has 4 options, only 1 is correct.<br />
+                +4 for correct answer, –1 for wrong answer, 0 for unattempted.
+              </p>
+              <br />
+              <p style={{ fontWeight:"bold" }}>
+                SECTION B: Integer / Numerical Value Questions — Enter a numerical answer.<br />
+                +4 for correct answer, 0 for wrong or unattempted.
+              </p>
+              <br />
+              <p style={{ fontWeight:"bold" }}>No clarification will be provided during the exam.</p>
+              <br />
+              <p style={{ fontWeight:"bold" }}>Calculators and other electronic devices are not allowed during the exam. Rough sheets and pens will be provided in the exam center. A virtual on-screen calculator is available for use.</p>
+              <br />
+              <p style={{ fontWeight:"bold" }}>Some questions may have more than one answer correct. Points will be given only when <span style={{ textDecoration:"underline" }}>ALL</span> the correct answers are marked and <span style={{ textDecoration:"underline" }}>NONE</span> of the incorrect are marked.</p>
+            </div>
 
-              {/* Declaration checkbox */}
-              <div style={{ marginTop: 20, paddingTop: 14, borderTop: "1px solid #ddd" }}>
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer", fontSize: 12, color: "#333", lineHeight: 1.7 }}>
-                  <input
-                    type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={e => setAgreedToTerms(e.target.checked)}
-                    style={{ marginTop: 3, width: 15, height: 15, flexShrink: 0 }}
-                  />
-                  I have read and understood the instructions. All computer hardware allotted to me are in proper working condition. I declare that I am not in possession of / not wearing / not carrying any prohibited gadget like mobile phone, bluetooth devices etc. /any prohibited material with me into the Examination Hall. I agree that in case of not adhering to the instructions, I shall be liable to be debarred from this Test and/or to disciplinary action, which may include ban from future Tests / Examinations
-                </label>
+            {/* Declaration checkbox + buttons */}
+            <div style={{ borderTop:"1px solid #ddd", background:"#fff" }}>
+              <div style={{ padding:"10px 20px 10px", display:"flex", alignItems:"flex-start", gap:8, borderBottom:"1px solid #ddd" }}>
+                <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)}
+                  style={{ marginTop:3, width:14, height:14, flexShrink:0, cursor:"pointer" }} />
+                <span style={{ fontSize:11.5, color:"#333", lineHeight:1.65 }}>
+                  I have read and understood the instructions. All computer hardware allotted to me are in proper working condition. I declare that I am not in possession of / not wearing / not carrying any prohibited gadget like mobile phone, bluetooth devices etc. /any prohibited material with me into the Examination Hall.I agree that in case of not adhering to the instructions, I shall be liable to be debarred from this Test and/or to disciplinary action, which may include ban from future Tests / Examinations
+                </span>
+              </div>
+              <div style={{ padding:"10px 20px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <button onClick={() => setCurrentScreen(2)}
+                  style={{ padding:"7px 18px", background:"#fff", border:"1px solid #888", fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}>
+                  &lt; Previous
+                </button>
+                <button onClick={startTest} disabled={!agreedToTerms || loading}
+                  style={{ padding:"9px 30px", background: agreedToTerms ? "#5ba3d9" : "#9ab8cc", border:"none", color:"#fff", fontSize:14, fontWeight:"bold", cursor: agreedToTerms ? "pointer" : "not-allowed", borderRadius:2 }}>
+                  {loading ? "Loading…" : "I am ready to begin"}
+                </button>
               </div>
             </div>
-
-            {/* Footer buttons */}
-            <div style={{ padding: "10px 16px", borderTop: "1px solid #ccc", background: "#f5f5f5", display: "flex", justifyContent: "space-between" }}>
-              <button onClick={() => setCurrentScreen(2)} style={{ padding: "7px 20px", background: "#fff", border: "1px solid #888", fontSize: 13, cursor: "pointer" }}>
-                &lt; Previous
-              </button>
-              <button
-                onClick={startTest}
-                disabled={!agreedToTerms || loading}
-                style={{
-                  padding: "8px 28px", background: agreedToTerms ? "#4da6e8" : "#aac",
-                  border: "none", color: "#fff", fontSize: 14, fontWeight: "bold",
-                  cursor: agreedToTerms ? "pointer" : "not-allowed", opacity: loading ? .7 : 1
-                }}
-              >
-                {loading ? "Loading…" : "I am ready to begin"}
-              </button>
-            </div>
           </div>
-
-          {/* Right: candidate panel */}
-          <div style={{ width: 160, background: "#dde8f0", borderLeft: "1px solid #aaa", display: "flex", flexDirection: "column", alignItems: "center", padding: 14 }}>
-            <div style={{ width: 90, height: 100, background: "#ccc", border: "2px solid #888", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-              {studentAvatar ? <img src={studentAvatar} alt={studentName} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 44 }}>👤</span>}
+          {/* RIGHT panel */}
+          <div style={{ width:190, borderLeft:"2px solid #000", background:"#fff", display:"flex", flexDirection:"column", alignItems:"center", paddingTop:26 }}>
+            <div style={{ width:100, height:112, background:"#e0e0e0", border:"2px solid #aaa", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:10 }}>
+              {studentAvatar ? <img src={studentAvatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:54 }}>👤</span>}
             </div>
-            <p style={{ fontSize: 13, fontWeight: "bold", textAlign: "center", color: "#1a3a5c" }}>{studentName}</p>
+            <p style={{ fontSize:13, fontWeight:"bold", color:"#1a1a1a", textAlign:"center", padding:"0 8px" }}>{studentName}</p>
           </div>
         </div>
-
-        <NTAVersionBar />
+        <VersionBar />
       </div>
     );
   }
 
-  /* ════════════════════════════════════════════
-     SCREEN 4 — MAIN TEST INTERFACE (NTA Style)
-  ════════════════════════════════════════════ */
-
-  const isIntegerQuestion = currentQuestion?.question_type === "integer" || currentQuestion?.question_type === "numerical";
-
-  const options = Array.isArray(currentQuestion?.options)
-    ? currentQuestion.options.map((opt: any) => {
-        if (typeof opt === "object" && opt !== null) return { text: opt.text || opt.label || "", image_url: opt.image_url || null };
-        return { text: opt, image_url: null };
-      }).filter((opt: any) => opt.text && opt.text.trim() !== "")
-    : typeof currentQuestion?.options === "object" && currentQuestion?.options !== null
-      ? Object.values(currentQuestion.options as Record<string, any>).map((opt: any) => {
-          if (typeof opt === "object" && opt !== null) return { text: opt.text || opt.label || "", image_url: opt.image_url || null };
-          return { text: opt, image_url: null };
-        }).filter((opt: any) => opt.text && opt.text.trim() !== "")
-      : [];
-
-  const statusCounts = getStatusCounts();
-  const localQNum = currentQuestionIndex + 1;
+  /* ══════════════════════════════════════════
+     SCREEN 4 — MAIN TEST
+     Pixel-perfect duplicate of Screenshot 4
+  ══════════════════════════════════════════ */
+  const sc = getStatusCounts();
 
   const testContent = (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", fontFamily: "Arial, sans-serif", fontSize: 13, background: "#eaf0f7", overflow: "hidden" }}>
+    <div style={{ height:"100vh", display:"flex", flexDirection:"column", fontFamily:"Arial,sans-serif", fontSize:13, overflow:"hidden", background:"#f5f5f5" }}>
 
-      {/* ── TOP BAR ── */}
-      <div style={{ background: "#1a1a2e", color: "#fff", height: 30, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", flexShrink: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: "bold" }}>PHYNETIX</span>
-        <div style={{ display: "flex", gap: 10 }}>
+      {/* ROW 1: Dark top bar — "PHYNETIX" left, Instructions + Question Paper right */}
+      <div style={{ background: TOPBAR_DARK, color:"#fff", height:30, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 10px", flexShrink:0 }}>
+        <span style={{ fontSize:13, fontWeight:"bold" }}>PHYNETIX</span>
+        <div style={{ display:"flex", alignItems:"center", gap:6 }}>
           <AccessibilityToolbar inline />
-          <button style={{ background: "transparent", border: "1px solid #7aaedc", color: "#7aaedc", padding: "2px 10px", fontSize: 11, cursor: "pointer", borderRadius: 2 }}>
-            ℹ Instructions
+          <button style={{ background:"transparent", border:"none", color:"#aaccee", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:3 }}>
+            <span style={{ width:15, height:15, background:"#2979c5", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:9, fontWeight:"bold", flexShrink:0 }}>i</span>
+            Instructions
           </button>
-          <button style={{ background: "transparent", border: "1px solid #6dc56d", color: "#6dc56d", padding: "2px 10px", fontSize: 11, cursor: "pointer", borderRadius: 2 }}>
-            📄 Question Paper
+          <button style={{ background:"transparent", border:"none", color:"#aaccee", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:3 }}>
+            <span style={{ width:15, height:15, background:"#26a65b", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:9, flexShrink:0 }}>≡</span>
+            Question Paper
           </button>
         </div>
       </div>
 
-      {/* ── SECTION TABS ── */}
-      <div style={{ background: NTA.sectionBg, borderBottom: "2px solid #4a7ab5", padding: "4px 8px", display: "flex", alignItems: "center", gap: 4, flexShrink: 0, overflowX: "auto" }}>
-        {sections.map((sec) => (
-          <button
-            key={sec.id}
-            onClick={() => { setActiveSection(sec.id); setCurrentQuestionIndex(0); }}
-            style={{
-              padding: "5px 16px", border: "1px solid #7aaedc", fontSize: 12, fontWeight: "bold",
-              cursor: "pointer", borderRadius: 2, whiteSpace: "nowrap",
-              background: activeSection === sec.id ? NTA.sectionAct : "#fff",
-              color: activeSection === sec.id ? "#fff" : "#1a3a5c",
+      {/* ROW 2: Section tabs + Time Left + candidate mini photo */}
+      <div style={{ background: SEC_TAB_BG, borderBottom:"1px solid #ccc", padding:"3px 8px", display:"flex", alignItems:"center", gap:4, flexShrink:0, overflowX:"auto" }}>
+        {sections.map(sec => (
+          <button key={sec.id}
+            onClick={() => {
+              setActiveSection(sec.id); setCurrentQuestionIndex(0);
+              const firstQ = sec.questions[0];
+              if (firstQ) setVisitedQuestions(p => new Set([...p, firstQ.id]));
             }}
-          >
+            style={{ display:"flex", alignItems:"center", gap:3, padding:"5px 14px", border:"1px solid", borderColor: activeSection===sec.id ? "#1a60b0" : "#b0c8e0", borderRadius:3, background: activeSection===sec.id ? SEC_ACT : SEC_INACT, color: activeSection===sec.id ? "#fff" : "#1a1a1a", fontSize:12, fontWeight:"bold", cursor:"pointer", whiteSpace:"nowrap" }}>
             {sec.name}
+            <span style={{ width:14, height:14, background: activeSection===sec.id ? "rgba(255,255,255,.35)" : "#4a90d9", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:9, fontWeight:"bold" }}>i</span>
           </button>
         ))}
-        {/* Timer */}
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-          {isSaving && <span style={{ fontSize: 10, color: "#888" }}>Saving…</span>}
-          <div style={{
-            padding: "4px 14px", border: "2px solid #cc6600",
-            background: timeLeft < 300 ? NTA.timerRed : "#fff",
-            color: timeLeft < 300 ? "#fff" : "#cc0000",
-            fontWeight: "bold", fontSize: 14, letterSpacing: 1, fontFamily: "monospace"
-          }}>
-            Time Left : {formatTime(timeLeft)}
+        <div style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:10 }}>
+          {isSaving && <span style={{ fontSize:10, color:"#888" }}>Saving…</span>}
+          {/* Time Left — plain text as in screenshot, no box */}
+          <span style={{ fontSize:13, fontWeight:"bold", color:"#000" }}>
+            Time Left : <span style={{ color: timeLeft < 300 ? "#cc0000" : "#000" }}>{formatTime(timeLeft)}</span>
+          </span>
+          {/* candidate photo */}
+          <div style={{ width:40, height:46, border:"1px solid #bbb", overflow:"hidden", background:"#ddd", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            {studentAvatar ? <img src={studentAvatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:22 }}>👤</span>}
           </div>
-          {/* Candidate mini */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 34, height: 40, background: "#ccc", border: "1px solid #999", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {studentAvatar ? <img src={studentAvatar} alt={studentName} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 20 }}>👤</span>}
-            </div>
-            <span style={{ fontSize: 12, fontWeight: "bold", color: "#1a3a5c", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{studentName}</span>
-          </div>
+          <span style={{ fontSize:12, fontWeight:"bold", color:"#111", maxWidth:100, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{studentName}</span>
         </div>
       </div>
 
-      {/* ── SECTIONS LABEL ROW ── */}
-      <div style={{ background: "#fff", borderBottom: "1px solid #ccc", padding: "3px 10px", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <span style={{ fontSize: 11, fontWeight: "bold", color: "#555" }}>Sections</span>
-        <span style={{ fontSize: 11, color: "#888" }}>|</span>
-        {/* Sub-section tabs */}
-        <div style={{ display: "flex", gap: 4 }}>
-          <button style={{ padding: "3px 12px", background: "#4a7ab5", color: "#fff", border: "1px solid #3a6aa5", fontSize: 11, borderRadius: 2, cursor: "pointer" }}>
-            {currentSection?.name || "–"}
-          </button>
-        </div>
+      {/* ROW 3: "Sections" label + sub-section arrow row */}
+      <div style={{ background:"#fff", borderBottom:"1px solid #ccc", padding:"3px 8px", display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
+        <span style={{ fontSize:11, color:"#555", fontWeight:"bold", marginRight:4 }}>Sections</span>
+        <button style={{ width:20, height:20, background:"#e0e0e0", border:"1px solid #bbb", cursor:"pointer", fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>◀</button>
+        {/* sub-section tab */}
+        <button style={{ padding:"3px 14px", background: SEC_ACT, color:"#fff", border:"none", fontSize:12, fontWeight:"bold", cursor:"pointer", borderRadius:2, display:"flex", alignItems:"center", gap:4 }}>
+          {currentSection?.name || "Section"}
+          <span style={{ width:14, height:14, background:"rgba(255,255,255,.25)", borderRadius:"50%", display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:9 }}>i</span>
+        </button>
+        <button style={{ width:20, height:20, background:"#e0e0e0", border:"1px solid #bbb", cursor:"pointer", fontSize:10, display:"flex", alignItems:"center", justifyContent:"center", padding:0 }}>▶</button>
       </div>
 
-      {/* ── MAIN BODY ── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      {/* MAIN BODY */}
+      <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
 
         {/* LEFT: Question area */}
-        <div style={{ flex: 1, background: "#fff", display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid #ccc" }}>
-          {/* Question body scroll */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px" }}>
+        <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", borderRight:"1px solid #ccc" }}>
+          <div style={{ flex:1, overflowY:"auto", padding:"14px 18px", background:"#fff" }}>
 
-            {/* Question number */}
-            <div style={{ fontWeight: "bold", fontSize: 13, marginBottom: 10, color: "#000" }}>
-              Question No. {localQNum}
+            {/* Question No. header */}
+            <div style={{ fontWeight:"bold", fontSize:13, marginBottom:12, color:"#000" }}>
+              Question No. {currentQuestionIndex + 1}
             </div>
 
-            {/* Paragraph if any */}
+            {/* Paragraph */}
             {currentQuestion?.paragraph_text && (
-              <div style={{ marginBottom: 12, padding: "10px 12px", background: "#fffde7", border: "1px solid #f0c040", borderRadius: 3 }}>
-                <div style={{ fontSize: 11, fontWeight: "bold", color: "#9a6500", marginBottom: 6 }}>PARAGRAPH</div>
-                <div style={{ fontSize: 13, lineHeight: 1.7 }}>
-                  <LatexRenderer content={currentQuestion.paragraph_text} />
-                </div>
+              <div style={{ marginBottom:14, padding:"10px 14px", background:"#fffde7", border:"1px solid #f0c040", fontSize:13, lineHeight:1.7 }}>
+                <div style={{ fontSize:10, fontWeight:"bold", color:"#9a6500", marginBottom:5, textTransform:"uppercase" }}>Paragraph</div>
+                <LatexRenderer content={currentQuestion.paragraph_text} />
                 {currentQuestion.paragraph_image_urls?.map((img, i) => (
-                  <img key={i} src={img} alt="" style={{ maxWidth: "100%", marginTop: 6, border: "1px solid #ddd" }} />
+                  <img key={i} src={img} alt="" style={{ maxWidth:"100%", marginTop:6, border:"1px solid #ddd" }} />
                 ))}
               </div>
             )}
 
             {/* Question images */}
             {(() => {
-              const imgs = currentQuestion?.image_urls?.length
-                ? currentQuestion.image_urls
-                : currentQuestion?.image_url ? [currentQuestion.image_url] : [];
-              return imgs.length > 0 && (
-                <div style={{ marginBottom: 10 }}>
-                  {imgs.map((url, i) => (
-                    <img key={i} src={url} alt="" style={{ maxWidth: "100%", border: "1px solid #ddd", borderRadius: 2 }}
-                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                  ))}
-                </div>
-              );
+              const imgs = currentQuestion?.image_urls?.length ? currentQuestion.image_urls : currentQuestion?.image_url ? [currentQuestion.image_url] : [];
+              return imgs.length > 0 && <div style={{ marginBottom:10 }}>{imgs.map((u,i) => <img key={i} src={u} alt="" style={{ maxWidth:"100%", border:"1px solid #ddd", marginBottom:6 }} onError={e=>{(e.target as HTMLImageElement).style.display="none";}} />)}</div>;
             })()}
 
             {/* Question text */}
             {currentQuestion?.question_text && (
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: "#000", marginBottom: 16 }}>
+              <div style={{ fontSize:14, lineHeight:1.85, color:"#000", marginBottom:16 }}>
                 <LatexRenderer content={currentQuestion.question_text} />
               </div>
             )}
 
-            {/* Options */}
+            {/* ── OPTIONS — NTA exact style ── */}
             {isIntegerQuestion ? (
-              <div style={{ marginTop: 10 }}>
-                <div style={{ fontSize: 13, color: "#444", marginBottom: 6 }}>Enter your answer (integer only):</div>
-                <input
-                  type="text" inputMode="numeric"
-                  value={currentQuestion ? (answers[currentQuestion.id] as string || "") : ""}
+              <div style={{ marginTop:10 }}>
+                <div style={{ fontSize:13, color:"#444", marginBottom:8 }}>Enter your answer (integer only):</div>
+                <input type="text" inputMode="numeric"
+                  value={currentQuestion ? (answers[currentQuestion.id] as string||"") : ""}
                   onChange={e => handleIntegerAnswer(e.target.value)}
-                  placeholder="Type answer here"
-                  style={{
-                    padding: "8px 12px", border: "1px solid #888", width: 160,
-                    fontSize: 15, fontFamily: "monospace", textAlign: "center",
-                    outline: "none"
-                  }}
-                />
+                  placeholder="Type answer"
+                  style={{ padding:"8px 12px", border:"1px solid #888", width:180, fontSize:16, fontFamily:"monospace", textAlign:"center", outline:"none" }} />
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {options.map((option, index) => {
-                  const optionStr = String(index);
-                  const currentAnswers = currentQuestion ? answers[currentQuestion.id] : undefined;
-                  const isSelected = isMultipleChoice
-                    ? Array.isArray(currentAnswers) && currentAnswers.includes(optionStr)
-                    : currentAnswers === optionStr;
+              <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+                {options.map((opt, idx) => {
+                  const optStr = String(idx);
+                  const curAns = currentQuestion ? answers[currentQuestion.id] : undefined;
+                  const selected = isMultipleChoice
+                    ? Array.isArray(curAns) && curAns.includes(optStr)
+                    : curAns === optStr;
 
                   return (
-                    <label
-                      key={index}
-                      style={{
-                        display: "flex", alignItems: "flex-start", gap: 10,
-                        padding: "8px 10px", border: `1px solid ${isSelected ? "#4a7ab5" : "#ddd"}`,
-                        background: isSelected ? "#dceeff" : "#fafafa",
-                        cursor: "pointer"
-                      }}
-                    >
-                      <input
-                        type={isMultipleChoice ? "checkbox" : "radio"}
-                        name={isMultipleChoice ? undefined : `q-${currentQuestion?.id}`}
-                        checked={isSelected}
-                        onChange={() => handleAnswer(index)}
-                        style={{ marginTop: 3, flexShrink: 0 }}
-                      />
-                      <span style={{
-                        width: 22, height: 22, borderRadius: "50%", background: isSelected ? "#4a7ab5" : "#eee",
-                        color: isSelected ? "#fff" : "#333", display: "flex", alignItems: "center",
-                        justifyContent: "center", fontSize: 12, fontWeight: "bold", flexShrink: 0
-                      }}>
-                        {String.fromCharCode(65 + index)}
-                      </span>
-                      <div style={{ flex: 1, fontSize: 13, lineHeight: 1.6 }}>
-                        <LatexRenderer content={option.text} />
-                        {option.image_url && (
-                          <img src={option.image_url} alt="" style={{ maxWidth: "100%", marginTop: 6, border: "1px solid #ddd" }}
-                            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    <label key={idx} style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer", padding:"2px 0" }}>
+                      {/*
+                        RADIO BUTTON — exact NTA look:
+                        Unselected: white fill, dark (near-black) border ~1.5px, circle ~18px
+                        Selected:   blue fill (#1a73e8), white inner dot
+                        We use a custom div — NOT native <input> — for pixel accuracy
+                      */}
+                      <div
+                        onClick={() => handleAnswer(idx)}
+                        style={{
+                          width: 18, height: 18, borderRadius: "50%",
+                          border: selected ? "2px solid #1a73e8" : "2px solid #333",
+                          background: selected ? "#1a73e8" : "#fff",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          flexShrink: 0, marginTop: 3, cursor: "pointer",
+                          boxSizing: "border-box",
+                          transition: "border-color .1s, background .1s",
+                        }}>
+                        {selected && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff" }} />}
+                      </div>
+
+                      {/* Option text */}
+                      <div style={{ flex:1, fontSize:14, lineHeight:1.75, color:"#000" }} onClick={() => handleAnswer(idx)}>
+                        <LatexRenderer content={opt.text} />
+                        {opt.image_url && (
+                          <img src={opt.image_url} alt="" style={{ maxWidth:"100%", marginTop:6, border:"1px solid #ddd" }}
+                            onError={e=>{(e.target as HTMLImageElement).style.display="none";}} />
                         )}
                       </div>
                     </label>
@@ -1017,189 +788,127 @@ export default function NormalTestInterface() {
           </div>
         </div>
 
-        {/* RIGHT: Sidebar */}
-        <div style={{ width: 244, background: NTA.sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", flexShrink: 0 }}>
+        {/* RIGHT: Sidebar — exact from screenshot 4 */}
+        <div style={{ width:232, background: SIDEBAR_BG, display:"flex", flexDirection:"column", overflow:"hidden", flexShrink:0 }}>
 
-          {/* Candidate info */}
-          <div style={{ background: "#fff", borderBottom: "1px solid #ccc", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 44, height: 52, background: "#ccc", border: "1px solid #aaa", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              {studentAvatar ? <img src={studentAvatar} alt={studentName} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 26 }}>👤</span>}
+          {/* Candidate photo + name */}
+          <div style={{ background:"#fff", borderBottom:"1px solid #ccc", padding:"8px", display:"flex", flexDirection:"column", alignItems:"center" }}>
+            <div style={{ width:58, height:66, background:"#ccc", border:"1px solid #aaa", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:5 }}>
+              {studentAvatar ? <img src={studentAvatar} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : <span style={{ fontSize:32 }}>👤</span>}
             </div>
-            <div>
-              <div style={{ fontSize: 12, fontWeight: "bold", color: "#1a3a5c" }}>{studentName}</div>
-              <div style={{ fontSize: 10, color: "#666" }}>Roll: {studentRollNumber}</div>
+            <div style={{ fontSize:12, fontWeight:"bold", color:"#111", textAlign:"center" }}>{studentName}</div>
+          </div>
+
+          {/* Legend — 2-col grid as in screenshot */}
+          <div style={{ background:"#fff", borderBottom:"1px solid #ccc", padding:"8px 10px" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"auto 1fr auto 1fr", gap:"6px 4px", alignItems:"center" }}>
+              <LegendIcon n={sc.answered}      type="answered"  />
+              <span style={{ fontSize:11 }}>Answered</span>
+              <LegendIcon n={sc.notAnswered}   type="notans"    />
+              <span style={{ fontSize:11 }}>Not Answered</span>
+              <LegendIcon n={sc.notVisited}    type="notvisit"  />
+              <span style={{ fontSize:11 }}>Not Visited</span>
+              <LegendIcon n={sc.markedCount}   type="marked"    />
+              <span style={{ fontSize:11 }}>Marked for Review</span>
+            </div>
+            <div style={{ display:"flex", alignItems:"flex-start", gap:6, marginTop:6 }}>
+              <LegendIcon n={sc.answeredMarked} type="ansmarked" />
+              <span style={{ fontSize:11, lineHeight:1.4 }}>Answered &amp; Marked for Review (will also be evaluated)</span>
             </div>
           </div>
 
-          {/* Legend */}
-          <div style={{ background: "#fff", borderBottom: "1px solid #ccc", padding: "8px 10px" }}>
-            {[
-              { bg: NTA.palGreen,  round: true,  count: statusCounts.answered,      label: "Answered" },
-              { bg: NTA.palRed,    round: true,  count: statusCounts.notAnswered,    label: "Not Answered" },
-              { bg: NTA.palGray,   round: false, count: statusCounts.notVisited,     label: "Not Visited" },
-              { bg: NTA.palPurple, round: true,  count: statusCounts.markedCount,    label: "Marked for Review" },
-              { bg: NTA.palPurple, round: true,  count: statusCounts.answeredMarked, label: "Answered & Marked for Review", greenDot: true },
-            ].map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 5 }}>
-                <div style={{
-                  width: 26, height: 26, background: item.bg, color: "#fff",
-                  borderRadius: item.round ? "50%" : 3,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontWeight: "bold", flexShrink: 0, position: "relative"
-                }}>
-                  {item.count}
-                  {item.greenDot && <span style={{ position: "absolute", bottom: -2, right: -2, width: 8, height: 8, background: NTA.palGreen, borderRadius: "50%", border: "1.5px solid #fff" }} />}
-                </div>
-                <span style={{ fontSize: 11, color: "#333" }}>{item.label}</span>
-              </div>
-            ))}
+          {/* Section title + "Choose a Question" */}
+          <div style={{ background: SIDEBAR_TITLE, color:"#fff", padding:"5px 10px", fontSize:13, fontWeight:"bold", flexShrink:0 }}>
+            {currentSection?.name || "Section"}
+          </div>
+          <div style={{ padding:"3px 10px 3px", fontSize:11, color:"#444", background:"#fff", flexShrink:0, borderBottom:"1px solid #ddd" }}>
+            Choose a Question
           </div>
 
-          {/* Section palette */}
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            <div style={{ background: "#4a7ab5", color: "#fff", padding: "5px 10px", fontSize: 12, fontWeight: "bold" }}>
-              {currentSection?.name || "Questions"}
-            </div>
-            <div style={{ padding: "6px 10px 4px", fontSize: 11, color: "#555" }}>Choose a Question</div>
-            <div style={{ padding: "0 8px 10px", display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {currentSection?.questions.map((q, index) => {
-                const status = getQuestionStatus(q.id);
-                return (
-                  <div
-                    key={q.id}
-                    onClick={() => {
-                      setCurrentQuestionIndex(index);
-                      setVisitedQuestions(prev => new Set([...prev, q.id]));
-                    }}
-                    style={palStyle(status)}
-                  >
-                    {index + 1}
-                    {status === "answered-marked" && (
-                      <span style={{ position: "absolute", bottom: -2, right: -2, width: 8, height: 8, background: NTA.palGreen, borderRadius: "50%", border: "1.5px solid #fff" }} />
-                    )}
-                  </div>
-                );
-              })}
+          {/* Palette grid — 4 columns */}
+          <div style={{ flex:1, overflowY:"auto", padding:"8px 10px", background: SIDEBAR_BG }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6 }}>
+              {currentSection?.questions.map((q, idx) => (
+                <PaletteBtn
+                  key={q.id}
+                  num={idx + 1}
+                  status={getQuestionStatus(q.id)}
+                  onClick={() => {
+                    /* Palette click = navigate ONLY, no save */
+                    setCurrentQuestionIndex(idx);
+                    setVisitedQuestions(p => new Set([...p, q.id]));
+                  }}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Submit button */}
-          <div style={{ padding: "8px", borderTop: "1px solid #ccc", background: "#fff", flexShrink: 0 }}>
-            <button
-              onClick={() => setShowSubmitModal(true)}
-              disabled={submitting}
-              style={{ width: "100%", padding: "9px 0", background: NTA.btnSubmit, border: "none", color: "#fff", fontSize: 14, fontWeight: "bold", cursor: "pointer" }}
-            >
+          {/* Submit sidebar button */}
+          <div style={{ padding:"7px 8px", borderTop:"1px solid #ccc", background:"#fff", flexShrink:0 }}>
+            <button onClick={() => setShowSubmitModal(true)} disabled={submitting}
+              style={{ width:"100%", padding:"9px 0", background: SAVE_BTN, border:"none", color:"#fff", fontSize:14, fontWeight:"bold", cursor:"pointer", borderRadius:2 }}>
               {submitting ? "Submitting…" : "Submit"}
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── BOTTOM ACTION BAR ── */}
-      <div style={{
-        background: "#e0e8f0", borderTop: "2px solid #b0c4d8",
-        padding: "7px 10px", display: "flex", alignItems: "center", gap: 6,
-        flexShrink: 0, marginBottom: 20 /* space for version bar */
-      }}>
-        {/* Left actions */}
-        <button
-          onClick={markForReviewAndNext}
-          style={{ padding: "7px 14px", background: NTA.btnReview, border: "1px solid #4a148c", color: "#fff", fontSize: 12, cursor: "pointer", borderRadius: 2 }}
-        >
+      {/* ── BOTTOM ACTION BAR — exact from screenshot 4 ──
+          [Mark for Review & Next] [Clear Response]    spacer    [Save & Next] [Submit]
+          No Back / Next buttons (removed as requested)
+      */}
+      <div style={{ background: BOTTOM_BG, borderTop:"2px solid #c8c8c8", padding:"7px 10px", display:"flex", alignItems:"center", flexShrink:0 }}>
+        <button onClick={markForReviewAndNext}
+          style={{ padding:"8px 16px", background:"#fff", border:"1px solid #888", fontSize:13, cursor:"pointer", borderRadius:2, marginRight:8 }}>
           Mark for Review &amp; Next
         </button>
-        <button
-          onClick={clearResponse}
-          style={{ padding: "7px 14px", background: "#fff", border: "1px solid #aaa", color: "#333", fontSize: 12, cursor: "pointer", borderRadius: 2 }}
-        >
+        <button onClick={clearResponse}
+          style={{ padding:"8px 14px", background:"#fff", border:"1px solid #888", fontSize:13, cursor:"pointer", borderRadius:2 }}>
           Clear Response
         </button>
-
-        {/* Centre nav */}
-        <div style={{ flex: 1 }} />
-        <button
-          onClick={goToPrevQuestion}
-          style={{ padding: "7px 14px", background: "#fff", border: "1px solid #999", color: "#333", fontSize: 12, cursor: "pointer", borderRadius: 2 }}
-        >
-          « Back
-        </button>
-        <button
-          onClick={goToNextQuestion}
-          style={{ padding: "7px 14px", background: "#fff", border: "1px solid #999", color: "#333", fontSize: 12, cursor: "pointer", borderRadius: 2 }}
-        >
-          Next »
-        </button>
-        <div style={{ flex: 1 }} />
-
-        {/* Right actions */}
-        <button
-          onClick={saveAndNext}
-          style={{ padding: "7px 18px", background: NTA.btnSave, border: "1px solid #0d3d6b", color: "#fff", fontSize: 12, fontWeight: "bold", cursor: "pointer", borderRadius: 2 }}
-        >
+        <div style={{ flex:1 }} />
+        <button onClick={saveAndNext}
+          style={{ padding:"8px 22px", background: SAVE_BTN, border:"none", color:"#fff", fontSize:13, fontWeight:"bold", cursor:"pointer", borderRadius:2, marginRight:8 }}>
           Save &amp; Next
         </button>
-        <button
-          onClick={() => setShowSubmitModal(true)}
-          disabled={submitting}
-          style={{ padding: "7px 18px", background: NTA.btnSubmit, border: "1px solid #900", color: "#fff", fontSize: 12, fontWeight: "bold", cursor: "pointer", borderRadius: 2 }}
-        >
+        <button onClick={() => setShowSubmitModal(true)} disabled={submitting}
+          style={{ padding:"8px 22px", background: SAVE_BTN, border:"none", color:"#fff", fontSize:13, fontWeight:"bold", cursor:"pointer", borderRadius:2 }}>
           {submitting ? "…" : "Submit"}
         </button>
       </div>
 
-      {/* Version bar */}
-      <NTAVersionBar />
-
       {/* ── SUBMIT MODAL ── */}
       <AnimatePresence>
         {showSubmitModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center" }}
-            onClick={() => setShowSubmitModal(false)}
-          >
-            <motion.div
-              initial={{ scale: .95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: .95, opacity: 0 }}
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+            style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.55)", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center" }}
+            onClick={() => setShowSubmitModal(false)}>
+            <motion.div initial={{ scale:.95, opacity:0 }} animate={{ scale:1, opacity:1 }} exit={{ scale:.95, opacity:0 }}
               onClick={e => e.stopPropagation()}
-              style={{ background: "#fff", border: "1px solid #aaa", borderRadius: 4, padding: 20, width: 400, boxShadow: "0 8px 32px rgba(0,0,0,.25)", fontFamily: "Arial, sans-serif" }}
-            >
-              <div style={{ borderBottom: "2px solid #4a7ab5", paddingBottom: 8, marginBottom: 14, fontSize: 15, fontWeight: "bold", color: "#1a3a5c" }}>
+              style={{ background:"#fff", border:"1px solid #bbb", borderRadius:4, padding:22, width:420, fontFamily:"Arial,sans-serif", boxShadow:"0 8px 32px rgba(0,0,0,.25)" }}>
+              <div style={{ borderBottom:"2px solid #2979c5", paddingBottom:8, marginBottom:14, fontSize:15, fontWeight:"bold", color:"#1a3a5c" }}>
                 ⚠ Submit Test — Confirmation
               </div>
-              <p style={{ fontSize: 12, color: "#555", marginBottom: 12 }}>Are you sure you want to submit? Once submitted, you cannot change your answers.</p>
-
-              {/* Stats grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+              <p style={{ fontSize:12, color:"#555", marginBottom:12 }}>Are you sure you want to submit? Once submitted, you cannot change your answers.</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
                 {[
-                  { bg: "#e8f5e9", color: "#2e7d32", val: statusCounts.answered,      lbl: "Answered" },
-                  { bg: "#ffebee", color: "#c62828", val: questions.length - statusCounts.answered, lbl: "Not Answered" },
-                  { bg: "#f3e5f5", color: "#6a1b9a", val: statusCounts.markedCount,    lbl: "Marked for Review" },
-                  { bg: "#eceff1", color: "#455a64", val: statusCounts.notVisited,     lbl: "Not Visited" },
+                  { bg:"#e8f5e9", color:"#2e7d32", val: sc.answered,                   lbl:"Answered" },
+                  { bg:"#ffebee", color:"#c62828", val: questions.length-sc.answered,   lbl:"Not Answered" },
+                  { bg:"#f3e5f5", color:"#6a1b9a", val: sc.markedCount,                 lbl:"Marked for Review" },
+                  { bg:"#eceff1", color:"#455a64", val: sc.notVisited,                  lbl:"Not Visited" },
                 ].map((s, i) => (
-                  <div key={i} style={{ background: s.bg, padding: "10px 8px", textAlign: "center", borderRadius: 3 }}>
-                    <div style={{ fontSize: 24, fontWeight: "bold", color: s.color }}>{s.val}</div>
-                    <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{s.lbl}</div>
+                  <div key={i} style={{ background:s.bg, padding:"10px 8px", textAlign:"center", borderRadius:3 }}>
+                    <div style={{ fontSize:24, fontWeight:"bold", color:s.color }}>{s.val}</div>
+                    <div style={{ fontSize:11, color:"#666", marginTop:2 }}>{s.lbl}</div>
                   </div>
                 ))}
               </div>
-
-              <p style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>
-                Answered &amp; Marked for Review questions will also be evaluated.
-              </p>
-
-              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                <button
-                  onClick={() => setShowSubmitModal(false)}
-                  style={{ padding: "8px 20px", background: "#fff", border: "1px solid #aaa", fontSize: 13, cursor: "pointer", borderRadius: 2 }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleSubmit()}
-                  disabled={submitting}
-                  style={{ padding: "8px 20px", background: NTA.btnSubmit, border: "none", color: "#fff", fontSize: 13, fontWeight: "bold", cursor: "pointer", borderRadius: 2 }}
-                >
+              <p style={{ fontSize:11, color:"#888", marginBottom:14 }}>Answered &amp; Marked for Review questions will also be evaluated.</p>
+              <div style={{ display:"flex", gap:8, justifyContent:"flex-end" }}>
+                <button onClick={() => setShowSubmitModal(false)}
+                  style={{ padding:"8px 20px", background:"#fff", border:"1px solid #aaa", fontSize:13, cursor:"pointer", borderRadius:2 }}>Cancel</button>
+                <button onClick={() => handleSubmit()} disabled={submitting}
+                  style={{ padding:"8px 20px", background:"#cc0000", border:"none", color:"#fff", fontSize:13, fontWeight:"bold", cursor:"pointer", borderRadius:2 }}>
                   {submitting ? "Submitting…" : "Yes, Submit"}
                 </button>
               </div>
@@ -1210,19 +919,12 @@ export default function NormalTestInterface() {
     </div>
   );
 
-  /* Wrap with FullscreenGuard if enabled (identical to original) */
   if (fullscreenEnabled) {
     return (
-      <FullscreenGuard
-        maxExits={7}
-        onMaxExitsReached={handleMaxFullscreenExits}
-        onExitCountChange={handleFullscreenExitCountChange}
-        initialExitCount={fullscreenExitCount}
-      >
+      <FullscreenGuard maxExits={7} onMaxExitsReached={handleMaxFullscreenExits} onExitCountChange={handleFullscreenExitCountChange} initialExitCount={fullscreenExitCount}>
         {testContent}
       </FullscreenGuard>
     );
   }
-
   return testContent;
 }
