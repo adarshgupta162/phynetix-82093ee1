@@ -69,7 +69,19 @@ serve(async (req) => {
     }
 
     const userEmail = userData.user.email;
-    const personalizedMessage = message.replace(/{name}/g, userName || 'Student');
+
+    // HTML-escape user input to prevent injection
+    function escapeHtml(unsafe: string): string {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    const safeUserName = escapeHtml(userName || 'Student');
+    const safeMessage = escapeHtml(message.replace(/{name}/g, userName || 'Student'));
 
     const emailResponse = await resend.emails.send({
       from: "PhyNetix <onboarding@resend.dev>",
