@@ -57,6 +57,18 @@ serve(async (req) => {
       throw new Error("Missing required fields: userEmail, subject, message");
     }
 
+    function escapeHtml(unsafe: string): string {
+      return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    const safeUserName = escapeHtml(userName || 'Student');
+    const safeMessage = escapeHtml(message);
+
     const emailResponse = await resend.emails.send({
       from: "PhyNetix <onboarding@resend.dev>",
       to: [userEmail],
