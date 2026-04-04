@@ -16,10 +16,45 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Authenticate and authorize admin
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "No authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .single();
+
+    if (!roleData) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - Admin access required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { test_id } = await req.json();
 
-    if (!test_id) {
-      throw new Error("test_id is required");
+    if (!test_id || typeof test_id !== "string") {
+      return new Response(
+        JSON.stringify({ error: "test_id is required and must be a string" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     console.log(`Recalculating scores for test: ${test_id}`);
@@ -70,7 +105,6 @@ serve(async (req) => {
       let correct = 0;
       let incorrect = 0;
 
-      // Process all questions (including unanswered ones)
       for (const [questionId, question] of questionMap) {
         const marks = question.marks || 4;
         const negativeMarks = question.negative_marks || 1;
@@ -81,14 +115,12 @@ serve(async (req) => {
 
         totalMarks += marks;
 
-        // Bonus question - everyone gets full marks
         if (isBonus) {
           score += marks;
           correct++;
           continue;
         }
 
-        // Skip if no answer
         if (!userAnswer || (Array.isArray(userAnswer) && userAnswer.length === 0) || userAnswer === '') {
           continue;
         }
@@ -104,7 +136,6 @@ serve(async (req) => {
             score += marks;
             correct++;
           } else {
-            // JEE Mains integer has negative marking
             score -= negativeMarks;
             incorrect++;
           }
@@ -114,7 +145,6 @@ serve(async (req) => {
           const correctAnswers = Array.isArray(correctAnswer) ? [...correctAnswer].sort() : [correctAnswer];
           
           if (test?.exam_type === "jee_advanced") {
-            // Partial marking for JEE Advanced
             const correctSet = new Set(correctAnswers);
             const correctCount = userAnswers.filter(a => correctSet.has(a)).length;
             const wrongCount = userAnswers.filter(a => !correctSet.has(a)).length;
@@ -149,7 +179,6 @@ serve(async (req) => {
       updatedAttempts.push({ id: attempt.id, score, total_marks: totalMarks });
     }
 
-    // Update all attempts
     for (const update of updatedAttempts) {
       await supabase
         .from("test_attempts")
@@ -157,7 +186,6 @@ serve(async (req) => {
         .eq("id", update.id);
     }
 
-    // Recalculate ranks and percentiles
     const sortedAttempts = updatedAttempts.sort((a, b) => b.score - a.score);
     for (let i = 0; i < sortedAttempts.length; i++) {
       const rank = i + 1;
@@ -182,7 +210,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error("Error recalculating scores:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: "An error occurred while recalculating scores" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

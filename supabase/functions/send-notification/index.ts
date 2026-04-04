@@ -98,8 +98,8 @@ serve(async (req) => {
             </div>
             <div class="content">
               <div class="divider"></div>
-              <p class="greeting">Hello ${userName || 'Student'},</p>
-              <div class="message">${message}</div>
+              <p class="greeting">Hello ${safeUserName},</p>
+              <div class="message">${safeMessage}</div>
               <a href="https://phynetix.com" class="cta">Visit PhyNetix →</a>
             </div>
             <div class="footer">
