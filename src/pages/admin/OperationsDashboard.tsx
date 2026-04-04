@@ -22,11 +22,12 @@ import {
   Phone,
   MoreHorizontal,
   CheckCircle,
-  XCircle
+  XCircle,
+  CalendarIcon
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAllEnrollments } from "@/hooks/useEnrollment";
+import { useAllEnrollments, useUpdateEnrollment, useCancelEnrollment, type BatchEnrollment } from "@/hooks/useEnrollment";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import {
@@ -35,11 +36,50 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+type EnrollmentWithBatch = BatchEnrollment & {
+  batches?: {
+    name?: string | null;
+    category?: string | null;
+  } | null;
+};
 
 export default function OperationsDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   
+  // Dialog states
+  const [viewDetailsOpen, setViewDetailsOpen] = useState(false);
+  const [extendAccessOpen, setExtendAccessOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentWithBatch | null>(null);
+  const [extendDate, setExtendDate] = useState<Date | undefined>(undefined);
+  
   const { data: enrollments, isLoading: enrollmentsLoading } = useAllEnrollments();
+  const updateEnrollment = useUpdateEnrollment();
+  const cancelEnrollment = useCancelEnrollment();
 
   // Fetch student profiles
   const { data: students } = useQuery({
@@ -68,6 +108,73 @@ export default function OperationsDashboard() {
       enrollment.batches?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
+
+  // Handler functions
+  const handleViewDetails = (enrollment: EnrollmentWithBatch) => {
+    setSelectedEnrollment(enrollment);
+    setViewDetailsOpen(true);
+  };
+
+  const handleExtendAccess = (enrollment: EnrollmentWithBatch) => {
+    setSelectedEnrollment(enrollment);
+    setExtendDate(enrollment.expires_at ? new Date(enrollment.expires_at) : undefined);
+    setExtendAccessOpen(true);
+  };
+
+  const handleCancelEnrollment = (enrollment: EnrollmentWithBatch) => {
+    setSelectedEnrollment(enrollment);
+    setCancelDialogOpen(true);
+  };
+
+  const confirmExtendAccess = async () => {
+    if (!selectedEnrollment || !extendDate) return;
+
+    // Validate that the new date is after the current expiry date
+    if (selectedEnrollment.expires_at) {
+      const currentExpiry = new Date(selectedEnrollment.expires_at);
+      // Strip time for fair date comparison
+      currentExpiry.setHours(0, 0, 0, 0);
+      const newDate = new Date(extendDate);
+      newDate.setHours(0, 0, 0, 0);
+      
+      if (newDate <= currentExpiry) {
+        toast.error("New expiry date must be after the current expiry date");
+        return;
+      }
+    }
+
+    try {
+      // Set time to end of day to include the full day in the access period
+      const endOfDay = new Date(extendDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      await updateEnrollment.mutateAsync({
+        id: selectedEnrollment.id,
+        expires_at: endOfDay.toISOString(),
+      });
+      toast.success("Access extended successfully");
+      setExtendAccessOpen(false);
+      setSelectedEnrollment(null);
+      setExtendDate(undefined);
+    } catch (error) {
+      toast.error("Failed to extend access");
+      console.error(error);
+    }
+  };
+
+  const confirmCancelEnrollment = async () => {
+    if (!selectedEnrollment) return;
+
+    try {
+      await cancelEnrollment.mutateAsync(selectedEnrollment.id);
+      toast.success("Enrollment cancelled successfully");
+      setCancelDialogOpen(false);
+      setSelectedEnrollment(null);
+    } catch (error) {
+      toast.error("Failed to cancel enrollment");
+      console.error(error);
+    }
+  };
 
   return (
     <AdminLayout>
@@ -185,7 +292,7 @@ export default function OperationsDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredEnrollments?.map((enrollment: any) => (
+                      {filteredEnrollments?.map((enrollment: EnrollmentWithBatch) => (
                         <TableRow key={enrollment.id}>
                           <TableCell className="font-medium">
                             {enrollment.batches?.name || 'N/A'}
@@ -216,9 +323,16 @@ export default function OperationsDashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>View Details</DropdownMenuItem>
-                                <DropdownMenuItem>Extend Access</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
+                                <DropdownMenuItem onClick={() => handleViewDetails(enrollment)}>
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleExtendAccess(enrollment)}>
+                                  Extend Access
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-destructive"
+                                  onClick={() => handleCancelEnrollment(enrollment)}
+                                >
                                   Cancel Enrollment
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -257,7 +371,7 @@ export default function OperationsDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {students?.slice(0, 10).map((student) => (
+                      {students?.map((student) => (
                         <TableRow key={student.id}>
                           <TableCell className="font-medium">
                             {student.full_name || 'N/A'}
@@ -301,6 +415,156 @@ export default function OperationsDashboard() {
             </TabsContent>
           </Tabs>
         </motion.div>
+
+        {/* View Details Dialog */}
+        <Dialog open={viewDetailsOpen} onOpenChange={setViewDetailsOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Enrollment Details</DialogTitle>
+              <DialogDescription>
+                Complete information about this enrollment
+              </DialogDescription>
+            </DialogHeader>
+            {selectedEnrollment && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-semibold">Student ID</Label>
+                    <p className="text-sm text-muted-foreground">{selectedEnrollment.user_id}</p>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Batch Name</Label>
+                    <p className="text-sm text-muted-foreground">{selectedEnrollment.batches?.name || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Enrollment Date</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedEnrollment.enrolled_at ? format(new Date(selectedEnrollment.enrolled_at), 'PPP') : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Expiry Date</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedEnrollment.expires_at ? format(new Date(selectedEnrollment.expires_at), 'PPP') : 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Payment Status</Label>
+                    <Badge variant={selectedEnrollment.payment_status === 'completed' ? 'default' : 'outline'}>
+                      {selectedEnrollment.payment_status || 'N/A'}
+                    </Badge>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Enrollment Type</Label>
+                    <p className="text-sm text-muted-foreground capitalize">{selectedEnrollment.enrollment_type}</p>
+                  </div>
+                  <div>
+                    <Label className="font-semibold">Status</Label>
+                    <Badge variant={selectedEnrollment.is_active ? "default" : "secondary"}>
+                      {selectedEnrollment.is_active ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </div>
+                  {selectedEnrollment.notes && (
+                    <div className="col-span-2">
+                      <Label className="font-semibold">Notes</Label>
+                      <p className="text-sm text-muted-foreground">{selectedEnrollment.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button onClick={() => setViewDetailsOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Extend Access Dialog */}
+        <Dialog open={extendAccessOpen} onOpenChange={setExtendAccessOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Extend Access</DialogTitle>
+              <DialogDescription>
+                Select a new expiry date for this enrollment
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Current Expiry Date</Label>
+                <p className="text-sm text-muted-foreground">
+                  {selectedEnrollment?.expires_at 
+                    ? format(new Date(selectedEnrollment.expires_at), 'PPP')
+                    : 'No expiry date set'}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>New Expiry Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !extendDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {extendDate ? format(extendDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={extendDate}
+                      onSelect={setExtendDate}
+                      disabled={(date) => {
+                        // Disable dates before current expiry date or today, whichever is later
+                        const minDate = selectedEnrollment?.expires_at 
+                          ? new Date(selectedEnrollment.expires_at)
+                          : new Date();
+                        return date <= minDate;
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExtendAccessOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={confirmExtendAccess}
+                disabled={!extendDate || updateEnrollment.isPending}
+              >
+                {updateEnrollment.isPending ? "Extending..." : "Extend Access"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancel Enrollment Confirmation Dialog */}
+        <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will cancel the enrollment for {selectedEnrollment?.batches?.name}.
+                The student will lose access to this batch. This action can be reversed later if needed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={confirmCancelEnrollment}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {cancelEnrollment.isPending ? "Cancelling..." : "Cancel Enrollment"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );
