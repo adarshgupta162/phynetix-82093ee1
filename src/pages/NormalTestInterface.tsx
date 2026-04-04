@@ -20,6 +20,10 @@ interface Question {
   paragraph_image_urls?: string[];
 }
 interface Section { id: string; name: string; questions: Question[]; section_type?: string; }
+type AttemptProgressPayload = {
+  answers?: Record<string, string | string[]>;
+  time_per_question?: Record<string, number>;
+};
 
 /* ─── EXACT COLOURS FROM SCREENSHOT ─── */
 const C = {
@@ -138,6 +142,8 @@ export default function NormalTestInterface() {
   const [activeSection, setActiveSection]       = useState<string | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers]                   = useState<Record<string, string | string[]>>({});
+  const [draftQuestionId, setDraftQuestionId]   = useState<string | null>(null);
+  const [draftAnswer, setDraftAnswer]           = useState<string | string[] | undefined>(undefined);
   const [markedForReview, setMarkedForReview]   = useState<Set<string>>(new Set());
   const [visitedQuestions, setVisitedQuestions] = useState<Set<string>>(new Set());
   const [timeLeft, setTimeLeft]                 = useState(0);
@@ -160,6 +166,8 @@ export default function NormalTestInterface() {
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [isSaving, setIsSaving]                 = useState(false);
   const [timeExpired, setTimeExpired]           = useState(false);
+  const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const persistSequenceRef = useRef(0);
 
   // tooltip hover state
   const [hoveredSectionTooltip, setHoveredSectionTooltip] = useState<string | null>(null);
@@ -276,63 +284,159 @@ export default function NormalTestInterface() {
   const currentQuestion = currentSection?.questions[currentQuestionIndex];
   const isMultipleChoice  = ["multiple_choice", "multi"].includes(currentQuestion?.question_type || "") || ["multiple_choice", "multi"].includes(currentQuestion?.section_type || "");
   const isIntegerQuestion = ["integer", "numerical"].includes(currentQuestion?.question_type || "");
+  const currentQuestionId = currentQuestion?.id;
+
+  const cloneAnswerValue = (answer?: string | string[]) => Array.isArray(answer) ? [...answer] : answer;
+  const normalizeAnswerValue = (answer?: string | string[]) => {
+    if (Array.isArray(answer)) return answer.length > 0 ? [...answer] : undefined;
+    if (typeof answer === "string") return answer === "" ? undefined : answer;
+    return answer;
+  };
+  const isAnswerPresent = (answer?: string | string[]) => Array.isArray(answer) ? answer.length > 0 : answer !== undefined && answer !== "";
+  const displayedCurrentAnswer = currentQuestionId && draftQuestionId === currentQuestionId
+    ? draftAnswer
+    : cloneAnswerValue(currentQuestionId ? answers[currentQuestionId] : undefined);
+
+  useEffect(() => {
+    if (!currentQuestionId) {
+      setDraftQuestionId(null);
+      setDraftAnswer(undefined);
+      return;
+    }
+
+    setDraftQuestionId(currentQuestionId);
+    setDraftAnswer(cloneAnswerValue(answers[currentQuestionId]));
+  }, [currentQuestionId, answers]);
 
   /* single choice — only one option selectable, cannot deselect */
   const handleAnswer = (idx: number) => {
     if (!currentQuestion) return;
+    setDraftQuestionId(currentQuestion.id);
+
     if (isMultipleChoice) {
-      const cur = Array.isArray(answers[currentQuestion.id]) ? answers[currentQuestion.id] as string[] : answers[currentQuestion.id] ? [answers[currentQuestion.id] as string] : [];
+      const cur = Array.isArray(displayedCurrentAnswer)
+        ? displayedCurrentAnswer
+        : displayedCurrentAnswer
+          ? [displayedCurrentAnswer as string]
+          : [];
       const s = String(idx);
-      setAnswers({ ...answers, [currentQuestion.id]: cur.includes(s) ? cur.filter(a => a !== s) : [...cur, s] });
+      setDraftAnswer(cur.includes(s) ? cur.filter(a => a !== s) : [...cur, s]);
     } else {
       // single choice — just set, never deselect
-      setAnswers({ ...answers, [currentQuestion.id]: String(idx) });
+      setDraftAnswer(String(idx));
     }
   };
 
   const handleIntegerAnswer = (v: string) => {
-    if (currentQuestion) setAnswers({ ...answers, [currentQuestion.id]: v.replace(/[^0-9-]/g, "") });
+    if (!currentQuestion) return;
+    setDraftQuestionId(currentQuestion.id);
+    setDraftAnswer(v.replace(/[^0-9-]/g, ""));
   };
 
   const clearResponse = () => {
     if (!currentQuestion) return;
-    const na = { ...answers }; delete na[currentQuestion.id]; setAnswers(na);
+    setDraftQuestionId(currentQuestion.id);
+    setDraftAnswer(undefined);
   };
 
-  const updateTimeForCurrentQuestion = useCallback(() => {
-    if (currentQuestion) {
-      const t = Math.floor((Date.now() - questionStartTime) / 1000);
-      setTimePerQuestion(p => ({ ...p, [currentQuestion.id]: (p[currentQuestion.id] || 0) + t }));
-    }
-  }, [currentQuestion, questionStartTime]);
+  const buildCurrentTimeSnapshot = useCallback(() => {
+    if (!currentQuestion) return timePerQuestion;
 
-  const saveProgress = useCallback(async () => {
-    if (!attemptId || isSaving) return;
+    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - questionStartTime) / 1000));
+    if (elapsedSeconds === 0) return timePerQuestion;
+
+    return {
+      ...timePerQuestion,
+      [currentQuestion.id]: (timePerQuestion[currentQuestion.id] || 0) + elapsedSeconds,
+    };
+  }, [currentQuestion, questionStartTime, timePerQuestion]);
+
+  const commitCurrentQuestionTime = useCallback(() => {
+    const nextTimeMap = buildCurrentTimeSnapshot();
+    setTimePerQuestion(nextTimeMap);
+    setQuestionStartTime(Date.now());
+    return nextTimeMap;
+  }, [buildCurrentTimeSnapshot]);
+
+  const enqueueAttemptUpdate = useCallback((payload: AttemptProgressPayload) => {
+    if (!attemptId) return Promise.resolve();
+
+    const requestId = ++persistSequenceRef.current;
     setIsSaving(true);
-    try {
-      const ct = currentQuestion ? Math.floor((Date.now() - questionStartTime) / 1000) : 0;
-      const upd = currentQuestion ? { ...timePerQuestion, [currentQuestion.id]: (timePerQuestion[currentQuestion.id] || 0) + ct } : timePerQuestion;
-      const { error } = await supabase.from("test_attempts").update({ answers, time_per_question: upd }).eq("id", attemptId);
-      if (error) console.error("Auto-save failed:", error);
-    } catch (e) { console.error(e); } finally { setIsSaving(false); }
-  }, [attemptId, answers, timePerQuestion, currentQuestion, questionStartTime, isSaving]);
+
+    const nextRequest = persistQueueRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const { error } = await supabase.from("test_attempts").update(payload).eq("id", attemptId);
+        if (error) throw error;
+      })
+      .catch((error) => {
+        console.error("Failed to save progress:", error);
+      })
+      .finally(() => {
+        if (persistSequenceRef.current === requestId) {
+          setIsSaving(false);
+        }
+      });
+
+    persistQueueRef.current = nextRequest;
+    return nextRequest;
+  }, [attemptId]);
 
   useEffect(() => {
     if (currentScreen !== 4 || !attemptId || loading) return;
-    const i = setInterval(() => saveProgress(), 10000);
+    const i = setInterval(() => {
+      const nextTimeMap = buildCurrentTimeSnapshot();
+      void enqueueAttemptUpdate({ time_per_question: nextTimeMap });
+    }, 10000);
     return () => clearInterval(i);
-  }, [currentScreen, attemptId, loading, saveProgress]);
+  }, [currentScreen, attemptId, loading, buildCurrentTimeSnapshot, enqueueAttemptUpdate]);
 
-  /* Save only on button click */
+  const buildCommittedAnswers = useCallback(() => {
+    if (!currentQuestion) return answers;
+
+    const nextAnswers = { ...answers };
+    const normalizedDraft = normalizeAnswerValue(displayedCurrentAnswer);
+
+    if (normalizedDraft === undefined) delete nextAnswers[currentQuestion.id];
+    else nextAnswers[currentQuestion.id] = normalizedDraft;
+
+    return nextAnswers;
+  }, [answers, currentQuestion, displayedCurrentAnswer]);
+
+  const commitCurrentQuestionProgress = useCallback(async (options: { markForReview?: boolean } = {}) => {
+    if (!currentQuestion) return;
+
+    const nextAnswers = buildCommittedAnswers();
+    const nextTimeMap = commitCurrentQuestionTime();
+
+    if (options.markForReview) {
+      setMarkedForReview(prev => {
+        const next = new Set(prev);
+        next.add(currentQuestion.id);
+        return next;
+      });
+    }
+
+    setAnswers(nextAnswers);
+    await enqueueAttemptUpdate({ answers: nextAnswers, time_per_question: nextTimeMap });
+  }, [buildCommittedAnswers, commitCurrentQuestionTime, currentQuestion, enqueueAttemptUpdate]);
+
+  const navigateWithoutSavingAnswer = useCallback((navigateFn: () => void) => {
+    const nextTimeMap = commitCurrentQuestionTime();
+    void enqueueAttemptUpdate({ time_per_question: nextTimeMap });
+    navigateFn();
+  }, [commitCurrentQuestionTime, enqueueAttemptUpdate]);
+
+  /* Commit answers only on explicit save actions */
   const saveAndNext = async () => {
-    updateTimeForCurrentQuestion(); setQuestionStartTime(Date.now());
-    await saveProgress(); goToNextQuestion();
+    await commitCurrentQuestionProgress();
+    goToNextQuestion();
   };
 
   const markForReviewAndNext = async () => {
-    if (currentQuestion) { const nm = new Set(markedForReview); nm.add(currentQuestion.id); setMarkedForReview(nm); }
-    updateTimeForCurrentQuestion(); setQuestionStartTime(Date.now());
-    await saveProgress(); goToNextQuestion();
+    await commitCurrentQuestionProgress({ markForReview: true });
+    goToNextQuestion();
   };
 
   const goToNextQuestion = () => {
@@ -354,6 +458,10 @@ export default function NormalTestInterface() {
     if (!attemptId || submitting) return;
     setSubmitting(true);
     try {
+      const nextTimeMap = buildCurrentTimeSnapshot();
+      setTimePerQuestion(nextTimeMap);
+      await enqueueAttemptUpdate({ time_per_question: nextTimeMap });
+
       const { data, error } = await supabase.functions.invoke("submit-test", {
         body: { attempt_id: attemptId, answers, time_taken_seconds: Math.max(1, (testDuration * 60) - timeLeft), fullscreen_exit_count: fullscreenExitCount },
       });
@@ -364,7 +472,7 @@ export default function NormalTestInterface() {
       toast({ title: "Error", description: e.message || "Failed to submit test.", variant: "destructive" });
       setSubmitting(false);
     }
-  }, [attemptId, answers, timeLeft, testId, testName, navigate, submitting, questions, fullscreenExitCount]);
+  }, [attemptId, answers, timeLeft, testId, testName, navigate, submitting, fullscreenExitCount, buildCurrentTimeSnapshot, enqueueAttemptUpdate, testDuration]);
 
   const handleFullscreenExitCountChange = useCallback((count: number) => {
     setFullscreenExitCount(count);
@@ -378,19 +486,19 @@ export default function NormalTestInterface() {
 
   const getQuestionStatus = (qid: string) => {
     if (currentQuestion?.id === qid) return "current";
-    if (markedForReview.has(qid) && answers[qid] !== undefined) return "answered-marked";
+    if (markedForReview.has(qid) && isAnswerPresent(answers[qid])) return "answered-marked";
     if (markedForReview.has(qid)) return "marked";
-    if (answers[qid] !== undefined) return "answered";
+    if (isAnswerPresent(answers[qid])) return "answered";
     if (visitedQuestions.has(qid)) return "not-answered";
     return "not-visited";
   };
 
   const getStatusCounts = (filterSection?: Section) => {
     const qs = filterSection ? filterSection.questions : questions;
-    const answered       = qs.filter(q => answers[q.id] !== undefined).length;
-    const notAnswered    = qs.filter(q => visitedQuestions.has(q.id) && answers[q.id] === undefined).length;
+    const answered       = qs.filter(q => isAnswerPresent(answers[q.id])).length;
+    const notAnswered    = qs.filter(q => visitedQuestions.has(q.id) && !isAnswerPresent(answers[q.id])).length;
     const markedCount    = qs.filter(q => markedForReview.has(q.id)).length;
-    const answeredMarked = qs.filter(q => markedForReview.has(q.id) && answers[q.id] !== undefined).length;
+    const answeredMarked = qs.filter(q => markedForReview.has(q.id) && isAnswerPresent(answers[q.id])).length;
     const notVisited     = qs.filter(q => !visitedQuestions.has(q.id)).length;
     return { answered, notAnswered, markedCount, answeredMarked, notVisited };
   };
@@ -645,9 +753,12 @@ export default function NormalTestInterface() {
                     onMouseLeave={() => setHoveredSectionTooltip(null)}>
                     <button
                       onClick={() => {
-                        setActiveSection(sec.id); setCurrentQuestionIndex(0);
-                        const firstQ = sec.questions[0];
-                        if (firstQ) setVisitedQuestions(p => new Set([...p, firstQ.id]));
+                        navigateWithoutSavingAnswer(() => {
+                          setActiveSection(sec.id);
+                          setCurrentQuestionIndex(0);
+                          const firstQ = sec.questions[0];
+                          if (firstQ) setVisitedQuestions(p => new Set([...p, firstQ.id]));
+                        });
                       }}
                       style={{ display: "flex", alignItems: "center", gap: 3, padding: "4px 12px", border: "1px solid", borderColor: activeSection === sec.id ? "#1a60b0" : "#b0c8e0", borderRadius: 3, background: activeSection === sec.id ? C.secActive : C.secInactive, color: activeSection === sec.id ? "#fff" : "#1a1a1a", fontSize: 12, fontWeight: "bold", cursor: "pointer", whiteSpace: "nowrap" }}>
                       {sec.name}
@@ -695,7 +806,7 @@ export default function NormalTestInterface() {
                 <div style={{ fontSize: 13, color: "#444", marginBottom: 8 }}>Enter your answer (integer only):</div>
                 <input
                   type="text" inputMode="numeric"
-                  value={currentQuestion ? (answers[currentQuestion.id] as string || "") : ""}
+                  value={typeof displayedCurrentAnswer === "string" ? displayedCurrentAnswer : ""}
                   onChange={e => handleIntegerAnswer(e.target.value)}
                   placeholder="Type answer"
                   style={{ padding: "8px 12px", border: "2px solid #888", width: 180, fontSize: 16, fontFamily: "monospace", textAlign: "center", outline: "none", background: "#ffffff", color: "#000" }}
@@ -705,7 +816,7 @@ export default function NormalTestInterface() {
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {options.map((opt, idx) => {
                   const optStr = String(idx);
-                  const curAns = currentQuestion ? answers[currentQuestion.id] : undefined;
+                  const curAns = displayedCurrentAnswer;
                   const selected = isMultipleChoice
                     ? Array.isArray(curAns) && curAns.includes(optStr)
                     : curAns === optStr;
@@ -739,11 +850,7 @@ export default function NormalTestInterface() {
           </div>
 
           {/* ── BOTTOM ACTION BAR ──
-              [Mark for Review & Next] [Clear Response]  spacer  [Save & Next] [Submit]
-              Mark for Review & Next — white, black text
-              Clear Response         — white, black text
-              Save & Next            — white, black text
-              Submit                 — blue
+              [Mark for Review & Next] [Clear Response]  spacer  [Save & Next]
           */}
           <div style={{ background: C.bottomBg, borderTop: "2px solid #c8c8c8", padding: "7px 10px", display: "flex", alignItems: "center", flexShrink: 0 }}>
             <button onClick={markForReviewAndNext}
@@ -758,10 +865,6 @@ export default function NormalTestInterface() {
             <button onClick={saveAndNext}
               style={{ padding: "8px 22px", background: "#fff", border: "1px solid #888", fontSize: 13, fontWeight: "bold", cursor: "pointer", borderRadius: 2, marginRight: 8, color: "#333" }}>
               Save &amp; Next
-            </button>
-            <button onClick={() => setShowSubmitModal(true)} disabled={submitting}
-              style={{ padding: "8px 22px", background: C.secActive, border: "none", color: "#fff", fontSize: 13, fontWeight: "bold", cursor: "pointer", borderRadius: 2 }}>
-              {submitting ? "…" : "Submit"}
             </button>
           </div>
         </div>
@@ -812,9 +915,11 @@ export default function NormalTestInterface() {
                   num={idx + 1}
                   status={getQuestionStatus(q.id)}
                   onClick={() => {
-                    /* Palette = navigate only, NO save */
-                    setCurrentQuestionIndex(idx);
-                    setVisitedQuestions(p => new Set([...p, q.id]));
+                    /* Palette = navigate only, NO answer save */
+                    navigateWithoutSavingAnswer(() => {
+                      setCurrentQuestionIndex(idx);
+                      setVisitedQuestions(p => new Set([...p, q.id]));
+                    });
                   }}
                 />
               ))}
