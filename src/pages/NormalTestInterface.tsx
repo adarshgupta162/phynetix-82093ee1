@@ -47,7 +47,7 @@ const C = {
   // palette exact
   palGrey:      "#c8c8c8",   // not visited — square
   palRed:       "#cc0000",   // not answered (visited) — round
-  palOrange:    "#e05c1a",   // current — shield
+  palRed2:      "#cc0000",   // current — red square
   palGreen:     "#26a65b",   // answered — round
   palPurple:    "#7b2fbf",   // marked — round
 };
@@ -56,8 +56,8 @@ const C = {
 function PaletteBtn({ num, status, onClick }: { num: number; status: string; onClick: () => void }) {
   let bg = C.palGrey, color = "#555", borderRadius = "4px", border = "1px solid #aaa", outline = "none";
   if (status === "current") {
-    bg = C.palOrange; color = "#fff"; borderRadius = "8px 8px 2px 2px"; border = "none";
-    outline = `2px solid ${C.palOrange}`; 
+    bg = C.palRed2; color = "#fff"; borderRadius = "4px"; border = "none";
+    outline = `2px solid ${C.palRed2}`; 
   } else if (status === "not-answered") {
     bg = C.palRed; color = "#fff"; borderRadius = "50%"; border = "none";
   } else if (status === "answered") {
@@ -713,7 +713,7 @@ export default function NormalTestInterface() {
             <span style={{ width: 15, height: 15, background: C.palGreen, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 9, flexShrink: 0 }}>≡</span>
             Question Paper
           </button>
-          <AccessibilityToolbar inline />
+          <AccessibilityToolbar />
         </div>
       </div>
 
