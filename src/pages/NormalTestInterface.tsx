@@ -178,6 +178,15 @@ export default function NormalTestInterface() {
 
   /* ════ ALL API/BACKEND LOGIC — 100% IDENTICAL TO ORIGINAL ════ */
 
+  // Online/offline detection
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
+  }, []);
+
   useEffect(() => { if (testId) checkExistingAttemptFn(); }, [testId]);
 
   const checkExistingAttemptFn = async () => {
