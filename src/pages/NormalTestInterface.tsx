@@ -8,6 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import FullscreenGuard from "@/components/test/FullscreenGuard";
+import AccessibilityToolbar from "@/components/test/AccessibilityToolbar";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
 
 /* ─── TYPES ─── */
@@ -712,6 +713,7 @@ export default function NormalTestInterface() {
             <span style={{ width: 15, height: 15, background: C.palGreen, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 9, flexShrink: 0 }}>≡</span>
             Question Paper
           </button>
+          <AccessibilityToolbar inline />
         </div>
       </div>
 
