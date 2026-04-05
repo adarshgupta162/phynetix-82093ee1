@@ -713,7 +713,7 @@ export default function NormalTestInterface() {
             <span style={{ width: 15, height: 15, background: C.palGreen, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 9, flexShrink: 0 }}>≡</span>
             Question Paper
           </button>
-          <AccessibilityToolbar inline />
+          <AccessibilityToolbar />
         </div>
       </div>
 
