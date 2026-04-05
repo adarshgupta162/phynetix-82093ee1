@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, Flag, ChevronLeft, ChevronRight, AlertCircle,
-  CheckCircle2, XCircle, Loader2
+  CheckCircle2, XCircle, Loader2, WifiOff
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,6 +167,8 @@ export default function NormalTestInterface() {
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [isSaving, setIsSaving]                 = useState(false);
   const [timeExpired, setTimeExpired]           = useState(false);
+  const [showPalette, setShowPalette]           = useState(true);
+  const [isOffline, setIsOffline]               = useState(!navigator.onLine);
   const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
   const persistSequenceRef = useRef(0);
 
@@ -175,6 +177,15 @@ export default function NormalTestInterface() {
   const [showTestTooltip, setShowTestTooltip]   = useState(false);
 
   /* ════ ALL API/BACKEND LOGIC — 100% IDENTICAL TO ORIGINAL ════ */
+
+  // Online/offline detection
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => { window.removeEventListener("offline", goOffline); window.removeEventListener("online", goOnline); };
+  }, []);
 
   useEffect(() => { if (testId) checkExistingAttemptFn(); }, [testId]);
 
@@ -257,9 +268,12 @@ export default function NormalTestInterface() {
       setSections(secList);
       if (secList.length) setActiveSection(secList[0].id);
       if (allQ.length) {
-        if (startData.is_resume && startData.existing_answers)
-          setVisitedQuestions(new Set([allQ[0].id, ...Object.keys(startData.existing_answers)]));
-        else setVisitedQuestions(new Set([allQ[0].id]));
+        if (startData.is_resume) {
+          // On resume, mark ALL questions as visited so skipped ones show red (not-answered) not grey
+          setVisitedQuestions(new Set(allQ.map(q => q.id)));
+        } else {
+          setVisitedQuestions(new Set([allQ[0].id]));
+        }
       }
       setLoading(false);
     } catch (e: any) {
@@ -734,7 +748,6 @@ export default function NormalTestInterface() {
                 <span style={{ width: 16, height: 16, background: C.secActive, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: "bold", cursor: "pointer" }}>i</span>
                 <StatusTooltip counts={{ answered: sc.answered, notAnswered: sc.notAnswered, notVisited: sc.notVisited, marked: sc.markedCount, answeredMarked: sc.answeredMarked }} visible={showTestTooltip} />
               </div>
-              {isSaving && <span style={{ fontSize: 10, color: "#888" }}>Saving…</span>}
             </div>
             <span style={{ fontSize: 13, fontWeight: "bold", color: timeLeft < 300 ? "#cc0000" : "#000" }}>
               Time Left : {formatTime(timeLeft)}
@@ -871,8 +884,41 @@ export default function NormalTestInterface() {
           </div>
         </div>
 
+        {/* ── Mobile palette toggle button ── */}
+        <button
+          onClick={() => setShowPalette(p => !p)}
+          style={{
+            display: "none", position: "fixed", bottom: 70, right: 10, zIndex: 9998,
+            width: 40, height: 40, borderRadius: "50%", background: C.secActive,
+            border: "none", color: "#fff", fontSize: 11, fontWeight: "bold",
+            cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,.3)",
+            alignItems: "center", justifyContent: "center",
+          }}
+          className="mobile-palette-toggle"
+        >
+          {showPalette ? "✕" : "Q"}
+        </button>
+        <style>{`
+          @media (max-width: 768px) {
+            .mobile-palette-toggle { display: flex !important; }
+          }
+        `}</style>
+
         {/* ── SIDEBAR — starts from below Row 1, full height ── */}
-        <div style={{ width: 235, background: C.sidebarBg, display: "flex", flexDirection: "column", overflow: "hidden", flexShrink: 0, borderLeft: "1px solid #bbb" }}>
+        <div className="test-sidebar" style={{
+          width: 235, background: C.sidebarBg, display: "flex", flexDirection: "column",
+          overflow: "hidden", flexShrink: 0, borderLeft: "1px solid #bbb",
+        }}>
+          <style>{`
+            @media (max-width: 768px) {
+              .test-sidebar {
+                position: fixed !important; top: 0 !important; right: 0 !important;
+                bottom: 0 !important; z-index: 9997 !important;
+                box-shadow: -4px 0 16px rgba(0,0,0,.25) !important;
+                display: ${showPalette ? 'flex' : 'none'} !important;
+              }
+            }
+          `}</style>
 
           {/* Candidate photo + name */}
           <div style={{ background: "#fff", borderBottom: "1px solid #ccc", padding: "10px 8px", display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
@@ -917,11 +963,12 @@ export default function NormalTestInterface() {
                   num={idx + 1}
                   status={getQuestionStatus(q.id)}
                   onClick={() => {
-                    /* Palette = navigate only, NO answer save */
                     navigateWithoutSavingAnswer(() => {
                       setCurrentQuestionIndex(idx);
                       setVisitedQuestions(p => new Set([...p, q.id]));
                     });
+                    // Auto-close palette on mobile after selecting
+                    if (window.innerWidth <= 768) setShowPalette(false);
                   }}
                 />
               ))}
@@ -937,6 +984,23 @@ export default function NormalTestInterface() {
           </div>
         </div>
       </div>
+
+      {/* ── OFFLINE POPUP ── */}
+      <AnimatePresence>
+        {isOffline && (
+          <motion.div
+            initial={{ opacity: 0, y: -40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -40 }}
+            style={{
+              position: "fixed", top: 36, left: "50%", transform: "translateX(-50%)", zIndex: 99999,
+              background: "#cc0000", color: "#fff", padding: "10px 24px", borderRadius: 6,
+              boxShadow: "0 4px 16px rgba(0,0,0,.3)", display: "flex", alignItems: "center", gap: 8,
+              fontFamily: "Arial,sans-serif", fontSize: 13, fontWeight: "bold",
+            }}>
+            <WifiOff style={{ width: 16, height: 16 }} />
+            No internet connection. Your progress may not be saved.
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── SUBMIT MODAL ── */}
       <AnimatePresence>

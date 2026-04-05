@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Accessibility, Search, Moon, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Accessibility, Search, Moon, X, ZoomIn, ZoomOut, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AccessibilityToolbarProps {
@@ -13,7 +13,7 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
   const [darkMode, setDarkMode] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // Dark mode — invert entire page then re-invert images back to normal
+  // Dark mode — invert entire page; images stay inverted (user wants negative filter on images)
   useEffect(() => {
     document.documentElement.classList.toggle("a11y-dark-mode", darkMode);
     return () => document.documentElement.classList.remove("a11y-dark-mode");
@@ -35,7 +35,6 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
     if (on && zoomLevel === 1) setZoomLevel(1.5);
   };
 
-  // Always render as a single button that opens a dropdown
   return (
     <>
       <div className={cn("relative", className)} style={{ zIndex: 9990 }}>
@@ -54,7 +53,7 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
         </button>
 
         {open && (
-          <div style={{
+          <div data-a11y-popup style={{
             position: "absolute", top: 34, right: 0, width: 240,
             background: "#fff", border: "1px solid #ccc", borderRadius: 8,
             boxShadow: "0 6px 24px rgba(0,0,0,.2)", padding: "14px 16px",
@@ -98,7 +97,6 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
               </div>
             )}
 
-            {/* Divider */}
             <div style={{ height: 1, background: "#e0e0e0", margin: "6px 0" }} />
 
             {/* Dark Mode */}
@@ -129,24 +127,24 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
         )}
       </div>
 
-      {/* Dark mode styles — invert entire page, then re-invert images back */}
-      {darkMode && (
-        <style>{`
-          .a11y-dark-mode {
-            filter: invert(1) hue-rotate(180deg) !important;
-          }
-          .a11y-dark-mode img,
-          .a11y-dark-mode video,
-          .a11y-dark-mode canvas,
-          .a11y-dark-mode picture,
-          .a11y-dark-mode [style*="background-image"] {
-            filter: invert(1) hue-rotate(180deg) !important;
-          }
-          .a11y-dark-mode .lucide {
-            filter: invert(1) hue-rotate(180deg) !important;
-          }
-        `}</style>
-      )}
+      {/* 
+        Dark mode: invert entire page (white→black, black text→white).
+        Images, video, canvas — do NOT re-invert, so they appear as negatives (user wants inverted images).
+        Only re-invert SVG icons (lucide) so they remain readable.
+        The accessibility popup itself is re-inverted to stay white.
+      */}
+      <style>{`
+        .a11y-dark-mode {
+          filter: invert(1) hue-rotate(180deg) !important;
+        }
+        .a11y-dark-mode .lucide {
+          filter: invert(1) hue-rotate(180deg) !important;
+        }
+        /* Keep the accessibility popup readable */
+        .a11y-dark-mode [data-a11y-popup] {
+          filter: invert(1) hue-rotate(180deg) !important;
+        }
+      `}</style>
     </>
   );
 }
