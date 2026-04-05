@@ -268,9 +268,12 @@ export default function NormalTestInterface() {
       setSections(secList);
       if (secList.length) setActiveSection(secList[0].id);
       if (allQ.length) {
-        if (startData.is_resume && startData.existing_answers)
-          setVisitedQuestions(new Set([allQ[0].id, ...Object.keys(startData.existing_answers)]));
-        else setVisitedQuestions(new Set([allQ[0].id]));
+        if (startData.is_resume) {
+          // On resume, mark ALL questions as visited so skipped ones show red (not-answered) not grey
+          setVisitedQuestions(new Set(allQ.map(q => q.id)));
+        } else {
+          setVisitedQuestions(new Set([allQ[0].id]));
+        }
       }
       setLoading(false);
     } catch (e: any) {
