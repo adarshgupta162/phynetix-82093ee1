@@ -13,7 +13,7 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
   const [darkMode, setDarkMode] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // Dark mode — invert entire page then re-invert images back to normal
+  // Dark mode — add class to html element
   useEffect(() => {
     document.documentElement.classList.toggle("a11y-dark-mode", darkMode);
     return () => document.documentElement.classList.remove("a11y-dark-mode");
@@ -35,7 +35,6 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
     if (on && zoomLevel === 1) setZoomLevel(1.5);
   };
 
-  // Always render as a single button that opens a dropdown
   return (
     <>
       <div className={cn("relative", className)} style={{ zIndex: 9990 }}>
@@ -122,31 +121,56 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
             </div>
             {darkMode && (
               <p style={{ fontSize: 10, color: "#888", marginTop: 4 }}>
-                Dark interface with inverted image colors.
+                Dark interface — images show in original colors.
               </p>
             )}
           </div>
         )}
       </div>
 
-      {/* Dark mode styles — invert entire page, then re-invert images back */}
-      {darkMode && (
-        <style>{`
-          .a11y-dark-mode {
-            filter: invert(1) hue-rotate(180deg) !important;
-          }
-          .a11y-dark-mode img,
-          .a11y-dark-mode video,
-          .a11y-dark-mode canvas,
-          .a11y-dark-mode picture,
-          .a11y-dark-mode [style*="background-image"] {
-            filter: invert(1) hue-rotate(180deg) !important;
-          }
-          .a11y-dark-mode .lucide {
-            filter: invert(1) hue-rotate(180deg) !important;
-          }
-        `}</style>
-      )}
+      {/* Dark mode global styles */}
+      <style>{`
+        .a11y-dark-mode {
+          background-color: #1a1a1a !important;
+          color: #e0e0e0 !important;
+        }
+        .a11y-dark-mode * {
+          background-color: inherit;
+          color: inherit;
+        }
+        /* Reset specific elements that need their own backgrounds */
+        .a11y-dark-mode div,
+        .a11y-dark-mode span,
+        .a11y-dark-mode button,
+        .a11y-dark-mode input,
+        .a11y-dark-mode label,
+        .a11y-dark-mode p,
+        .a11y-dark-mode section,
+        .a11y-dark-mode header,
+        .a11y-dark-mode main {
+          background-color: transparent;
+        }
+        /* Dark backgrounds for key areas */
+        .a11y-dark-mode body {
+          background-color: #1a1a1a !important;
+        }
+        /* Invert images to show negative/inverted colors */
+        .a11y-dark-mode img,
+        .a11y-dark-mode video,
+        .a11y-dark-mode canvas,
+        .a11y-dark-mode picture {
+          filter: invert(1) hue-rotate(180deg) !important;
+        }
+        /* Keep accessibility toolbar itself normal */
+        .a11y-dark-mode [data-a11y-toolbar] {
+          background-color: #fff !important;
+          color: #222 !important;
+        }
+        .a11y-dark-mode [data-a11y-toolbar] * {
+          background-color: transparent;
+          color: #222;
+        }
+      `}</style>
     </>
   );
 }
