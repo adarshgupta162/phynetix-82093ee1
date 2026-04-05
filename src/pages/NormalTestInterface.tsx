@@ -748,7 +748,6 @@ export default function NormalTestInterface() {
                 <span style={{ width: 16, height: 16, background: C.secActive, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: "bold", cursor: "pointer" }}>i</span>
                 <StatusTooltip counts={{ answered: sc.answered, notAnswered: sc.notAnswered, notVisited: sc.notVisited, marked: sc.markedCount, answeredMarked: sc.answeredMarked }} visible={showTestTooltip} />
               </div>
-              {isSaving && <span style={{ fontSize: 10, color: "#888" }}>Saving…</span>}
             </div>
             <span style={{ fontSize: 13, fontWeight: "bold", color: timeLeft < 300 ? "#cc0000" : "#000" }}>
               Time Left : {formatTime(timeLeft)}
