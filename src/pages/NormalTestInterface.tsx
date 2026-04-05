@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock, Flag, ChevronLeft, ChevronRight, AlertCircle,
-  CheckCircle2, XCircle, Loader2
+  CheckCircle2, XCircle, Loader2, WifiOff
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
