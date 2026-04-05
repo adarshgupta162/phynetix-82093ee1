@@ -167,6 +167,8 @@ export default function NormalTestInterface() {
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [isSaving, setIsSaving]                 = useState(false);
   const [timeExpired, setTimeExpired]           = useState(false);
+  const [showPalette, setShowPalette]           = useState(true);
+  const [isOffline, setIsOffline]               = useState(!navigator.onLine);
   const persistQueueRef = useRef<Promise<void>>(Promise.resolve());
   const persistSequenceRef = useRef(0);
 
