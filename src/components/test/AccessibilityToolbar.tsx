@@ -1,197 +1,149 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Accessibility, Search, Moon, X, ZoomIn, ZoomOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 interface AccessibilityToolbarProps {
   className?: string;
-  inline?: boolean; // render as inline controls in header
+  inline?: boolean;
 }
 
 export default function AccessibilityToolbar({ className, inline }: AccessibilityToolbarProps) {
   const [open, setOpen] = useState(false);
   const [magnifierOn, setMagnifierOn] = useState(false);
-  const [blackMode, setBlackMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // Black mode - ONLY invert images, don't change interface
+  // Dark mode — invert entire page then re-invert images back to normal
   useEffect(() => {
-    document.documentElement.classList.toggle("a11y-invert-images", blackMode);
-    return () => document.documentElement.classList.remove("a11y-invert-images");
-  }, [blackMode]);
+    document.documentElement.classList.toggle("a11y-dark-mode", darkMode);
+    return () => document.documentElement.classList.remove("a11y-dark-mode");
+  }, [darkMode]);
 
-  // Magnifier - uses CSS zoom on the test content area
+  // Magnifier — CSS zoom on test content area
   useEffect(() => {
     const contentArea = document.querySelector('[data-test-content]') as HTMLElement;
     if (contentArea) {
-      if (magnifierOn) {
-        contentArea.style.zoom = String(zoomLevel);
-      } else {
-        contentArea.style.zoom = '1';
-      }
+      contentArea.style.zoom = magnifierOn ? String(zoomLevel) : '1';
     }
-    return () => {
-      if (contentArea) contentArea.style.zoom = '1';
-    };
+    return () => { if (contentArea) contentArea.style.zoom = '1'; };
   }, [magnifierOn, zoomLevel]);
 
   const increaseZoom = () => setZoomLevel(prev => Math.min(prev + 0.25, 3));
   const decreaseZoom = () => setZoomLevel(prev => Math.max(prev - 0.25, 1));
-
   const toggleMagnifier = (on: boolean) => {
     setMagnifierOn(on);
     if (on && zoomLevel === 1) setZoomLevel(1.5);
   };
 
-  if (inline) {
-    return (
-      <div className="flex items-center gap-2">
-        {/* Magnifier toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => toggleMagnifier(!magnifierOn)}
-          className={cn(
-            "w-8 h-8 rounded-full",
-            magnifierOn ? "bg-white/20 text-white" : "text-white/70 hover:text-white hover:bg-white/10"
-          )}
-          title="Screen Magnifier"
-        >
-          <Search className="w-4 h-4" />
-        </Button>
-
-        {magnifierOn && (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={decreaseZoom}
-              className="w-6 h-6 text-white/70 hover:text-white hover:bg-white/10 rounded"
-              disabled={zoomLevel <= 1}
-            >
-              <ZoomOut className="w-3 h-3" />
-            </Button>
-            <span className="text-xs text-white/80 min-w-[32px] text-center">{Math.round(zoomLevel * 100)}%</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={increaseZoom}
-              className="w-6 h-6 text-white/70 hover:text-white hover:bg-white/10 rounded"
-              disabled={zoomLevel >= 3}
-            >
-              <ZoomIn className="w-3 h-3" />
-            </Button>
-          </div>
-        )}
-
-        {/* Black mode toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setBlackMode(!blackMode)}
-          className={cn(
-            "w-8 h-8 rounded-full",
-            blackMode ? "bg-white/20 text-white" : "text-white/70 hover:text-white hover:bg-white/10"
-          )}
-          title="Invert Images"
-        >
-          <Moon className="w-4 h-4" />
-        </Button>
-
-        {/* Image inversion styles - ONLY inverts images */}
-        {blackMode && (
-          <style>{`
-            .a11y-invert-images img,
-            .a11y-invert-images video,
-            .a11y-invert-images canvas,
-            .a11y-invert-images svg:not([class*="lucide"]) {
-              filter: invert(1) hue-rotate(180deg) !important;
-            }
-            .a11y-invert-images .lucide {
-              filter: none !important;
-            }
-          `}</style>
-        )}
-      </div>
-    );
-  }
-
-  // Floating button mode (fallback)
+  // Always render as a single button that opens a dropdown
   return (
     <>
-      <div className={cn("fixed z-[9990]", className || "top-4 right-4")}>
-        <Button
+      <div className={cn("relative", className)} style={{ zIndex: 9990 }}>
+        <button
           onClick={() => setOpen(p => !p)}
-          size="icon"
-          className={cn(
-            "w-10 h-10 rounded-full shadow-lg border-2",
-            open
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-[#1e3a5f] text-white hover:bg-[#2a4a73] border-transparent"
-          )}
+          style={{
+            width: 28, height: 28, borderRadius: "50%", border: "none",
+            background: open ? "#fff" : "rgba(255,255,255,0.15)",
+            color: open ? "#1a1a2e" : "#fff",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", fontSize: 14, transition: "all .15s",
+          }}
           title="Accessibility Options"
         >
-          {open ? <X className="w-4 h-4" /> : <Accessibility className="w-4 h-4" />}
-        </Button>
+          {open ? <X style={{ width: 14, height: 14 }} /> : <Accessibility style={{ width: 14, height: 14 }} />}
+        </button>
 
         {open && (
-          <div className="absolute top-12 right-0 w-64 rounded-xl shadow-2xl p-4 space-y-4 animate-in slide-in-from-top-2 fade-in duration-200 bg-white border border-gray-200"
-          >
-            <h3 className="text-sm font-bold flex items-center gap-2 text-gray-800">
-              <Accessibility className="w-4 h-4" /> Accessibility
-            </h3>
+          <div style={{
+            position: "absolute", top: 34, right: 0, width: 240,
+            background: "#fff", border: "1px solid #ccc", borderRadius: 8,
+            boxShadow: "0 6px 24px rgba(0,0,0,.2)", padding: "14px 16px",
+            fontFamily: "Arial,sans-serif", zIndex: 9999,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: "bold", color: "#222", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+              <Accessibility style={{ width: 14, height: 14 }} /> Accessibility
+            </div>
 
             {/* Screen Magnifier */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <Search className="w-4 h-4 opacity-60" />
-                Screen Magnifier
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#444" }}>
+                <Search style={{ width: 13, height: 13, opacity: .6 }} /> Screen Magnifier
               </div>
-              <Switch checked={magnifierOn} onCheckedChange={toggleMagnifier} />
+              <label style={{ position: "relative", width: 36, height: 20, cursor: "pointer" }}>
+                <input type="checkbox" checked={magnifierOn} onChange={e => toggleMagnifier(e.target.checked)}
+                  style={{ opacity: 0, width: 0, height: 0, position: "absolute" }} />
+                <span style={{
+                  position: "absolute", inset: 0, borderRadius: 10,
+                  background: magnifierOn ? "#2979c5" : "#ccc", transition: "background .2s",
+                }} />
+                <span style={{
+                  position: "absolute", top: 2, left: magnifierOn ? 18 : 2,
+                  width: 16, height: 16, borderRadius: "50%", background: "#fff",
+                  transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.3)",
+                }} />
+              </label>
             </div>
 
             {magnifierOn && (
-              <div className="flex items-center justify-center gap-2">
-                <Button variant="outline" size="icon" className="w-7 h-7" onClick={decreaseZoom} disabled={zoomLevel <= 1}>
-                  <ZoomOut className="w-3 h-3" />
-                </Button>
-                <span className="text-sm font-medium min-w-[40px] text-center">{Math.round(zoomLevel * 100)}%</span>
-                <Button variant="outline" size="icon" className="w-7 h-7" onClick={increaseZoom} disabled={zoomLevel >= 3}>
-                  <ZoomIn className="w-3 h-3" />
-                </Button>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
+                <button onClick={decreaseZoom} disabled={zoomLevel <= 1}
+                  style={{ width: 24, height: 24, border: "1px solid #ccc", borderRadius: 4, background: "#f5f5f5", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ZoomOut style={{ width: 12, height: 12 }} />
+                </button>
+                <span style={{ fontSize: 12, fontWeight: "bold", minWidth: 36, textAlign: "center" }}>{Math.round(zoomLevel * 100)}%</span>
+                <button onClick={increaseZoom} disabled={zoomLevel >= 3}
+                  style={{ width: 24, height: 24, border: "1px solid #ccc", borderRadius: 4, background: "#f5f5f5", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ZoomIn style={{ width: 12, height: 12 }} />
+                </button>
               </div>
             )}
 
-            {/* Black Mode (Image Inversion) */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-gray-700">
-                <Moon className="w-4 h-4 opacity-60" />
-                Invert Images
-              </div>
-              <Switch checked={blackMode} onCheckedChange={setBlackMode} />
-            </div>
+            {/* Divider */}
+            <div style={{ height: 1, background: "#e0e0e0", margin: "6px 0" }} />
 
-            {blackMode && (
-              <p className="text-xs text-gray-500">
-                Image colors are inverted (negative filter).
+            {/* Dark Mode */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#444" }}>
+                <Moon style={{ width: 13, height: 13, opacity: .6 }} /> Dark Mode
+              </div>
+              <label style={{ position: "relative", width: 36, height: 20, cursor: "pointer" }}>
+                <input type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)}
+                  style={{ opacity: 0, width: 0, height: 0, position: "absolute" }} />
+                <span style={{
+                  position: "absolute", inset: 0, borderRadius: 10,
+                  background: darkMode ? "#2979c5" : "#ccc", transition: "background .2s",
+                }} />
+                <span style={{
+                  position: "absolute", top: 2, left: darkMode ? 18 : 2,
+                  width: 16, height: 16, borderRadius: "50%", background: "#fff",
+                  transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.3)",
+                }} />
+              </label>
+            </div>
+            {darkMode && (
+              <p style={{ fontSize: 10, color: "#888", marginTop: 4 }}>
+                Dark interface with inverted image colors.
               </p>
             )}
           </div>
         )}
       </div>
 
-      {/* Image inversion styles */}
-      {blackMode && (
+      {/* Dark mode styles — invert entire page, then re-invert images back */}
+      {darkMode && (
         <style>{`
-          .a11y-invert-images img,
-          .a11y-invert-images video,
-          .a11y-invert-images canvas,
-          .a11y-invert-images svg:not([class*="lucide"]) {
+          .a11y-dark-mode {
             filter: invert(1) hue-rotate(180deg) !important;
           }
-          .a11y-invert-images .lucide {
-            filter: none !important;
+          .a11y-dark-mode img,
+          .a11y-dark-mode video,
+          .a11y-dark-mode canvas,
+          .a11y-dark-mode picture,
+          .a11y-dark-mode [style*="background-image"] {
+            filter: invert(1) hue-rotate(180deg) !important;
+          }
+          .a11y-dark-mode .lucide {
+            filter: invert(1) hue-rotate(180deg) !important;
           }
         `}</style>
       )}

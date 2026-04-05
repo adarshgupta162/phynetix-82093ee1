@@ -47,7 +47,7 @@ const C = {
   // palette exact
   palGrey:      "#c8c8c8",   // not visited — square
   palRed:       "#cc0000",   // not answered (visited) — round
-  palOrange:    "#e05c1a",   // current — shield
+  palRed2:      "#cc0000",   // current — red square
   palGreen:     "#26a65b",   // answered — round
   palPurple:    "#7b2fbf",   // marked — round
 };
