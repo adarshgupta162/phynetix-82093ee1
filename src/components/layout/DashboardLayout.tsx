@@ -13,12 +13,13 @@ import {
   Shield,
   Users,
   Library,
-  FileText
+  FileText,
+  Menu,
+  X
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AtomIcon } from "@/components/icons/AtomIcon";
 
@@ -39,17 +40,21 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [collapsed, setCollapsed] = useState(true); // Default to collapsed
+  const [collapsed, setCollapsed] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isLoading, signOut, isAdmin, viewMode, setViewMode } = useAuth();
 
-  // Auth guard - redirect unauthenticated users
   useEffect(() => {
     if (!isLoading && !user) {
       navigate('/auth');
     }
   }, [user, isLoading, navigate]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -66,7 +71,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   };
 
-  // Show loading while checking auth
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -75,169 +79,191 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     );
   }
 
-  // Don't render if not authenticated
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
-  return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <motion.aside
-        initial={false}
-        animate={{ width: collapsed ? 72 : 240 }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="fixed left-0 top-0 h-screen border-r border-border bg-card/50 backdrop-blur-xl z-50"
-      >
-        <div className="flex flex-col h-full p-4">
-          {/* Logo */}
-          <Link to="/dashboard" className="flex items-center gap-3 mb-8 px-2">
-            <div className="w-10 h-10 rounded-xl bg-teal flex items-center justify-center flex-shrink-0">
-              <AtomIcon className="w-6 h-6 text-white" />
-            </div>
-            <AnimatePresence mode="wait">
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="text-[19px] font-bold tracking-[0.1em] uppercase text-teal"
-                >
-                  PhyNetix
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </Link>
-
-          {/* Admin View Toggle */}
-          {isAdmin && (
-            <button
-              onClick={toggleViewMode}
-              className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-lg mb-4 transition-all duration-200",
-                viewMode === 'admin'
-                  ? "bg-primary/10 text-primary border border-primary/20"
-                  : "bg-secondary/50 text-muted-foreground hover:text-foreground"
-              )}
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full">
+      {/* Logo */}
+      <Link to="/dashboard" className="flex items-center gap-3 px-4 py-5 border-b border-border">
+        <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+          <AtomIcon className="w-5 h-5 text-primary-foreground" />
+        </div>
+        <AnimatePresence mode="wait">
+          {(!collapsed || mobileOpen) && (
+            <motion.span
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 'auto' }}
+              exit={{ opacity: 0, width: 0 }}
+              className="text-lg font-bold tracking-wider uppercase text-primary whitespace-nowrap overflow-hidden"
             >
-              {viewMode === 'admin' ? (
-                <>
-                  <Shield className="w-5 h-5 flex-shrink-0" />
-                  <AnimatePresence mode="wait">
-                    {!collapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="font-medium text-sm"
-                      >
-                        Admin Mode
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </>
-              ) : (
-                <>
-                  <Users className="w-5 h-5 flex-shrink-0" />
-                  <AnimatePresence mode="wait">
-                    {!collapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="font-medium text-sm"
-                      >
-                        Student Mode
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </>
-              )}
-            </button>
+              PhyNetix
+            </motion.span>
           )}
+        </AnimatePresence>
+      </Link>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200",
-                    isActive
-                      ? "bg-primary/10 text-primary border border-primary/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                  )}
-                >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  <AnimatePresence mode="wait">
-                    {!collapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="font-medium"
-                      >
-                        {item.label}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Collapse Button */}
+      {/* Admin Toggle */}
+      {isAdmin && (
+        <div className="px-3 py-3 border-b border-border">
           <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="flex items-center justify-center w-full py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-5 h-5" />
-            ) : (
-              <ChevronLeft className="w-5 h-5" />
+            onClick={toggleViewMode}
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg w-full transition-all duration-200",
+              viewMode === 'admin'
+                ? "bg-primary/10 text-primary"
+                : "bg-secondary/50 text-muted-foreground hover:text-foreground"
             )}
-          </button>
-
-          {/* Theme Toggle */}
-          <div className="flex items-center justify-center py-2">
-            <ThemeToggle />
-          </div>
-
-          {/* Logout */}
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-3 px-3 py-3 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors mt-2"
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {viewMode === 'admin' ? (
+              <Shield className="w-[18px] h-[18px] flex-shrink-0" />
+            ) : (
+              <Users className="w-[18px] h-[18px] flex-shrink-0" />
+            )}
             <AnimatePresence mode="wait">
-              {!collapsed && (
+              {(!collapsed || mobileOpen) && (
                 <motion.span
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="font-medium"
+                  className="text-sm font-medium"
                 >
-                  Logout
+                  {viewMode === 'admin' ? 'Admin Mode' : 'Student Mode'}
                 </motion.span>
               )}
             </AnimatePresence>
           </button>
         </div>
+      )}
+
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        {navItems.map((item) => {
+          const isActive = location.pathname === item.path;
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+              )}
+            >
+              <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+              <AnimatePresence mode="wait">
+                {(!collapsed || mobileOpen) && (
+                  <motion.span
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="text-sm font-medium"
+                  >
+                    {item.label}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Bottom */}
+      <div className="border-t border-border px-3 py-3 space-y-1">
+        <div className="flex items-center justify-between px-3 py-1">
+          <ThemeToggle />
+          {!mobileOpen && (
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors hidden lg:block"
+            >
+              {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            </button>
+          )}
+        </div>
+
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors w-full"
+        >
+          <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
+          <AnimatePresence mode="wait">
+            {(!collapsed || mobileOpen) && (
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-sm font-medium"
+              >
+                Logout
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* Mobile header */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 flex items-center px-4 gap-3">
+        <button onClick={() => setMobileOpen(true)} className="p-2 rounded-lg hover:bg-secondary">
+          <Menu className="w-5 h-5" />
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+            <AtomIcon className="w-4 h-4 text-primary-foreground" />
+          </div>
+          <span className="font-bold text-sm uppercase tracking-wider text-primary">PhyNetix</span>
+        </div>
+      </div>
+
+      {/* Mobile sidebar overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="lg:hidden fixed inset-0 bg-black/50 z-50"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="lg:hidden fixed left-0 top-0 h-screen w-[280px] bg-card border-r border-border z-[60]"
+            >
+              <div className="absolute top-3 right-3">
+                <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg hover:bg-secondary">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <SidebarContent />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <motion.aside
+        initial={false}
+        animate={{ width: collapsed ? 64 : 240 }}
+        transition={{ duration: 0.25, ease: "easeInOut" }}
+        className="hidden lg:block fixed left-0 top-0 h-screen bg-card border-r border-border z-50"
+      >
+        <SidebarContent />
       </motion.aside>
 
       {/* Main Content */}
       <main
         className={cn(
-          "flex-1 transition-all duration-300",
-          collapsed ? "ml-[72px]" : "ml-[240px]"
+          "flex-1 transition-all duration-300 pt-14 lg:pt-0",
+          collapsed ? "lg:ml-[64px]" : "lg:ml-[240px]"
         )}
       >
         {children}

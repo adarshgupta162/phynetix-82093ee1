@@ -585,22 +585,22 @@ export default function NormalTestAnalysis() {
   const timeTaken = Math.round(results.time_taken_seconds / 60);
 
   return (
-    <div className="min-h-screen bg-[#1a1625]">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-white/10 bg-[#1a1625]/80 backdrop-blur-xl sticky top-0 z-50">
+      <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/tests")}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-white">Test Analysis</h1>
-              <p className="text-sm text-gray-400">{testName}</p>
+              <h1 className="text-xl font-bold text-foreground">Test Analysis</h1>
+              <p className="text-sm text-muted-foreground">{testName}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Link to={`/test/${testId}/question-analysis`}>
-              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+              <Button variant="outline" className="border-white/20 text-foreground hover:bg-secondary">
                 <Eye className="w-4 h-4 mr-2" />
                 Question Analysis
               </Button>
@@ -617,8 +617,8 @@ export default function NormalTestAnalysis() {
             className={cn(
               "px-4 py-2 rounded-lg font-medium transition-colors",
               activeTab === "overview" 
-                ? "bg-white/10 text-white" 
-                : "text-gray-400 hover:text-white"
+                ? "bg-secondary text-foreground" 
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             Overview
@@ -628,8 +628,8 @@ export default function NormalTestAnalysis() {
             className={cn(
               "px-4 py-2 rounded-lg font-medium transition-colors",
               activeTab === "questions" 
-                ? "bg-white/10 text-white" 
-                : "text-gray-400 hover:text-white"
+                ? "bg-secondary text-foreground" 
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             Qs by Qs Analysis
@@ -646,18 +646,18 @@ export default function NormalTestAnalysis() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#252036] rounded-xl p-6"
+                  className="bg-card rounded-xl p-6"
                 >
-                  <h3 className="text-gray-400 text-sm mb-4">Overall Score</h3>
-                  <div className="text-5xl font-bold text-white mb-2">
-                    {results.score}<span className="text-2xl text-gray-400">/{results.total_marks}</span>
+                  <h3 className="text-muted-foreground text-sm mb-4">Overall Score</h3>
+                  <div className="text-5xl font-bold text-foreground mb-2">
+                    {results.score}<span className="text-2xl text-muted-foreground">/{results.total_marks}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
                     {Object.entries(results.subject_scores).slice(0, 3).map(([subject, scores]) => (
                       <div key={subject}>
-                        <div className="text-gray-400">{subject.slice(0, 4)} Score</div>
-                        <div className="text-white font-semibold">
-                          {scores.marks ?? 0}<span className="text-gray-400">/{scores.totalMarks ?? 0}</span>
+                        <div className="text-muted-foreground">{subject.slice(0, 4)} Score</div>
+                        <div className="text-foreground font-semibold">
+                          {scores.marks ?? 0}<span className="text-muted-foreground">/{scores.totalMarks ?? 0}</span>
                         </div>
                       </div>
                     ))}
@@ -669,10 +669,10 @@ export default function NormalTestAnalysis() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="bg-[#252036] rounded-xl p-6"
+                  className="bg-card rounded-xl p-6"
                 >
-                  <h3 className="text-gray-400 text-sm mb-4">Predicted Percentile</h3>
-                  <div className="text-5xl font-bold text-[#a78bfa] mb-2">
+                  <h3 className="text-muted-foreground text-sm mb-4">Predicted Percentile</h3>
+                  <div className="text-5xl font-bold text-primary mb-2">
                     {results.percentile?.toFixed(2) ?? "0.00"}
                   </div>
                   <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
@@ -680,8 +680,8 @@ export default function NormalTestAnalysis() {
                       const subjectAcc = scores.total > 0 ? Math.round((scores.correct / scores.total) * 100) : 0;
                       return (
                         <div key={subject}>
-                          <div className="text-gray-400">{subject.slice(0, 4)}</div>
-                          <div className="text-white font-semibold">{subjectAcc}%</div>
+                          <div className="text-muted-foreground">{subject.slice(0, 4)}</div>
+                          <div className="text-foreground font-semibold">{subjectAcc}%</div>
                         </div>
                       );
                     })}
@@ -695,27 +695,27 @@ export default function NormalTestAnalysis() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="bg-[#252036] rounded-xl p-4"
+                  className="bg-card rounded-xl p-4"
                 >
-                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
                     <Trophy className="w-4 h-4" />
                     RANK
                   </div>
-                  <div className="text-2xl font-bold text-white">{results.rank ?? "-"}</div>
+                  <div className="text-2xl font-bold text-foreground">{results.rank ?? "-"}</div>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.25 }}
-                  className="bg-[#252036] rounded-xl p-4"
+                  className="bg-card rounded-xl p-4"
                 >
-                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
                     <Target className="w-4 h-4" />
                     QS ATTEMPTED
                   </div>
-                  <div className="text-2xl font-bold text-white">
-                    {results.correct + results.incorrect}<span className="text-lg text-gray-400">/{questions.length}</span>
+                  <div className="text-2xl font-bold text-foreground">
+                    {results.correct + results.incorrect}<span className="text-lg text-muted-foreground">/{questions.length}</span>
                   </div>
                 </motion.div>
 
@@ -723,27 +723,27 @@ export default function NormalTestAnalysis() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="bg-[#252036] rounded-xl p-4"
+                  className="bg-card rounded-xl p-4"
                 >
-                  <div className="flex items-center gap-2 text-gray-400 text-sm mb-2">
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
                     <CheckCircle2 className="w-4 h-4" />
                     ACCURACY
                   </div>
-                  <div className="text-2xl font-bold text-white">{accuracy}%</div>
+                  <div className="text-2xl font-bold text-foreground">{accuracy}%</div>
                 </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.35 }}
-                  className="bg-[#252036] rounded-xl p-4"
+                  className="bg-card rounded-xl p-4"
                 >
                   <div className="flex items-center gap-2 text-green-400 text-sm mb-2">
                     <TrendingUp className="w-4 h-4" />
                     CORRECT
                   </div>
-                  <div className="text-2xl font-bold text-white">
-                    {results.correct}<span className="text-lg text-gray-400">/{questions.length}</span>
+                  <div className="text-2xl font-bold text-foreground">
+                    {results.correct}<span className="text-lg text-muted-foreground">/{questions.length}</span>
                   </div>
                 </motion.div>
 
@@ -751,14 +751,14 @@ export default function NormalTestAnalysis() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="bg-[#252036] rounded-xl p-4"
+                  className="bg-card rounded-xl p-4"
                 >
                   <div className="flex items-center gap-2 text-red-400 text-sm mb-2">
                     <XCircle className="w-4 h-4" />
                     INCORRECT
                   </div>
-                  <div className="text-2xl font-bold text-white">
-                    {results.incorrect}<span className="text-lg text-gray-400">/{questions.length}</span>
+                  <div className="text-2xl font-bold text-foreground">
+                    {results.incorrect}<span className="text-lg text-muted-foreground">/{questions.length}</span>
                   </div>
                 </motion.div>
 
@@ -766,13 +766,13 @@ export default function NormalTestAnalysis() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.45 }}
-                  className="bg-[#252036] rounded-xl p-4"
+                  className="bg-card rounded-xl p-4"
                 >
                   <div className="flex items-center gap-2 text-blue-400 text-sm mb-2">
                     <Clock className="w-4 h-4" />
                     TIME TAKEN
                   </div>
-                  <div className="text-2xl font-bold text-white">{timeTaken}<span className="text-lg text-gray-400">min</span></div>
+                  <div className="text-2xl font-bold text-foreground">{timeTaken}<span className="text-lg text-muted-foreground">min</span></div>
                 </motion.div>
               </div>
 
@@ -781,17 +781,17 @@ export default function NormalTestAnalysis() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-[#252036] rounded-xl p-6"
+                className="bg-card rounded-xl p-6"
               >
-                <h3 className="text-white font-semibold mb-4">Subject-wise Performance</h3>
+                <h3 className="text-foreground font-semibold mb-4">Subject-wise Performance</h3>
                 <div className="space-y-4">
                   {Object.entries(results.subject_scores).map(([subject, scores]) => {
                     const subjectAccuracy = scores.total > 0 ? Math.round((scores.correct / scores.total) * 100) : 0;
                     return (
                       <div key={subject} className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-300">{subject}</span>
-                          <span className="text-gray-400">
+                          <span className="text-foreground/80">{subject}</span>
+                          <span className="text-muted-foreground">
                             {scores.correct}/{scores.total} correct ({subjectAccuracy}%)
                           </span>
                         </div>
@@ -813,14 +813,14 @@ export default function NormalTestAnalysis() {
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="bg-[#252036] rounded-xl p-4"
+                className="bg-card rounded-xl p-4"
               >
-                <h3 className="text-white font-semibold mb-4">Quick Analysis</h3>
+                <h3 className="text-foreground font-semibold mb-4">Quick Analysis</h3>
                 <div className="space-y-2">
                   {["Performance Analysis", "Score Potential", "Attempt Analysis", "Time Analysis", "Difficulty Analysis", "Subject Movement"].map((item) => (
                     <button
                       key={item}
-                      className="w-full flex items-center justify-between p-3 rounded-lg text-gray-300 hover:bg-white/5 transition-colors"
+                      className="w-full flex items-center justify-between p-3 rounded-lg text-foreground/80 hover:bg-secondary/50 transition-colors"
                     >
                       <span>{item}</span>
                       <ChevronRight className="w-4 h-4" />
@@ -839,8 +839,8 @@ export default function NormalTestAnalysis() {
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5" />
                   <div>
-                    <h4 className="text-white font-medium mb-1">Note Down Your Learnings</h4>
-                    <p className="text-sm text-gray-300">Add up to 3 things you learned in this test</p>
+                    <h4 className="text-foreground font-medium mb-1">Note Down Your Learnings</h4>
+                    <p className="text-sm text-foreground/80">Add up to 3 things you learned in this test</p>
                   </div>
                 </div>
               </motion.div>
@@ -864,8 +864,8 @@ export default function NormalTestAnalysis() {
                     className={cn(
                       "px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
                       activeSubject === subject 
-                        ? "bg-[#1a73e8] text-white" 
-                        : "bg-[#252036] text-gray-400 hover:text-white"
+                        ? "bg-[#1a73e8] text-foreground" 
+                        : "bg-card text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {subject === "all" ? "All" : subject}
@@ -890,8 +890,8 @@ export default function NormalTestAnalysis() {
                     className={cn(
                       "px-3 py-1.5 rounded text-xs font-medium transition-colors",
                       questionFilter === filter.key 
-                        ? "bg-white/10 text-white" 
-                        : "text-gray-400 hover:text-white"
+                        ? "bg-secondary text-foreground" 
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {filter.label} <span className="ml-1 opacity-60">{filter.count}</span>
@@ -905,11 +905,11 @@ export default function NormalTestAnalysis() {
                   key={currentQuestion.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#252036] rounded-xl p-6"
+                  className="bg-card rounded-xl p-6"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <span className="px-2 py-1 rounded bg-white/10 text-white text-sm">
+                      <span className="px-2 py-1 rounded bg-secondary text-foreground text-sm">
                         Q{currentQuestion.question_number || currentQuestionIndex + 1}
                       </span>
                       <span className={cn(
@@ -917,7 +917,7 @@ export default function NormalTestAnalysis() {
                         currentQuestion.is_correct 
                           ? "bg-green-500/20 text-green-400" 
                           : currentQuestion.user_answer === undefined
-                            ? "bg-gray-500/20 text-gray-400"
+                            ? "bg-gray-500/20 text-muted-foreground"
                             : "bg-red-500/20 text-red-400"
                       )}>
                         {currentQuestion.is_correct 
@@ -927,7 +927,7 @@ export default function NormalTestAnalysis() {
                             : `-${currentQuestion.negative_marks}`}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-400">{currentQuestion.subject}</div>
+                    <div className="text-sm text-muted-foreground">{currentQuestion.subject}</div>
                   </div>
 
                   {/* Question Image */}
@@ -936,7 +936,7 @@ export default function NormalTestAnalysis() {
                       <img 
                         src={currentQuestion.image_url} 
                         alt="Question" 
-                        className="max-w-full h-auto rounded-lg border border-white/10"
+                        className="max-w-full h-auto rounded-lg border border-border"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
@@ -945,7 +945,7 @@ export default function NormalTestAnalysis() {
                   )}
 
                   {currentQuestion.question_text && (
-                    <div className="text-white mb-6">
+                    <div className="text-foreground mb-6">
                       <LatexRenderer content={currentQuestion.question_text} />
                     </div>
                   )}
@@ -955,7 +955,7 @@ export default function NormalTestAnalysis() {
                     <div className="space-y-4">
                       <div className="p-4 rounded-lg bg-secondary/50">
                         <div className="text-sm text-muted-foreground mb-1">Your Answer</div>
-                        <div className="font-semibold text-white">
+                        <div className="font-semibold text-foreground">
                           {currentQuestion.user_answer ?? "-"}
                         </div>
                       </div>
@@ -1002,18 +1002,18 @@ export default function NormalTestAnalysis() {
                               "flex items-center gap-4 p-4 rounded-lg border transition-all",
                               isCorrect && "border-green-500 bg-green-500/10",
                               isUserAnswer && !isCorrect && "border-red-500 bg-red-500/10",
-                              !isCorrect && !isUserAnswer && "border-white/10"
+                              !isCorrect && !isUserAnswer && "border-border"
                             )}
                           >
                             <span className={cn(
                               "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm",
-                              isCorrect && "bg-green-500 text-white",
-                              isUserAnswer && !isCorrect && "bg-red-500 text-white",
-                              !isCorrect && !isUserAnswer && "bg-white/10 text-gray-300"
+                              isCorrect && "bg-green-500 text-foreground",
+                              isUserAnswer && !isCorrect && "bg-red-500 text-foreground",
+                              !isCorrect && !isUserAnswer && "bg-secondary text-foreground/80"
                             )}>
                               {optionLetter}
                             </span>
-                            <span className="text-gray-300 flex-1">
+                            <span className="text-foreground/80 flex-1">
                               <LatexRenderer content={typeof option === 'string' ? option : String(option)} />
                             </span>
                             {isCorrect && <CheckCircle2 className="w-5 h-5 text-green-400" />}
@@ -1025,24 +1025,24 @@ export default function NormalTestAnalysis() {
                   )}
 
                   {/* Navigation */}
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
                     <Button
                       variant="ghost"
                       onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
                       disabled={currentQuestionIndex === 0}
-                      className="text-gray-400"
+                      className="text-muted-foreground"
                     >
                       <ChevronLeft className="w-4 h-4 mr-2" />
                       Previous
                     </Button>
-                    <span className="text-sm text-gray-400">
+                    <span className="text-sm text-muted-foreground">
                       {currentQuestionIndex + 1} / {filteredQuestions.length}
                     </span>
                     <Button
                       variant="ghost"
                       onClick={() => setCurrentQuestionIndex(Math.min(filteredQuestions.length - 1, currentQuestionIndex + 1))}
                       disabled={currentQuestionIndex === filteredQuestions.length - 1}
-                      className="text-gray-400"
+                      className="text-muted-foreground"
                     >
                       Next
                       <ChevronRight className="w-4 h-4 ml-2" />
@@ -1050,17 +1050,17 @@ export default function NormalTestAnalysis() {
                   </div>
                 </motion.div>
               ) : (
-                <div className="bg-[#252036] rounded-xl p-12 text-center">
-                  <p className="text-gray-400">No questions match the current filter</p>
+                <div className="bg-card rounded-xl p-12 text-center">
+                  <p className="text-muted-foreground">No questions match the current filter</p>
                 </div>
               )}
             </div>
 
             {/* Question Palette */}
-            <div className="bg-[#252036] rounded-xl p-4">
+            <div className="bg-card rounded-xl p-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white font-medium">All Questions</h3>
-                <span className="text-gray-400 text-sm">{filteredQuestions.length} Qs</span>
+                <h3 className="text-foreground font-medium">All Questions</h3>
+                <span className="text-muted-foreground text-sm">{filteredQuestions.length} Qs</span>
               </div>
 
               {/* Palette Grid */}
@@ -1072,9 +1072,9 @@ export default function NormalTestAnalysis() {
                     className={cn(
                       "w-9 h-9 rounded flex items-center justify-center text-sm font-medium transition-all",
                       currentQuestionIndex === index && "ring-2 ring-white",
-                      q.is_correct && "bg-green-500 text-white",
-                      q.user_answer !== undefined && !q.is_correct && "bg-red-500 text-white",
-                      q.user_answer === undefined && "bg-gray-600 text-gray-300"
+                      q.is_correct && "bg-green-500 text-foreground",
+                      q.user_answer !== undefined && !q.is_correct && "bg-red-500 text-foreground",
+                      q.user_answer === undefined && "bg-gray-600 text-foreground/80"
                     )}
                   >
                     {q.question_number || index + 1}
@@ -1086,15 +1086,15 @@ export default function NormalTestAnalysis() {
               <div className="mt-6 space-y-2 text-xs">
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded bg-green-500"></div>
-                  <span className="text-gray-400">Correct ({results.correct})</span>
+                  <span className="text-muted-foreground">Correct ({results.correct})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded bg-red-500"></div>
-                  <span className="text-gray-400">Incorrect ({results.incorrect})</span>
+                  <span className="text-muted-foreground">Incorrect ({results.incorrect})</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 rounded bg-gray-600"></div>
-                  <span className="text-gray-400">Unattempted ({results.skipped})</span>
+                  <span className="text-muted-foreground">Unattempted ({results.skipped})</span>
                 </div>
               </div>
             </div>

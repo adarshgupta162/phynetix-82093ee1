@@ -82,13 +82,13 @@ export default {
           foreground: "hsl(222, 47%, 6%)",
         },
         navy: {
-          DEFAULT: "hsl(224, 71%, 7%)",
-          light: "hsl(224, 71%, 10%)",
-          border: "hsl(224, 50%, 18%)",
+          DEFAULT: "hsl(222, 47%, 6%)",
+          light: "hsl(222, 40%, 9%)",
+          border: "hsl(222, 30%, 16%)",
         },
         teal: {
-          DEFAULT: "hsl(172, 66%, 50%)",
-          glow: "hsla(172, 66%, 50%, 0.3)",
+          DEFAULT: "hsl(217, 91%, 55%)",
+          glow: "hsla(217, 91%, 55%, 0.3)",
         },
       },
       borderRadius: {
