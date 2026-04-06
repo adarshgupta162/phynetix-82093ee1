@@ -207,11 +207,18 @@ export default function DetailedAnalysis() {
     return answer === correctAnswer ? "correct" : "incorrect";
   };
 
+  const normalizeToLetter = (v: any) => {
+    const s = String(v).trim();
+    const n = parseInt(s);
+    if (!isNaN(n) && n >= 0 && n <= 25) return String.fromCharCode(65 + n);
+    return s.toUpperCase();
+  };
+
   const formatAnswer = (answer: any, sectionType: string) => {
     if (!answer || (Array.isArray(answer) && answer.length === 0)) return "-";
     if (sectionType === "integer") return String(answer);
-    if (Array.isArray(answer)) return answer.join(", ");
-    return answer;
+    if (Array.isArray(answer)) return answer.map(normalizeToLetter).join(", ");
+    return normalizeToLetter(answer);
   };
 
   const getMarksObtained = (questionId: string) => {

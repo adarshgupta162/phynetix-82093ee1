@@ -975,9 +975,25 @@ export default function NormalTestAnalysis() {
                     /* Options */
                     <div className="space-y-3">
                       {currentQuestion.options?.map((option, index) => {
-                        const optionLetter = String(index);
-                        const isCorrect = currentQuestion.correct_answer === optionLetter;
-                        const isUserAnswer = currentQuestion.user_answer === optionLetter;
+                        const optionLetter = String.fromCharCode(65 + index); // A, B, C, D
+                        const correctRaw = currentQuestion.correct_answer;
+                        // Normalize: correct_answer could be "A" or "0" or ["A","B"] or [0,1]
+                        const normalizeToLetter = (v: any) => {
+                          const s = String(v).trim();
+                          const n = parseInt(s);
+                          if (!isNaN(n) && n >= 0 && n <= 25) return String.fromCharCode(65 + n);
+                          return s.toUpperCase();
+                        };
+                        const correctLetters = Array.isArray(correctRaw) 
+                          ? correctRaw.map(normalizeToLetter) 
+                          : [normalizeToLetter(correctRaw)];
+                        const isCorrect = correctLetters.includes(optionLetter);
+
+                        const userRaw = currentQuestion.user_answer;
+                        const userLetters = userRaw == null || userRaw === '' ? [] 
+                          : Array.isArray(userRaw) ? userRaw.map(normalizeToLetter) 
+                          : [normalizeToLetter(userRaw)];
+                        const isUserAnswer = userLetters.includes(optionLetter);
                         
                         return (
                           <div
@@ -995,7 +1011,7 @@ export default function NormalTestAnalysis() {
                               isUserAnswer && !isCorrect && "bg-red-500 text-white",
                               !isCorrect && !isUserAnswer && "bg-white/10 text-gray-300"
                             )}>
-                              {String.fromCharCode(65 + index)}
+                              {optionLetter}
                             </span>
                             <span className="text-gray-300 flex-1">
                               <LatexRenderer content={typeof option === 'string' ? option : String(option)} />
