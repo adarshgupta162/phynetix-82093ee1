@@ -199,19 +199,28 @@ export default function DetailedAnalysis() {
     }
     
     if (question.section_type === "multiple_choice") {
-      const userAnswers = Array.isArray(answer) ? answer.sort() : [answer];
-      const correctAnswers = Array.isArray(correctAnswer) ? correctAnswer.sort() : [correctAnswer];
+      const norm = (v: any) => { const n = parseInt(String(v)); return !isNaN(n) && n >= 0 && n <= 25 ? String.fromCharCode(65 + n) : String(v).toUpperCase(); };
+      const userAnswers = (Array.isArray(answer) ? answer.map(norm) : [norm(answer)]).sort();
+      const correctAnswers = (Array.isArray(correctAnswer) ? correctAnswer.map((a: any) => norm(a)) : [norm(correctAnswer)]).sort();
       return JSON.stringify(userAnswers) === JSON.stringify(correctAnswers) ? "correct" : "incorrect";
     }
     
-    return answer === correctAnswer ? "correct" : "incorrect";
+    const normSingle = (v: any) => { const n = parseInt(String(v)); return !isNaN(n) && n >= 0 && n <= 25 ? String.fromCharCode(65 + n) : String(v).toUpperCase(); };
+    return normSingle(answer) === normSingle(correctAnswer) ? "correct" : "incorrect";
+  };
+
+  const normalizeToLetter = (v: any) => {
+    const s = String(v).trim();
+    const n = parseInt(s);
+    if (!isNaN(n) && n >= 0 && n <= 25) return String.fromCharCode(65 + n);
+    return s.toUpperCase();
   };
 
   const formatAnswer = (answer: any, sectionType: string) => {
     if (!answer || (Array.isArray(answer) && answer.length === 0)) return "-";
     if (sectionType === "integer") return String(answer);
-    if (Array.isArray(answer)) return answer.join(", ");
-    return answer;
+    if (Array.isArray(answer)) return answer.map(normalizeToLetter).join(", ");
+    return normalizeToLetter(answer);
   };
 
   const getMarksObtained = (questionId: string) => {
