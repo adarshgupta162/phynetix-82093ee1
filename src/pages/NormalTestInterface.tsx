@@ -268,9 +268,19 @@ export default function NormalTestInterface() {
       setSections(secList);
       if (secList.length) setActiveSection(secList[0].id);
       if (allQ.length) {
-        if (startData.is_resume) {
-          // On resume, mark ALL questions as visited so skipped ones show red (not-answered) not grey
-          setVisitedQuestions(new Set(allQ.map(q => q.id)));
+        if (startData.is_resume && startData.existing_answers) {
+          // On resume: answered questions → visited (will show green via "answered" status)
+          // Questions the user SAW but didn't answer → visited (will show red "not-answered")
+          // Questions never seen → NOT visited (will show grey "not-visited" / white)
+          // We only know which ones were answered, so mark only those as visited
+          const answeredIds = new Set(
+            Object.entries(startData.existing_answers)
+              .filter(([_, v]) => v !== null && v !== undefined && v !== "" && !(Array.isArray(v) && (v as any[]).length === 0))
+              .map(([id]) => id)
+          );
+          // Also mark the first question as visited (since user will see it)
+          answeredIds.add(allQ[0].id);
+          setVisitedQuestions(answeredIds);
         } else {
           setVisitedQuestions(new Set([allQ[0].id]));
         }

@@ -78,6 +78,22 @@ interface Question {
   image_url?: string | null;
 }
 
+// Normalize any answer value (number index or letter) to letter form
+const toLetterSingle = (v: any): string => {
+  if (v === null || v === undefined || v === "") return "";
+  const s = String(v).trim();
+  if (/^[A-Za-z]$/.test(s)) return s.toUpperCase();
+  const n = parseInt(s, 10);
+  if (!isNaN(n) && n >= 0 && n <= 25) return String.fromCharCode(65 + n);
+  return s;
+};
+const formatAnswerDisplay = (answer: any, sectionType?: string): string => {
+  if (answer === null || answer === undefined || answer === "") return "-";
+  if (sectionType === "integer" || sectionType === "numerical") return String(answer);
+  if (Array.isArray(answer)) return answer.map(toLetterSingle).filter(Boolean).join(", ");
+  return toLetterSingle(answer);
+};
+
 export default function NormalTestAnalysis() {
   const { testId } = useParams();
   const location = useLocation();
@@ -956,7 +972,7 @@ export default function NormalTestAnalysis() {
                       <div className="p-4 rounded-lg bg-secondary/50">
                         <div className="text-sm text-muted-foreground mb-1">Your Answer</div>
                         <div className="font-semibold text-foreground">
-                          {currentQuestion.user_answer ?? "-"}
+                          {formatAnswerDisplay(currentQuestion.user_answer, currentQuestion.section_type)}
                         </div>
                       </div>
                       <div className={cn(
@@ -967,7 +983,7 @@ export default function NormalTestAnalysis() {
                       )}>
                         <div className="text-sm text-green-400 mb-1">Correct Answer</div>
                         <div className="font-semibold text-green-400">
-                          {currentQuestion.correct_answer}
+                          {formatAnswerDisplay(currentQuestion.correct_answer, currentQuestion.section_type)}
                         </div>
                       </div>
                     </div>
