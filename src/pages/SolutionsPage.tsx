@@ -174,10 +174,12 @@ export default function SolutionsPage() {
           const sectionType = q.test_sections?.section_type || "single_choice";
           subjectSet.add(subject);
           
+          const isIntegerType = sectionType === 'integer' || sectionType === 'numerical';
+
           // Get correct answer - handle both object and string/array formats
           let correctAnswer: string;
           if (Array.isArray(q.correct_answer)) {
-            correctAnswer = q.correct_answer.map(singleIndexToLetter).join(",");
+            correctAnswer = isIntegerType ? String(q.correct_answer) : q.correct_answer.map(singleIndexToLetter).join(",");
           } else if (typeof q.correct_answer === 'object' && q.correct_answer !== null) {
             correctAnswer = (q.correct_answer as any)?.answer || String(q.correct_answer);
           } else {
@@ -186,7 +188,6 @@ export default function SolutionsPage() {
           
           // Get user's answer and normalize it
           const rawUserAnswer = userAnswers[q.id];
-          const isIntegerType = sectionType === 'integer' || sectionType === 'numerical';
           
           // For MCQ: convert index to letter, for integer: keep as is
           let normalizedUserAnswer: string;
