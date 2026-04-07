@@ -63,23 +63,22 @@ const subjectIcons: Record<string, React.ElementType> = {
   Math: Calculator,
 };
 
-// Convert index (0,1,2,3) to letter (A,B,C,D)
-const indexToLetter = (index: number | string | null | undefined): string => {
+// Convert index (0,1,2,3) to letter (A,B,C,D) — handles arrays for MCQ
+const singleIndexToLetter = (v: any): string => {
+  if (v === null || v === undefined || v === "") return "";
+  const s = String(v).trim();
+  if (/^[A-Za-z]$/.test(s)) return s.toUpperCase();
+  const n = parseInt(s, 10);
+  if (!isNaN(n) && n >= 0 && n <= 25) return String.fromCharCode(65 + n);
+  return s;
+};
+
+const indexToLetter = (index: any): string => {
   if (index === null || index === undefined || index === "") return "";
-  if (typeof index === 'string') {
-    // If it's already a letter, return it
-    if (/^[A-D]$/i.test(index)) return index.toUpperCase();
-    // If it's a numeric string, convert
-    const num = parseInt(index, 10);
-    if (!isNaN(num) && num >= 0 && num <= 3) {
-      return String.fromCharCode(65 + num);
-    }
-    return index; // Return as-is for integer type answers
+  if (Array.isArray(index)) {
+    return index.map(singleIndexToLetter).filter(Boolean).join(",");
   }
-  if (typeof index === 'number' && index >= 0 && index <= 3) {
-    return String.fromCharCode(65 + index);
-  }
-  return String(index); // Return as string for integer type answers
+  return singleIndexToLetter(index);
 };
 
 export default function SolutionsPage() {
