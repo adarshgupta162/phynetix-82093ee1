@@ -983,7 +983,7 @@ export default function NormalTestAnalysis() {
                       )}>
                         <div className="text-sm text-green-400 mb-1">Correct Answer</div>
                         <div className="font-semibold text-green-400">
-                          {currentQuestion.correct_answer}
+                          {formatAnswerDisplay(currentQuestion.correct_answer, currentQuestion.section_type)}
                         </div>
                       </div>
                     </div>
