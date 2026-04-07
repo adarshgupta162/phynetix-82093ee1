@@ -972,7 +972,7 @@ export default function NormalTestAnalysis() {
                       <div className="p-4 rounded-lg bg-secondary/50">
                         <div className="text-sm text-muted-foreground mb-1">Your Answer</div>
                         <div className="font-semibold text-foreground">
-                          {currentQuestion.user_answer ?? "-"}
+                          {formatAnswerDisplay(currentQuestion.user_answer, currentQuestion.section_type)}
                         </div>
                       </div>
                       <div className={cn(
