@@ -111,7 +111,7 @@ export default function BulkQuestionImport() {
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+  const [result, setResult] = useState<{ success: number; failed: number; importedIds?: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const parseFile = useCallback((file: File) => {
@@ -170,23 +170,58 @@ export default function BulkQuestionImport() {
     let success = 0;
     let failed = 0;
     const BATCH_SIZE = 50;
+    const importedIds: string[] = [];
 
     for (let i = 0; i < validRows.length; i += BATCH_SIZE) {
       const batch = validRows.slice(i, i + BATCH_SIZE).map((r) => mapRowToQuestion(r.data, user.id));
-      const { error } = await supabase.from("phynetix_library").insert(batch as any);
+      const { data, error } = await supabase.from("phynetix_library").insert(batch as any).select("id");
       if (error) {
         failed += batch.length;
         console.error("Batch insert error:", error);
       } else {
-        success += batch.length;
+        success += (data?.length || batch.length);
+        if (data) importedIds.push(...data.map((d: any) => d.id));
       }
     }
 
+    // Log to audit
+    if (importedIds.length > 0) {
+      await supabase.from("audit_logs").insert({
+        user_id: user.id,
+        action: "bulk_import",
+        entity_type: "phynetix_library",
+        new_value: { count: importedIds.length, question_ids: importedIds },
+      } as any);
+    }
+
     const invalidCount = rows.length - validRows.length;
-    setResult({ success, failed: failed + invalidCount });
+    setResult({ success, failed: failed + invalidCount, importedIds });
     setImporting(false);
     if (success > 0) toast.success(`${success} questions imported successfully`);
     if (failed + invalidCount > 0) toast.error(`${failed + invalidCount} rows failed/skipped`);
+  };
+
+  const handleRevert = async () => {
+    if (!result?.importedIds?.length) return;
+    const ids = result.importedIds;
+    setImporting(true);
+    const { error } = await supabase.from("phynetix_library").delete().in("id", ids);
+    if (error) {
+      toast.error("Failed to revert: " + error.message);
+    } else {
+      toast.success(`Reverted ${ids.length} imported questions`);
+      if (user) {
+        await supabase.from("audit_logs").insert({
+          user_id: user.id,
+          action: "bulk_import_revert",
+          entity_type: "phynetix_library",
+          new_value: { count: ids.length, question_ids: ids },
+        } as any);
+      }
+      setResult(null);
+      setRows([]);
+    }
+    setImporting(false);
   };
 
   const removeRow = (idx: number) => setRows((prev) => prev.filter((_, i) => i !== idx));
@@ -265,12 +300,17 @@ export default function BulkQuestionImport() {
       {result && (
         <Card className="p-4 flex items-center gap-4">
           <CheckCircle2 className="h-6 w-6 text-green-500" />
-          <div>
+          <div className="flex-1">
             <p className="font-medium text-foreground">Import Complete</p>
             <p className="text-sm text-muted-foreground">
               {result.success} imported successfully, {result.failed} failed/skipped
             </p>
           </div>
+          {result.importedIds && result.importedIds.length > 0 && (
+            <Button variant="destructive" size="sm" onClick={handleRevert} disabled={importing} className="gap-2">
+              <Trash2 className="h-4 w-4" /> Revert Import
+            </Button>
+          )}
         </Card>
       )}
 
