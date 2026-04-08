@@ -22,6 +22,7 @@ import {
   GraduationCap,
   UserPlus,
   Menu,
+  Upload,
   X
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
