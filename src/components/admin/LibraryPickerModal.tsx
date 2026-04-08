@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Search, BookOpen, ChevronRight, FolderOpen, ArrowLeft,
-  Plus, Loader2, AlertCircle, Check
+  Plus, Loader2, AlertCircle, Check, CheckSquare, Square
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
 import { cn } from "@/lib/utils";
 import { getSubjects, getChaptersForSubject } from "@/lib/jeeData";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface LibraryQuestion {
   id: string;
@@ -43,13 +44,15 @@ interface LibraryPickerModalProps {
   open: boolean;
   onClose: () => void;
   onSelect: (question: LibraryQuestion) => void;
+  multiSelect?: boolean;
+  onMultiSelect?: (questions: LibraryQuestion[]) => void;
 }
 
 const SUBJECTS = getSubjects();
 
 type ViewMode = 'subjects' | 'chapters' | 'questions';
 
-export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerModalProps) {
+export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = false, onMultiSelect }: LibraryPickerModalProps) {
   const { toast } = useToast();
   
   const [questions, setQuestions] = useState<LibraryQuestion[]>([]);
@@ -61,8 +64,10 @@ export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerMod
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   
-  // Selected question for confirmation
+  // Single select
   const [selectedQuestion, setSelectedQuestion] = useState<LibraryQuestion | null>(null);
+  // Multi select
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
 
   const fetchQuestions = useCallback(async () => {
     setLoading(true);
@@ -90,6 +95,7 @@ export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerMod
       setSelectedSubject(null);
       setSelectedChapter(null);
       setSelectedQuestion(null);
+      setSelectedQuestions(new Set());
       setSearchQuery('');
     }
   }, [open, fetchQuestions]);
@@ -168,12 +174,48 @@ export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerMod
     }
   };
 
-  const handleSelectQuestion = (question: LibraryQuestion) => {
-    setSelectedQuestion(question);
+  const toggleQuestionSelection = (question: LibraryQuestion) => {
+    if (multiSelect) {
+      setSelectedQuestions(prev => {
+        const next = new Set(prev);
+        if (next.has(question.id)) {
+          next.delete(question.id);
+        } else {
+          next.add(question.id);
+        }
+        return next;
+      });
+    } else {
+      setSelectedQuestion(question);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    const filtered = getFilteredQuestions();
+    const allSelected = filtered.every(q => selectedQuestions.has(q.id));
+    if (allSelected) {
+      setSelectedQuestions(prev => {
+        const next = new Set(prev);
+        filtered.forEach(q => next.delete(q.id));
+        return next;
+      });
+    } else {
+      setSelectedQuestions(prev => {
+        const next = new Set(prev);
+        filtered.forEach(q => next.add(q.id));
+        return next;
+      });
+    }
   };
 
   const handleConfirmSelect = () => {
-    if (selectedQuestion) {
+    if (multiSelect) {
+      const selected = questions.filter(q => selectedQuestions.has(q.id));
+      if (selected.length > 0 && onMultiSelect) {
+        onMultiSelect(selected);
+        onClose();
+      }
+    } else if (selectedQuestion) {
       onSelect(selectedQuestion);
       onClose();
     }
@@ -182,6 +224,7 @@ export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerMod
   const subjectStats = getSubjectStats();
   const chapterStats = selectedSubject ? getChapterStats(selectedSubject) : {};
   const filteredQuestions = getFilteredQuestions();
+  const allFilteredSelected = filteredQuestions.length > 0 && filteredQuestions.every(q => selectedQuestions.has(q.id));
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -215,6 +258,12 @@ export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerMod
                 <Button variant="ghost" size="sm" onClick={handleBack}>
                   <ArrowLeft className="w-4 h-4 mr-1" />
                   Back
+                </Button>
+              )}
+              {multiSelect && viewMode === 'questions' && (
+                <Button variant="ghost" size="sm" onClick={toggleSelectAll} className="gap-1">
+                  {allFilteredSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                  {allFilteredSelected ? 'Deselect All' : 'Select All'}
                 </Button>
               )}
             </div>
@@ -338,64 +387,70 @@ export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerMod
                       </div>
                     ) : (
                       <div className="grid gap-3 md:grid-cols-2">
-                        {filteredQuestions.map((q) => (
-                          <motion.div
-                            key={q.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            onClick={() => handleSelectQuestion(q)}
-                            className={cn(
-                              "bg-card border rounded-lg p-3 cursor-pointer transition-all",
-                              selectedQuestion?.id === q.id
-                                ? "border-primary ring-2 ring-primary/20"
-                                : "border-border hover:border-primary/50"
-                            )}
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
-                                  {q.library_id}
-                                </span>
-                                <Badge variant="outline" className="text-xs">
-                                  {q.question_type.replace('_', ' ')}
-                                </Badge>
-                              </div>
-                              {selectedQuestion?.id === q.id && (
-                                <Check className="w-5 h-5 text-primary" />
+                        {filteredQuestions.map((q) => {
+                          const isSelected = multiSelect ? selectedQuestions.has(q.id) : selectedQuestion?.id === q.id;
+                          return (
+                            <motion.div
+                              key={q.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              onClick={() => toggleQuestionSelection(q)}
+                              className={cn(
+                                "bg-card border rounded-lg p-3 cursor-pointer transition-all",
+                                isSelected
+                                  ? "border-primary ring-2 ring-primary/20"
+                                  : "border-border hover:border-primary/50"
                               )}
-                            </div>
-
-                            <div className="mb-2">
-                              {q.question_image_url && (
-                                <img
-                                  src={q.question_image_url}
-                                  alt="Question"
-                                  className="w-full h-16 object-cover rounded mb-1 bg-muted"
-                                  onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                                />
-                              )}
-                              <p className="text-sm line-clamp-2">
-                                {q.question_text ? (
-                                  <LatexRenderer content={q.question_text} />
-                                ) : (
-                                  <span className="text-muted-foreground italic">Image only</span>
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  {multiSelect && (
+                                    <Checkbox checked={isSelected} className="pointer-events-none" />
+                                  )}
+                                  <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
+                                    {q.library_id}
+                                  </span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {q.question_type.replace('_', ' ')}
+                                  </Badge>
+                                </div>
+                                {isSelected && !multiSelect && (
+                                  <Check className="w-5 h-5 text-primary" />
                                 )}
-                              </p>
-                            </div>
+                              </div>
 
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <span className={cn(
-                                "px-1.5 py-0.5 rounded capitalize",
-                                q.difficulty === 'easy' && "bg-green-500/20 text-green-600",
-                                q.difficulty === 'medium' && "bg-yellow-500/20 text-yellow-600",
-                                q.difficulty === 'hard' && "bg-red-500/20 text-red-600"
-                              )}>
-                                {q.difficulty}
-                              </span>
-                              <span>+{q.marks}/-{q.negative_marks}</span>
-                            </div>
-                          </motion.div>
-                        ))}
+                              <div className="mb-2">
+                                {q.question_image_url && (
+                                  <img
+                                    src={q.question_image_url}
+                                    alt="Question"
+                                    className="w-full h-16 object-cover rounded mb-1 bg-muted"
+                                    onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                                  />
+                                )}
+                                <p className="text-sm line-clamp-2">
+                                  {q.question_text ? (
+                                    <LatexRenderer content={q.question_text} />
+                                  ) : (
+                                    <span className="text-muted-foreground italic">Image only</span>
+                                  )}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className={cn(
+                                  "px-1.5 py-0.5 rounded capitalize",
+                                  q.difficulty === 'easy' && "bg-green-500/20 text-green-600",
+                                  q.difficulty === 'medium' && "bg-yellow-500/20 text-yellow-600",
+                                  q.difficulty === 'hard' && "bg-red-500/20 text-red-600"
+                                )}>
+                                  {q.difficulty}
+                                </span>
+                                <span>+{q.marks}/-{q.negative_marks}</span>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     )}
                   </>
@@ -408,7 +463,9 @@ export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerMod
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t shrink-0 bg-muted/30">
           <p className="text-sm text-muted-foreground">
-            {selectedQuestion ? (
+            {multiSelect ? (
+              <>{selectedQuestions.size} question{selectedQuestions.size !== 1 ? 's' : ''} selected</>
+            ) : selectedQuestion ? (
               <>Selected: <span className="font-mono text-primary">{selectedQuestion.library_id}</span></>
             ) : (
               'Select a question to import'
@@ -416,9 +473,12 @@ export function LibraryPickerModal({ open, onClose, onSelect }: LibraryPickerMod
           </p>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
-            <Button onClick={handleConfirmSelect} disabled={!selectedQuestion}>
+            <Button
+              onClick={handleConfirmSelect}
+              disabled={multiSelect ? selectedQuestions.size === 0 : !selectedQuestion}
+            >
               <Plus className="w-4 h-4 mr-1" />
-              Import Question
+              Import {multiSelect && selectedQuestions.size > 0 ? `${selectedQuestions.size} Questions` : 'Question'}
             </Button>
           </div>
         </div>
