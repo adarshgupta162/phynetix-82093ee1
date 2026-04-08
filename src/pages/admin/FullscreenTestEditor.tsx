@@ -513,7 +513,6 @@ export default function FullscreenTestEditor() {
 
       if (insertError) throw insertError;
 
-      // Update usage count
       await supabase
         .from('phynetix_library')
         .update({ usage_count: (libQuestion.usage_count || 0) + 1 })
@@ -523,6 +522,57 @@ export default function FullscreenTestEditor() {
       setActiveQuestionId(newQ.id);
       setLocalQuestion({ ...newQ, options: newQ.options || DEFAULT_OPTIONS });
       toast({ title: "Question imported from library!" });
+    } catch (err: any) {
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  // Import multiple questions from library picker
+  const handleMultiImportFromPicker = async (libQuestions: any[]) => {
+    if (!activeSectionId || !testId) return;
+
+    try {
+      const rows = libQuestions.map((lq, i) => ({
+        test_id: testId,
+        section_id: activeSectionId,
+        question_number: questions.length + 1 + i,
+        question_text: lq.question_text,
+        correct_answer: lq.correct_answer,
+        options: lq.options,
+        marks: lq.marks,
+        negative_marks: lq.negative_marks,
+        image_url: lq.question_image_url,
+        solution_text: lq.solution_text,
+        solution_image_url: lq.solution_image_url,
+        difficulty: lq.difficulty,
+        time_seconds: lq.time_seconds,
+        chapter: lq.chapter,
+        topic: lq.topic,
+        library_question_id: lq.id,
+        order_index: questions.length + i
+      }));
+
+      const { data: newQs, error } = await supabase
+        .from('test_section_questions')
+        .insert(rows)
+        .select();
+
+      if (error) throw error;
+
+      // Update usage counts
+      for (const lq of libQuestions) {
+        await supabase
+          .from('phynetix_library')
+          .update({ usage_count: (lq.usage_count || 0) + 1 })
+          .eq('id', lq.id);
+      }
+
+      if (newQs && newQs.length > 0) {
+        setQuestions([...questions, ...newQs]);
+        setActiveQuestionId(newQs[newQs.length - 1].id);
+        setLocalQuestion({ ...newQs[newQs.length - 1], options: newQs[newQs.length - 1].options || DEFAULT_OPTIONS });
+      }
+      toast({ title: `${libQuestions.length} questions imported from library!` });
     } catch (err: any) {
       toast({ title: "Import failed", description: err.message, variant: "destructive" });
     }
@@ -1182,6 +1232,8 @@ export default function FullscreenTestEditor() {
         open={showLibraryPicker}
         onClose={() => setShowLibraryPicker(false)}
         onSelect={handleImportFromPicker}
+        multiSelect={true}
+        onMultiSelect={handleMultiImportFromPicker}
       />
 
       {/* Migrate to Library Dialog */}
