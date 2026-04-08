@@ -22,6 +22,7 @@ import {
   GraduationCap,
   UserPlus,
   Menu,
+  Upload,
   X
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
@@ -60,6 +61,7 @@ const allNavSections = {
         { icon: ClipboardList, label: "Tests", path: "/admin/tests" },
         { icon: BookOpen, label: "Question Bank", path: "/admin/question-bank" },
         { icon: Library, label: "PhyNetix Library", path: "/admin/phynetix-library" },
+        { icon: Upload, label: "Bulk Import", path: "/admin/bulk-import" },
         { icon: BookOpen, label: "DPP Manager", path: "/admin/dpps" },
         { icon: Bell, label: "Batches", path: "/admin/batches" },
       ]
