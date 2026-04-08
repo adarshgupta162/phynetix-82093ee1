@@ -28,6 +28,8 @@ const actionIcons: Record<string, React.ElementType> = {
   delete_test: FileText,
   update_settings: Settings,
   update_role: Shield,
+  bulk_import: FileText,
+  bulk_import_revert: FileText,
 };
 
 const actionColors: Record<string, string> = {
