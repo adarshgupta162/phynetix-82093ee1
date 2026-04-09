@@ -18,6 +18,7 @@ import { SolutionSection } from "@/components/analysis/SolutionSection";
 import { QuestionPalettePanel } from "@/components/analysis/QuestionPalettePanel";
 import { BottomNavigation } from "@/components/analysis/BottomNavigation";
 import { supabase } from "@/integrations/supabase/client";
+import { evaluateQuestionScore, normalizeAnswerCollection } from "@/lib/testScoring";
 import { cn } from "@/lib/utils";
 
 interface QuestionOption {
@@ -176,43 +177,19 @@ export default function SolutionsPage() {
           
           const isIntegerType = sectionType === 'integer' || sectionType === 'numerical';
 
-          // Get correct answer - handle both object and string/array formats
-          let correctAnswer: string;
-          if (Array.isArray(q.correct_answer)) {
-            correctAnswer = isIntegerType ? String(q.correct_answer) : q.correct_answer.map(singleIndexToLetter).join(",");
-          } else if (typeof q.correct_answer === 'object' && q.correct_answer !== null) {
-            correctAnswer = (q.correct_answer as any)?.answer || String(q.correct_answer);
-          } else {
-            correctAnswer = isIntegerType ? String(q.correct_answer || "") : singleIndexToLetter(q.correct_answer);
-          }
-          
-          // Get user's answer and normalize it
           const rawUserAnswer = userAnswers[q.id];
-          
-          // For MCQ: convert index to letter, for integer: keep as is
-          let normalizedUserAnswer: string;
-          if (isIntegerType) {
-            normalizedUserAnswer = rawUserAnswer !== undefined && rawUserAnswer !== null && rawUserAnswer !== "" 
-              ? String(rawUserAnswer) 
-              : "";
-          } else {
-            normalizedUserAnswer = indexToLetter(rawUserAnswer);
-          }
+          const evaluation = evaluateQuestionScore({
+            sectionType,
+            correctAnswer: q.correct_answer,
+            userAnswer: rawUserAnswer,
+            marks: q.marks,
+            negativeMarks: q.negative_marks,
+          });
 
-          // Determine status
-          let status: "correct" | "incorrect" | "skipped" = "skipped";
-          let userMarks = 0;
-          
-          if (rawUserAnswer === undefined || rawUserAnswer === null || rawUserAnswer === "") {
-            status = "skipped";
-            userMarks = 0;
-          } else if (normalizedUserAnswer === correctAnswer) {
-            status = "correct";
-            userMarks = q.marks || 4;
-          } else {
-            status = "incorrect";
-            userMarks = -(q.negative_marks || 1);
-          }
+          const correctAnswer = evaluation.correctAnswerLabel;
+          const normalizedUserAnswer = evaluation.userAnswerLabel;
+          const status = evaluation.status;
+          const userMarks = evaluation.marksObtained;
 
           // Calculate option stats from all attempts
           const optionStats = new Map<string, number>();
@@ -223,8 +200,9 @@ export default function SolutionsPage() {
             const ans = answers?.[q.id];
             if (ans !== undefined && ans !== null && ans !== "") {
               totalResponses++;
-              const normalizedAns = isIntegerType ? String(ans) : indexToLetter(ans);
-              optionStats.set(normalizedAns, (optionStats.get(normalizedAns) || 0) + 1);
+              normalizeAnswerCollection(ans, sectionType).forEach((label) => {
+                optionStats.set(label, (optionStats.get(label) || 0) + 1);
+              });
             }
           });
 
@@ -241,8 +219,8 @@ export default function SolutionsPage() {
                 value: text,
                 percentage: totalResponses > 0 ? Math.round((count / totalResponses) * 100) : 0,
                 studentCount: count,
-                isUserAnswer: normalizedUserAnswer === label,
-                isCorrect: correctAnswer === label,
+                  isUserAnswer: evaluation.normalizedUserAnswers.includes(label),
+                  isCorrect: evaluation.normalizedCorrectAnswers.includes(label),
               };
             });
           }

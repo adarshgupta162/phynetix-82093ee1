@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
+import { evaluateQuestionScore, formatAnswerDisplay, isAnswerEmpty } from "@/lib/testScoring";
 
 interface SubjectScore {
   correct: number;
@@ -77,22 +78,6 @@ interface Question {
   question_number?: number;
   image_url?: string | null;
 }
-
-// Normalize any answer value (number index or letter) to letter form
-const toLetterSingle = (v: any): string => {
-  if (v === null || v === undefined || v === "") return "";
-  const s = String(v).trim();
-  if (/^[A-Za-z]$/.test(s)) return s.toUpperCase();
-  const n = parseInt(s, 10);
-  if (!isNaN(n) && n >= 0 && n <= 25) return String.fromCharCode(65 + n);
-  return s;
-};
-const formatAnswerDisplay = (answer: any, sectionType?: string): string => {
-  if (answer === null || answer === undefined || answer === "") return "-";
-  if (sectionType === "integer" || sectionType === "numerical") return String(answer);
-  if (Array.isArray(answer)) return answer.map(toLetterSingle).filter(Boolean).join(", ");
-  return toLetterSingle(answer);
-};
 
 export default function NormalTestAnalysis() {
   const { testId } = useParams();
@@ -264,40 +249,29 @@ export default function NormalTestAnalysis() {
       subjectScores[subject].total++;
       subjectScores[subject].totalMarks = (subjectScores[subject].totalMarks || 0) + marks;
 
-      let isCorrect = false;
-      let marksObtained = 0;
+        const evaluation = evaluateQuestionScore({
+          sectionType,
+          correctAnswer,
+          userAnswer,
+          marks,
+          negativeMarks,
+        });
 
-      if (userAnswer === undefined || userAnswer === null || userAnswer === '') {
+        if (evaluation.status === "skipped") {
         totalSkipped++;
         subjectScores[subject].skipped++;
-      } else {
-        // Check answer based on section type
-        if (sectionType === 'integer') {
-          const correctNum = parseFloat(String(correctAnswer));
-          const userNum = parseFloat(String(userAnswer));
-          isCorrect = !isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01;
-        } else if (sectionType === 'multiple_choice') {
-          const correctArr = Array.isArray(correctAnswer) ? correctAnswer.sort() : [correctAnswer];
-          const userArr = Array.isArray(userAnswer) ? (userAnswer as any).sort() : [userAnswer];
-          isCorrect = JSON.stringify(correctArr) === JSON.stringify(userArr);
-        } else {
-          isCorrect = String(userAnswer) === String(correctAnswer);
-        }
-
-        if (isCorrect) {
+        } else if (evaluation.status === "correct") {
           totalCorrect++;
-          totalScore += marks;
-          marksObtained = marks;
           subjectScores[subject].correct++;
-          subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marks;
         } else {
           totalIncorrect++;
-          totalScore -= negativeMarks;
-          marksObtained = -negativeMarks;
           subjectScores[subject].incorrect++;
-          subjectScores[subject].marks = (subjectScores[subject].marks || 0) - negativeMarks;
-        }
       }
+
+        totalScore += evaluation.marksObtained;
+        const marksObtained = evaluation.marksObtained;
+        const isCorrect = evaluation.status === "correct";
+        subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marksObtained;
 
       processedQuestions.push({
         id: sq.id,
@@ -317,8 +291,8 @@ export default function NormalTestAnalysis() {
 
     setQuestions(processedQuestions);
     setResults({
-      score: attempt.score ?? totalScore,
-      total_marks: attempt.total_marks ?? totalMaxMarks,
+      score: totalScore,
+      total_marks: totalMaxMarks,
       correct: totalCorrect,
       incorrect: totalIncorrect,
       skipped: totalSkipped,
@@ -379,26 +353,29 @@ export default function NormalTestAnalysis() {
         subjectScores[subject].total++;
         subjectScores[subject].totalMarks = (subjectScores[subject].totalMarks || 0) + marks;
 
-        const isCorrect = userAnswer !== undefined && String(userAnswer) === String(correctAnswer);
-        const isSkipped = userAnswer === undefined;
-        let marksObtained = 0;
+        const evaluation = evaluateQuestionScore({
+          sectionType: q.question_type,
+          correctAnswer,
+          userAnswer,
+          marks,
+          negativeMarks,
+        });
 
-        if (isSkipped) {
+        if (evaluation.status === "skipped") {
           totalSkipped++;
           subjectScores[subject].skipped++;
-        } else if (isCorrect) {
+        } else if (evaluation.status === "correct") {
           totalCorrect++;
-          totalScore += marks;
-          marksObtained = marks;
           subjectScores[subject].correct++;
-          subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marks;
         } else {
           totalIncorrect++;
-          totalScore -= negativeMarks;
-          marksObtained = -negativeMarks;
           subjectScores[subject].incorrect++;
-          subjectScores[subject].marks = (subjectScores[subject].marks || 0) - negativeMarks;
         }
+
+        totalScore += evaluation.marksObtained;
+        const marksObtained = evaluation.marksObtained;
+        const isCorrect = evaluation.status === "correct";
+        subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marksObtained;
 
         processedQuestions.push({
           id: q.id,
@@ -419,8 +396,8 @@ export default function NormalTestAnalysis() {
 
       setQuestions(processedQuestions);
       setResults({
-        score: attempt.score ?? totalScore,
-        total_marks: (attempt.total_marks ?? 0) === 0 && totalMaxMarks > 0 ? totalMaxMarks : (attempt.total_marks ?? totalMaxMarks),
+        score: totalScore,
+        total_marks: totalMaxMarks,
         correct: totalCorrect,
         incorrect: totalIncorrect,
         skipped: totalSkipped,
@@ -481,39 +458,29 @@ export default function NormalTestAnalysis() {
       subjectScores[subject].total++;
       subjectScores[subject].totalMarks = (subjectScores[subject].totalMarks || 0) + marks;
 
-      let isCorrect = false;
-      let marksObtained = 0;
+      const evaluation = evaluateQuestionScore({
+        sectionType,
+        correctAnswer,
+        userAnswer,
+        marks,
+        negativeMarks,
+      });
 
-      if (userAnswer === undefined || userAnswer === null || userAnswer === '') {
+      if (evaluation.status === "skipped") {
         totalSkipped++;
         subjectScores[subject].skipped++;
+      } else if (evaluation.status === "correct") {
+        totalCorrect++;
+        subjectScores[subject].correct++;
       } else {
-        if (sectionType === 'integer') {
-          const correctNum = parseFloat(String(correctAnswer));
-          const userNum = parseFloat(String(userAnswer));
-          isCorrect = !isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01;
-        } else if (sectionType === 'multiple_choice') {
-          const correctArr = Array.isArray(correctAnswer) ? correctAnswer.sort() : [correctAnswer];
-          const userArr = Array.isArray(userAnswer) ? (userAnswer as any).sort() : [userAnswer];
-          isCorrect = JSON.stringify(correctArr) === JSON.stringify(userArr);
-        } else {
-          isCorrect = String(userAnswer) === String(correctAnswer);
-        }
-
-        if (isCorrect) {
-          totalCorrect++;
-          totalScore += marks;
-          marksObtained = marks;
-          subjectScores[subject].correct++;
-          subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marks;
-        } else {
-          totalIncorrect++;
-          totalScore -= negativeMarks;
-          marksObtained = -negativeMarks;
-          subjectScores[subject].incorrect++;
-          subjectScores[subject].marks = (subjectScores[subject].marks || 0) - negativeMarks;
-        }
+        totalIncorrect++;
+        subjectScores[subject].incorrect++;
       }
+
+      totalScore += evaluation.marksObtained;
+      const marksObtained = evaluation.marksObtained;
+      const isCorrect = evaluation.status === "correct";
+      subjectScores[subject].marks = (subjectScores[subject].marks || 0) + marksObtained;
 
       processedQuestions.push({
         id: sq.id,
@@ -533,12 +500,9 @@ export default function NormalTestAnalysis() {
     }
 
     setQuestions(processedQuestions);
-    const computedLooksValid = totalMaxMarks > 0;
-    const useComputed = (attempt.total_marks ?? 0) === 0 && computedLooksValid;
-
     setResults({
-      score: useComputed ? totalScore : (attempt.score ?? totalScore),
-      total_marks: useComputed ? totalMaxMarks : (attempt.total_marks ?? totalMaxMarks),
+      score: totalScore,
+      total_marks: totalMaxMarks,
       correct: totalCorrect,
       incorrect: totalIncorrect,
       skipped: totalSkipped,
@@ -560,8 +524,8 @@ export default function NormalTestAnalysis() {
     if (questionFilter !== "all") {
       filtered = filtered.filter(q => {
         if (questionFilter === "correct") return q.is_correct;
-        if (questionFilter === "incorrect") return q.user_answer !== undefined && !q.is_correct;
-        if (questionFilter === "unattempted") return q.user_answer === undefined;
+        if (questionFilter === "incorrect") return !isAnswerEmpty(q.user_answer) && !q.is_correct;
+        if (questionFilter === "unattempted") return isAnswerEmpty(q.user_answer);
         return true;
       });
     }
@@ -894,8 +858,8 @@ export default function NormalTestAnalysis() {
                 {[
                   { key: "all", label: "All", count: questions.filter(q => activeSubject === "all" || q.subject === activeSubject).length },
                   { key: "correct", label: "Correct", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.is_correct).length },
-                  { key: "incorrect", label: "Incorrect", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.user_answer !== undefined && !q.is_correct).length },
-                  { key: "unattempted", label: "Unattempted", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.user_answer === undefined).length },
+                   { key: "incorrect", label: "Incorrect", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && !isAnswerEmpty(q.user_answer) && !q.is_correct).length },
+                   { key: "unattempted", label: "Unattempted", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && isAnswerEmpty(q.user_answer)).length },
                 ].map((filter) => (
                   <button
                     key={filter.key}
@@ -932,15 +896,11 @@ export default function NormalTestAnalysis() {
                         "px-2 py-1 rounded text-xs",
                         currentQuestion.is_correct 
                           ? "bg-green-500/20 text-green-400" 
-                          : currentQuestion.user_answer === undefined
+                          : isAnswerEmpty(currentQuestion.user_answer)
                             ? "bg-gray-500/20 text-muted-foreground"
                             : "bg-red-500/20 text-red-400"
                       )}>
-                        {currentQuestion.is_correct 
-                          ? `+${currentQuestion.marks}` 
-                          : currentQuestion.user_answer === undefined 
-                            ? "0" 
-                            : `-${currentQuestion.negative_marks}`}
+                        {Number(currentQuestion.marks_obtained || 0) > 0 ? `+${currentQuestion.marks_obtained}` : String(currentQuestion.marks_obtained ?? 0)}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground">{currentQuestion.subject}</div>
@@ -1089,8 +1049,8 @@ export default function NormalTestAnalysis() {
                       "w-9 h-9 rounded flex items-center justify-center text-sm font-medium transition-all",
                       currentQuestionIndex === index && "ring-2 ring-white",
                       q.is_correct && "bg-green-500 text-foreground",
-                      q.user_answer !== undefined && !q.is_correct && "bg-red-500 text-foreground",
-                      q.user_answer === undefined && "bg-gray-600 text-foreground/80"
+                      !isAnswerEmpty(q.user_answer) && !q.is_correct && "bg-red-500 text-foreground",
+                      isAnswerEmpty(q.user_answer) && "bg-gray-600 text-foreground/80"
                     )}
                   >
                     {q.question_number || index + 1}

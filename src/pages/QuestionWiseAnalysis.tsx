@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { evaluateQuestionScore, formatAnswerDisplay, normalizeAnswerCollection } from "@/lib/testScoring";
 import { cn } from "@/lib/utils";
 import Leaderboard from "@/components/Leaderboard";
 
@@ -220,70 +221,36 @@ export default function QuestionWiseAnalysis() {
 
   const getQuestionStatus = (questionId: string) => {
     if (!attempt) return "skipped";
-    const answer = attempt.answers[questionId];
-    if (answer === undefined || answer === null || answer === '' || (Array.isArray(answer) && answer.length === 0)) {
-      return "skipped";
-    }
-    
     const question = questions.find(q => q.id === questionId);
     if (!question) return "skipped";
-
-    const correctAnswer = question.correct_answer;
-    
-    if (question.section_type === "integer") {
-      const correctNum = parseFloat(String(correctAnswer));
-      const userNum = parseFloat(String(answer));
-      return !isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01 ? "correct" : "incorrect";
-    }
-    
-    if (question.section_type === "multiple_choice") {
-      // Convert user indices to letters and compare with correct answer letters
-      const userAnswers = Array.isArray(answer) 
-        ? answer.map(a => userAnswerToLetter(a)).sort() 
-        : [userAnswerToLetter(answer)];
-      const correctAnswers = Array.isArray(correctAnswer) 
-        ? correctAnswer.map((a: any) => String(a).toUpperCase()).sort() 
-        : [String(correctAnswer).toUpperCase()];
-      return JSON.stringify(userAnswers) === JSON.stringify(correctAnswers) ? "correct" : "incorrect";
-    }
-    
-    // Single choice - convert user index to letter and compare
-    const userLetter = userAnswerToLetter(answer);
-    const correctLetter = String(correctAnswer).toUpperCase();
-    return userLetter === correctLetter ? "correct" : "incorrect";
+    return evaluateQuestionScore({
+      sectionType: question.section_type,
+      correctAnswer: question.correct_answer,
+      userAnswer: attempt.answers[questionId],
+      marks: question.marks,
+      negativeMarks: question.negative_marks,
+    }).status;
   };
 
   const formatAnswer = (answer: any, sectionType: string) => {
-    if (answer === undefined || answer === null || answer === '' || (Array.isArray(answer) && answer.length === 0)) {
-      return "-";
-    }
-    if (sectionType === "integer") return String(answer);
-    if (Array.isArray(answer)) {
-      // Convert indices to letters for MCQ
-      return answer.map(a => userAnswerToLetter(a)).join(", ");
-    }
-    // Single choice - convert index to letter
-    return userAnswerToLetter(answer);
+    return formatAnswerDisplay(answer, sectionType);
   };
 
   const formatCorrectAnswer = (answer: any, sectionType: string) => {
-    if (answer === undefined || answer === null || answer === '') return "-";
-    if (sectionType === "integer") return String(answer);
-    if (Array.isArray(answer)) {
-      return answer.map((a: any) => String(a).toUpperCase()).join(", ");
-    }
-    // Correct answer is stored as letter (A, B, C, D) - just return it
-    return String(answer).toUpperCase();
+    return formatAnswerDisplay(answer, sectionType);
   };
 
   const getMarksObtained = (questionId: string) => {
-    const status = getQuestionStatus(questionId);
     const question = questions.find(q => q.id === questionId);
-    if (!question) return 0;
-    
-    if (status === "correct") return question.marks;
-    if (status === "incorrect") return -question.negative_marks;
-    return 0;
+    if (!question || !attempt) return 0;
+
+    return evaluateQuestionScore({
+      sectionType: question.section_type,
+      correctAnswer: question.correct_answer,
+      userAnswer: attempt.answers[questionId],
+      marks: question.marks,
+      negativeMarks: question.negative_marks,
+    }).marksObtained;
   };
 
   if (loading) {
@@ -296,16 +263,16 @@ export default function QuestionWiseAnalysis() {
 
   if (!attempt) return null;
 
-  const currentQ = questions[currentQuestion];
-  const accuracy = (attempt.score >= 0 && attempt.total_marks > 0)
-    ? Math.round((attempt.score / attempt.total_marks) * 100) 
-    : 0;
-
   const stats = {
     correct: questions.filter(q => getQuestionStatus(q.id) === "correct").length,
     incorrect: questions.filter(q => getQuestionStatus(q.id) === "incorrect").length,
     skipped: questions.filter(q => getQuestionStatus(q.id) === "skipped").length,
   };
+  const currentQ = questions[currentQuestion];
+  const displayedScore = questions.reduce((total, question) => total + getMarksObtained(question.id), 0);
+  const displayedTotalMarks = questions.reduce((total, question) => total + question.marks, 0);
+  const attemptedCount = stats.correct + stats.incorrect;
+  const accuracy = attemptedCount > 0 ? Math.round((stats.correct / attemptedCount) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -343,7 +310,7 @@ export default function QuestionWiseAnalysis() {
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <div className="bg-card border rounded-xl p-4 text-center">
-            <div className="text-2xl font-bold">{attempt.score}/{attempt.total_marks}</div>
+            <div className="text-2xl font-bold">{displayedScore}/{displayedTotalMarks}</div>
             <div className="text-sm text-muted-foreground">Score</div>
           </div>
           <div className="bg-card border rounded-xl p-4 text-center">
@@ -496,22 +463,14 @@ export default function QuestionWiseAnalysis() {
                       <div className="text-sm text-muted-foreground mb-2">Options:</div>
                       {currentQ.options.map((opt, idx) => {
                         const optLetter = String.fromCharCode(65 + idx); // A, B, C, D
-                        const correctAnswer = currentQ.correct_answer;
+                        const correctAnswers = normalizeAnswerCollection(currentQ.correct_answer, currentQ.section_type);
                         
                         // Check if this option is the correct one (correct_answer is stored as letter like "A", "B")
-                        const isCorrect = currentQ.section_type === 'multiple_choice' 
-                          ? (Array.isArray(correctAnswer) 
-                              ? correctAnswer.map((a: any) => String(a).toUpperCase()).includes(optLetter) 
-                              : String(correctAnswer).toUpperCase() === optLetter)
-                          : String(correctAnswer).toUpperCase() === optLetter;
+                        const isCorrect = correctAnswers.includes(optLetter);
                         
                         // Check if user selected this option (user answer is stored as index like 0, 1, 2)
-                        const userAnswer = attempt.answers[currentQ.id];
-                        const isUserAnswer = currentQ.section_type === 'multiple_choice'
-                          ? (Array.isArray(userAnswer) 
-                              ? userAnswer.map((a: any) => parseInt(String(a))).includes(idx)
-                              : parseInt(String(userAnswer)) === idx)
-                          : parseInt(String(userAnswer)) === idx;
+                        const userAnswers = normalizeAnswerCollection(attempt.answers[currentQ.id], currentQ.section_type);
+                        const isUserAnswer = userAnswers.includes(optLetter);
 
                         // Get option text - handle both object format and string format
                         const optionText = typeof opt === 'object' && opt !== null 
