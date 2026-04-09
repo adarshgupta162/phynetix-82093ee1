@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { evaluateQuestionScore, formatAnswerDisplay } from "@/lib/testScoring";
 import { cn } from "@/lib/utils";
 import Leaderboard from "@/components/Leaderboard";
 import ScrollPDFViewer from "@/components/test/ScrollPDFViewer";
@@ -186,51 +187,28 @@ export default function DetailedAnalysis() {
 
   const getQuestionStatus = (questionId: string) => {
     if (!attempt) return "skipped";
-    const answer = attempt.answers[questionId];
-    if (!answer || (Array.isArray(answer) && answer.length === 0)) return "skipped";
-    
     const question = questions.find(q => q.id === questionId);
     if (!question) return "skipped";
-
-    const correctAnswer = question.correct_answer;
-    
-    if (question.section_type === "integer") {
-      return String(answer) === String(correctAnswer) ? "correct" : "incorrect";
-    }
-    
-    if (question.section_type === "multiple_choice") {
-      const norm = (v: any) => { const n = parseInt(String(v)); return !isNaN(n) && n >= 0 && n <= 25 ? String.fromCharCode(65 + n) : String(v).toUpperCase(); };
-      const userAnswers = (Array.isArray(answer) ? answer.map(norm) : [norm(answer)]).sort();
-      const correctAnswers = (Array.isArray(correctAnswer) ? correctAnswer.map((a: any) => norm(a)) : [norm(correctAnswer)]).sort();
-      return JSON.stringify(userAnswers) === JSON.stringify(correctAnswers) ? "correct" : "incorrect";
-    }
-    
-    const normSingle = (v: any) => { const n = parseInt(String(v)); return !isNaN(n) && n >= 0 && n <= 25 ? String.fromCharCode(65 + n) : String(v).toUpperCase(); };
-    return normSingle(answer) === normSingle(correctAnswer) ? "correct" : "incorrect";
-  };
-
-  const normalizeToLetter = (v: any) => {
-    const s = String(v).trim();
-    const n = parseInt(s);
-    if (!isNaN(n) && n >= 0 && n <= 25) return String.fromCharCode(65 + n);
-    return s.toUpperCase();
-  };
-
-  const formatAnswer = (answer: any, sectionType: string) => {
-    if (!answer || (Array.isArray(answer) && answer.length === 0)) return "-";
-    if (sectionType === "integer") return String(answer);
-    if (Array.isArray(answer)) return answer.map(normalizeToLetter).join(", ");
-    return normalizeToLetter(answer);
+    return evaluateQuestionScore({
+      sectionType: question.section_type,
+      correctAnswer: question.correct_answer,
+      userAnswer: attempt.answers[questionId],
+      marks: question.marks,
+      negativeMarks: question.negative_marks,
+    }).status;
   };
 
   const getMarksObtained = (questionId: string) => {
-    const status = getQuestionStatus(questionId);
     const question = questions.find(q => q.id === questionId);
-    if (!question) return 0;
-    
-    if (status === "correct") return question.marks;
-    if (status === "incorrect") return -question.negative_marks;
-    return 0;
+    if (!question || !attempt) return 0;
+
+    return evaluateQuestionScore({
+      sectionType: question.section_type,
+      correctAnswer: question.correct_answer,
+      userAnswer: attempt.answers[questionId],
+      marks: question.marks,
+      negativeMarks: question.negative_marks,
+    }).marksObtained;
   };
 
   const filteredQuestions = useMemo(() => {
@@ -250,6 +228,8 @@ export default function DetailedAnalysis() {
 
   const currentQ = questions[currentQuestion];
   const targetPdfPage = currentQ?.pdf_page || undefined;
+  const displayedScore = questions.reduce((total, question) => total + getMarksObtained(question.id), 0);
+  const displayedTotalMarks = questions.reduce((total, question) => total + question.marks, 0);
 
   if (loading) {
     return (
@@ -261,8 +241,8 @@ export default function DetailedAnalysis() {
 
   if (!attempt) return null;
 
-  const accuracy = attempt.total_marks > 0 
-    ? Math.round((attempt.score / attempt.total_marks) * 100) 
+  const accuracy = displayedTotalMarks > 0 
+    ? Math.round((displayedScore / displayedTotalMarks) * 100) 
     : 0;
 
   const stats = {
@@ -291,7 +271,7 @@ export default function DetailedAnalysis() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <div className="text-xs space-y-1">
-                      <div>Score: {attempt.score}/{attempt.total_marks}</div>
+                      <div>Score: {displayedScore}/{displayedTotalMarks}</div>
                       <div>Rank: #{attempt.rank}</div>
                       <div>Percentile: {attempt.percentile?.toFixed(1)}%</div>
                       <div>Time: {Math.floor((attempt.time_taken_seconds || 0) / 60)}m</div>
@@ -319,7 +299,7 @@ export default function DetailedAnalysis() {
       <div className="border-b border-border bg-card/50 px-4 py-2">
         <div className="container mx-auto flex items-center gap-4 overflow-x-auto">
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10">
-            <span className="text-sm font-medium">{attempt.score}/{attempt.total_marks}</span>
+            <span className="text-sm font-medium">{displayedScore}/{displayedTotalMarks}</span>
             <span className="text-xs text-muted-foreground">Score</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-success/10">
@@ -463,14 +443,14 @@ export default function DetailedAnalysis() {
                   <div className="p-3 rounded-lg bg-secondary/50">
                     <div className="text-sm text-muted-foreground mb-1">Your Answer</div>
                     <div className="font-semibold">
-                      {formatAnswer(attempt.answers[currentQ.id], currentQ.section_type)}
+                       {formatAnswerDisplay(attempt.answers[currentQ.id], currentQ.section_type)}
                     </div>
                   </div>
 
                   <div className="p-3 rounded-lg bg-success/10 border border-success/20">
                     <div className="text-sm text-success mb-1">Correct Answer</div>
                     <div className="font-semibold text-success">
-                      {formatAnswer(currentQ.correct_answer, currentQ.section_type)}
+                       {formatAnswerDisplay(currentQ.correct_answer, currentQ.section_type)}
                     </div>
                   </div>
 

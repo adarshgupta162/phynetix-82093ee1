@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { evaluateQuestionScore } from "../_shared/scoring.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,64 +102,22 @@ serve(async (req) => {
 
           totalMarks += marks;
 
-          if (isBonus) {
-            score += marks;
-            continue;
-          }
+          const evaluation = evaluateQuestionScore({
+            sectionType,
+            correctAnswer,
+            userAnswer,
+            marks,
+            negativeMarks,
+            isBonus,
+          });
 
-          if (userAnswer === undefined || userAnswer === null || userAnswer === "") {
-            continue; // skipped, 0 marks
-          }
-
-          if (sectionType === "multiple_choice") {
-            const correctArr = (Array.isArray(correctAnswer) ? [...correctAnswer] : [correctAnswer])
-              .map((a: any) => String(a).toUpperCase()).sort();
-            const userArr = (Array.isArray(userAnswer) ? [...userAnswer] : [userAnswer])
-              .map((a: any) => indexToLetter(a)).sort();
-
-            const correctSet = new Set(correctArr);
-            const userSet = new Set(userArr);
-            const correctCount = [...userSet].filter((a) => correctSet.has(a)).length;
-            const wrongCount = [...userSet].filter((a) => !correctSet.has(a)).length;
-            const totalCorrect = correctArr.length;
-
-            if (wrongCount > 0) {
-              score -= 2;
-            } else if (correctCount === totalCorrect) {
-              score += marks;
-            } else if (correctCount === totalCorrect - 1 && totalCorrect >= 4) {
-              score += 3;
-            } else if (correctCount === 2 && totalCorrect >= 3) {
-              score += 2;
-            } else if (correctCount === 1 && totalCorrect >= 2) {
-              score += 1;
-            } else {
-              score -= 2;
-            }
-          } else if (sectionType === "integer") {
-            const correctNum = parseFloat(String(correctAnswer));
-            const userNum = parseFloat(String(userAnswer));
-            if (!isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01) {
-              score += marks;
-            } else {
-              score -= negativeMarks;
-            }
-          } else {
-            // single choice
-            const userLetter = indexToLetter(userAnswer);
-            const correctLetter = String(correctAnswer).toUpperCase();
-            if (userLetter === correctLetter) {
-              score += marks;
-            } else {
-              score -= negativeMarks;
-            }
-          }
+          score += evaluation.marksObtained;
         }
       } else {
         // Regular test_questions grading
         const { data: testQuestions } = await supabaseAdmin
           .from("test_questions")
-          .select("questions(id, correct_answer, marks, negative_marks)")
+          .select("questions(id, correct_answer, marks, negative_marks, question_type)")
           .eq("test_id", attempt.test_id);
 
         for (const tq of testQuestions || []) {
@@ -168,12 +127,14 @@ serve(async (req) => {
           const negativeMarks = q.negative_marks ?? 1;
           totalMarks += marks;
           const userAnswer = answers[q.id];
-          if (userAnswer === undefined || userAnswer === null || userAnswer === "") continue;
-          if (String(userAnswer) === String(q.correct_answer)) {
-            score += marks;
-          } else {
-            score -= negativeMarks;
-          }
+          const evaluation = evaluateQuestionScore({
+            sectionType: q.question_type,
+            correctAnswer: q.correct_answer,
+            userAnswer,
+            marks,
+            negativeMarks,
+          });
+          score += evaluation.marksObtained;
         }
       }
 

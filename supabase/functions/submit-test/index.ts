@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { evaluateQuestionScore } from "../_shared/scoring.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -174,137 +175,27 @@ serve(async (req) => {
         subjectScores[subject].totalMarks += marks;
         totalMarks += marks;
 
-        // Bonus question: everyone gets full marks
-        if (isBonus) {
+        const evaluation = evaluateQuestionScore({
+          sectionType,
+          correctAnswer,
+          userAnswer,
+          marks,
+          negativeMarks,
+          isBonus,
+        });
+
+        score += evaluation.marksObtained;
+        subjectScores[subject].marks += evaluation.marksObtained;
+
+        if (evaluation.status === "correct") {
           correct++;
-          score += marks;
           subjectScores[subject].correct++;
-          subjectScores[subject].marks += marks;
-
-          pushResult(questionId, {
-            question_number: (q as any).question_number,
-            question_text: (q as any).question_text ?? null,
-            options: (q as any).options,
-            image_url: (q as any).image_url ?? null,
-            correct_answer: correctAnswer,
-            user_answer: userAnswer ?? null,
-            is_correct: true,
-            is_bonus: true,
-            marks_obtained: marks,
-            marks,
-            negative_marks: negativeMarks,
-            subject,
-            section_type: sectionType,
-            chapter: chapterName,
-          });
-          continue;
-        }
-
-        let isCorrect = false;
-        let marksObtained = 0;
-
-        if (userAnswer === undefined || userAnswer === null || userAnswer === "") {
+        } else if (evaluation.status === "incorrect") {
+          incorrect++;
+          subjectScores[subject].incorrect++;
+        } else {
           skipped++;
           subjectScores[subject].skipped++;
-        } else {
-          if (sectionType === "multiple_choice") {
-            // Convert correct answers to uppercase letters
-            const correctArr = (Array.isArray(correctAnswer) ? [...correctAnswer] : [correctAnswer])
-              .map((a: any) => String(a).toUpperCase())
-              .sort();
-            // Convert user answers from indices to letters
-            const userArr = (Array.isArray(userAnswer) ? [...userAnswer] : [userAnswer])
-              .map((a: any) => indexToLetter(a))
-              .sort();
-
-            const correctSet = new Set(correctArr);
-            const userSet = new Set(userArr);
-            const correctCount = [...userSet].filter((a) => correctSet.has(a)).length;
-            const wrongCount = [...userSet].filter((a) => !correctSet.has(a)).length;
-            const totalCorrect = correctArr.length;
-
-            if (wrongCount > 0) {
-              // Any wrong option selected → -2
-              incorrect++;
-              marksObtained = -2;
-              score -= 2;
-              subjectScores[subject].incorrect++;
-              subjectScores[subject].marks -= 2;
-            } else if (correctCount === totalCorrect) {
-              // All correct options chosen → +4
-              isCorrect = true;
-              correct++;
-              marksObtained = marks;
-              score += marks;
-              subjectScores[subject].correct++;
-              subjectScores[subject].marks += marks;
-            } else if (correctCount === totalCorrect - 1 && totalCorrect >= 4) {
-              // 4 correct, only 3 chosen → +3
-              marksObtained = 3;
-              score += 3;
-              correct++;
-              subjectScores[subject].correct++;
-              subjectScores[subject].marks += 3;
-            } else if (correctCount === 2 && totalCorrect >= 3) {
-              // 3+ correct, only 2 chosen → +2
-              marksObtained = 2;
-              score += 2;
-              correct++;
-              subjectScores[subject].correct++;
-              subjectScores[subject].marks += 2;
-            } else if (correctCount === 1 && totalCorrect >= 2) {
-              // 2+ correct, only 1 chosen → +1
-              marksObtained = 1;
-              score += 1;
-              correct++;
-              subjectScores[subject].correct++;
-              subjectScores[subject].marks += 1;
-            } else {
-              // Fallback → -2
-              incorrect++;
-              marksObtained = -2;
-              score -= 2;
-              subjectScores[subject].incorrect++;
-              subjectScores[subject].marks -= 2;
-            }
-          } else if (sectionType === "integer") {
-            const correctNum = parseFloat(String(correctAnswer));
-            const userNum = parseFloat(String(userAnswer));
-
-            if (!isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01) {
-              isCorrect = true;
-              correct++;
-              score += marks;
-              marksObtained = marks;
-              subjectScores[subject].correct++;
-              subjectScores[subject].marks += marks;
-            } else {
-              incorrect++;
-              score -= negativeMarks;
-              marksObtained = -negativeMarks;
-              subjectScores[subject].incorrect++;
-              subjectScores[subject].marks -= negativeMarks;
-            }
-          } else {
-            // Single choice
-            const userLetter = indexToLetter(userAnswer);
-            const correctLetter = String(correctAnswer).toUpperCase();
-            
-            if (userLetter === correctLetter) {
-              isCorrect = true;
-              correct++;
-              score += marks;
-              marksObtained = marks;
-              subjectScores[subject].correct++;
-              subjectScores[subject].marks += marks;
-            } else {
-              incorrect++;
-              score -= negativeMarks;
-              marksObtained = -negativeMarks;
-              subjectScores[subject].incorrect++;
-              subjectScores[subject].marks -= negativeMarks;
-            }
-          }
         }
 
         pushResult(questionId, {
@@ -314,9 +205,9 @@ serve(async (req) => {
           image_url: (q as any).image_url ?? null,
           correct_answer: correctAnswer,
           user_answer: userAnswer ?? null,
-          is_correct: isCorrect,
-          is_bonus: false,
-          marks_obtained: marksObtained,
+          is_correct: evaluation.isCorrect,
+          is_bonus: isBonus,
+          marks_obtained: evaluation.marksObtained,
           marks,
           negative_marks: negativeMarks,
           subject,
@@ -368,25 +259,26 @@ serve(async (req) => {
         subjectScores[subject].totalMarks += marks;
         totalMarks += marks;
 
-        let isCorrect = false;
-        let marksObtained = 0;
+        const evaluation = evaluateQuestionScore({
+          sectionType: q.question_type,
+          correctAnswer,
+          userAnswer,
+          marks,
+          negativeMarks,
+        });
 
-        if (userAnswer === undefined || userAnswer === null || userAnswer === "") {
+        score += evaluation.marksObtained;
+        subjectScores[subject].marks += evaluation.marksObtained;
+
+        if (evaluation.status === "correct") {
+          correct++;
+          subjectScores[subject].correct++;
+        } else if (evaluation.status === "incorrect") {
+          incorrect++;
+          subjectScores[subject].incorrect++;
+        } else {
           skipped++;
           subjectScores[subject].skipped++;
-        } else if (String(userAnswer) === String(correctAnswer)) {
-          isCorrect = true;
-          correct++;
-          score += marks;
-          marksObtained = marks;
-          subjectScores[subject].correct++;
-          subjectScores[subject].marks += marks;
-        } else {
-          incorrect++;
-          score -= negativeMarks;
-          marksObtained = -negativeMarks;
-          subjectScores[subject].incorrect++;
-          subjectScores[subject].marks -= negativeMarks;
         }
 
         pushResult(questionId, {
@@ -396,8 +288,8 @@ serve(async (req) => {
           image_url: q.image_url ?? null,
           correct_answer: correctAnswer,
           user_answer: userAnswer ?? null,
-          is_correct: isCorrect,
-          marks_obtained: marksObtained,
+          is_correct: evaluation.isCorrect,
+          marks_obtained: evaluation.marksObtained,
           marks,
           negative_marks: negativeMarks,
           subject,

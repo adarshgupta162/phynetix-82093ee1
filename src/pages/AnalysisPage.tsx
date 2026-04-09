@@ -13,6 +13,7 @@ import { DifficultyAnalysis } from "@/components/analysis/DifficultyAnalysis";
 import { ScorePotential } from "@/components/analysis/ScorePotential";
 import { MistakeBook } from "@/components/analysis/MistakeBook";
 import { supabase } from "@/integrations/supabase/client";
+import { evaluateQuestionScore } from "@/lib/testScoring";
 import { toast } from "sonner";
 
 // --- Types ---
@@ -194,7 +195,7 @@ export default function AnalysisPage() {
         }
         return {
           id: q.id, question_number: q.question_number,
-          correct_answer: typeof q.correct_answer === 'object' ? (q.correct_answer as any)?.answer || String(q.correct_answer) : String(q.correct_answer || ""),
+          correct_answer: q.correct_answer,
           marks: q.marks || 4, negative_marks: q.negative_marks || 1,
           subject: q.test_sections?.test_subjects?.name || "General",
           sectionType: q.test_sections?.section_type || "single_choice",
@@ -226,22 +227,31 @@ export default function AnalysisPage() {
         s.totalMarks += q.marks;
 
         const rawUserAnswer = userAnswers[q.id];
-        const isIntegerType = q.sectionType === 'integer' || q.sectionType === 'numerical';
-        const normalizedUserAnswer = isIntegerType
-          ? (rawUserAnswer !== undefined && rawUserAnswer !== null && rawUserAnswer !== "" ? String(rawUserAnswer) : "")
-          : indexToLetter(rawUserAnswer);
+        const evaluation = evaluateQuestionScore({
+          sectionType: q.sectionType,
+          correctAnswer: q.correct_answer,
+          userAnswer: rawUserAnswer,
+          marks: q.marks,
+          negativeMarks: q.negative_marks,
+        });
 
-        let status: "correct" | "incorrect" | "skipped" = "skipped";
-        let userMarks = 0;
-
-        if (rawUserAnswer === undefined || rawUserAnswer === null || rawUserAnswer === "") {
-          s.unattempted++; status = "skipped";
-        } else if (normalizedUserAnswer === q.correct_answer) {
-          s.correct++; s.marksObtained += q.marks; totalCorrect++; totalPositiveScore += q.marks;
-          status = "correct"; userMarks = q.marks;
+        if (evaluation.status === "skipped") {
+          s.unattempted++;
+        } else if (evaluation.status === "correct") {
+          s.correct++;
+          totalCorrect++;
         } else {
-          s.incorrect++; s.negativeMarks += q.negative_marks; totalIncorrect++; totalNegativeScore += q.negative_marks;
-          status = "incorrect"; userMarks = -q.negative_marks;
+          s.incorrect++;
+          totalIncorrect++;
+        }
+
+        if (evaluation.marksObtained > 0) {
+          s.marksObtained += evaluation.marksObtained;
+          totalPositiveScore += evaluation.marksObtained;
+        } else if (evaluation.marksObtained < 0) {
+          const lostMarks = Math.abs(evaluation.marksObtained);
+          s.negativeMarks += lostMarks;
+          totalNegativeScore += lostMarks;
         }
 
         const actualTimeSpent = timePerQuestion[q.id] || 0;
@@ -249,10 +259,10 @@ export default function AnalysisPage() {
 
         questionResults.push({
           questionNumber: q.question_number, questionId: q.id,
-          timeSpent: actualTimeSpent, subject, status, marks: q.marks,
-          negativeMarks: q.negative_marks, userMarks, difficulty: q.difficulty,
-          userAnswer: normalizedUserAnswer || rawUserAnswer || "",
-          correctAnswer: q.correct_answer, questionText: q.questionText,
+          timeSpent: actualTimeSpent, subject, status: evaluation.status, marks: q.marks,
+          negativeMarks: q.negative_marks, userMarks: evaluation.marksObtained, difficulty: q.difficulty,
+          userAnswer: evaluation.userAnswerLabel,
+          correctAnswer: evaluation.correctAnswerLabel, questionText: q.questionText,
           imageUrl: q.imageUrl, sectionType: q.sectionType,
           solutionText: q.solutionText, solutionImageUrl: q.solutionImageUrl,
         });

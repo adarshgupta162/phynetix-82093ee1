@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { evaluateQuestionScore } from "../_shared/scoring.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -125,53 +126,20 @@ serve(async (req) => {
           continue;
         }
 
-        let isCorrect = false;
+        const evaluation = evaluateQuestionScore({
+          sectionType,
+          correctAnswer,
+          userAnswer,
+          marks,
+          negativeMarks,
+          isBonus,
+        });
 
-        if (sectionType === "integer") {
-          const correctNum = parseFloat(String(correctAnswer));
-          const userNum = parseFloat(String(userAnswer));
-          isCorrect = !isNaN(correctNum) && !isNaN(userNum) && Math.abs(correctNum - userNum) < 0.01;
-          
-          if (isCorrect) {
-            score += marks;
-            correct++;
-          } else {
-            score -= negativeMarks;
-            incorrect++;
-          }
-          continue;
-        } else if (sectionType === "multiple_choice") {
-          const userAnswers = Array.isArray(userAnswer) ? [...userAnswer].sort() : [userAnswer];
-          const correctAnswers = Array.isArray(correctAnswer) ? [...correctAnswer].sort() : [correctAnswer];
-          
-          if (test?.exam_type === "jee_advanced") {
-            const correctSet = new Set(correctAnswers);
-            const correctCount = userAnswers.filter(a => correctSet.has(a)).length;
-            const wrongCount = userAnswers.filter(a => !correctSet.has(a)).length;
-            
-            if (wrongCount === 0 && correctCount === correctAnswers.length) {
-              score += marks;
-              correct++;
-            } else if (wrongCount === 0 && correctCount > 0) {
-              score += Math.floor(marks * correctCount / correctAnswers.length);
-              correct++;
-            } else {
-              score -= 2;
-              incorrect++;
-            }
-            continue;
-          } else {
-            isCorrect = JSON.stringify(userAnswers) === JSON.stringify(correctAnswers);
-          }
-        } else {
-          isCorrect = userAnswer === correctAnswer;
-        }
+        score += evaluation.marksObtained;
 
-        if (isCorrect) {
-          score += marks;
+        if (evaluation.status === "correct") {
           correct++;
-        } else {
-          score -= negativeMarks;
+        } else if (evaluation.status === "incorrect") {
           incorrect++;
         }
       }
