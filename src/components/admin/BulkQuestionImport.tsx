@@ -330,7 +330,7 @@ export default function BulkQuestionImport() {
           </p>
         </div>
         <Button variant="outline" onClick={handleDownloadTemplate} className="gap-2">
-          <Download className="h-4 w-4" /> Download Template
+          <Download className="h-4 w-4" /> Download Excel Template
         </Button>
       </div>
 
