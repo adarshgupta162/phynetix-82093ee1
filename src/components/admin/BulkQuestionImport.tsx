@@ -87,25 +87,115 @@ function mapRowToQuestion(row: Record<string, string>, userId: string) {
   };
 }
 
-function generateSampleCSV(): string {
-  const header = EXPECTED_COLUMNS.join(",");
-  const row1 = [
-    "Physics", "Mechanics", "Kinematics",
-    "A ball is thrown vertically upward with velocity 20 m/s. Find max height.",
-    "20m", "10m", "15m", "5m",
-    "1", "single_correct", "4", "1", "medium", "60",
-    "Using v²=u²-2gh, h=u²/2g=20m",
-  ].join(",");
-  const row2 = [
-    "Chemistry", "Atomic Structure", "Quantum Numbers",
-    "Which quantum numbers are valid for 3d orbital?",
-    "n=3 l=2", "n=3 l=0", "n=2 l=2", "n=3 l=3",
-    "1,2", "multiple_correct", "4", "2", "hard", "90",
-    "For 3d: n=3 and l=2",
-  ].join(",");
-  return `${header}\n${row1}\n${row2}`;
+function buildTemplateWorkbook(): XLSX.WorkBook {
+  const wb = XLSX.utils.book_new();
+
+  // ─── Sheet 1: Instructions ───────────────────────────────────────────
+  const instructions: (string | number)[][] = [
+    ["Phynetix - Bulk Question Import Template"],
+    [""],
+    ["HOW TO USE"],
+    ["1. Fill rows in the 'Questions' sheet using the column rules below."],
+    ["2. Do NOT rename, reorder or delete the header row in 'Questions'."],
+    ["3. See 'Examples' sheet for fully worked rows for every question type."],
+    ["4. Save as .xlsx and upload it on the Bulk Import page."],
+    [""],
+    ["COLUMN", "REQUIRED", "ACCEPTED VALUES / NOTES"],
+    ["subject", "Yes", "Physics / Chemistry / Mathematics / Biology (free text)"],
+    ["chapter", "No", "Free text e.g. Mechanics, Atomic Structure"],
+    ["topic", "No", "Free text e.g. Kinematics"],
+    ["question_text", "Yes", "Plain text or LaTeX (KaTeX). e.g. $\\\\int x\\\\,dx$. See public/katex-reference.md"],
+    ["option_1 .. option_4", "MCQ only", "Required for single_correct / multiple_correct. Leave blank for integer."],
+    ["correct_answer", "Yes", "single_correct: 1|2|3|4   |   multiple_correct: 1,3 (comma list)   |   integer: numeric value e.g. 5 or 3.14"],
+    ["question_type", "Yes", "single_correct  |  multiple_correct  |  integer"],
+    ["marks", "No", "Default 4. Any positive number (3, 4, 5...). Used for full marks."],
+    ["negative_marks", "No", "Default 1. Penalty for wrong answer. Set 0 for no negative."],
+    ["difficulty", "No", "easy | medium | hard. Default medium."],
+    ["time_seconds", "No", "Suggested time per question. Default 60."],
+    ["solution_text", "No", "Plain text or LaTeX. Shown to students after submission."],
+    [""],
+    ["MARKING SCHEMES (auto-applied at submission)"],
+    ["single_correct", "+marks for correct, -negative_marks for wrong, 0 if skipped"],
+    ["multiple_correct (JEE Adv style, scales with marks)",
+      "All correct: +marks | 3-of-4: +marks*3/4 | 2-of-N: +marks/2 | 1-of-N: +marks/4 | Any wrong selection: -negative_marks"],
+    ["integer", "+marks if numeric value matches (tolerance < 0.01), -negative_marks otherwise"],
+    [""],
+    ["MULTIPLE CORRECT - HOW TO ENTER ANSWERS"],
+    ["If options 1,3 are correct → correct_answer = 1,3"],
+    ["If options 2,3,4 are correct → correct_answer = 2,3,4"],
+    ["Order does not matter, no spaces required."],
+  ];
+  const wsI = XLSX.utils.aoa_to_sheet(instructions);
+  wsI["!cols"] = [{ wch: 32 }, { wch: 14 }, { wch: 80 }];
+  // Merge title row visually
+  wsI["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+  XLSX.utils.book_append_sheet(wb, wsI, "Instructions");
+
+  // ─── Sheet 2: Examples ───────────────────────────────────────────────
+  const exampleHeader = EXPECTED_COLUMNS;
+  const exampleRows: (string | number)[][] = [
+    exampleHeader,
+    [
+      "Physics", "Mechanics", "Kinematics",
+      "A ball is thrown vertically upward with velocity 20 m/s. Find max height. (g=10 m/s²)",
+      "20 m", "10 m", "15 m", "5 m",
+      "1", "single_correct", 4, 1, "medium", 60,
+      "Using v²=u²-2gh ⇒ h = u²/(2g) = 400/20 = 20 m",
+    ],
+    [
+      "Chemistry", "Atomic Structure", "Quantum Numbers",
+      "Which of the following are valid quantum number sets for a 3d orbital?",
+      "n=3, l=2, m=-2", "n=3, l=0, m=0", "n=3, l=2, m=+1", "n=3, l=1, m=0",
+      "1,3", "multiple_correct", 4, 2, "hard", 90,
+      "For 3d orbital n=3 and l=2; m can range from -l to +l.",
+    ],
+    [
+      "Mathematics", "Calculus", "Definite Integrals",
+      "Evaluate $\\int_0^1 2x\\,dx$",
+      "", "", "", "",
+      "1", "integer", 4, 0, "easy", 45,
+      "$\\int_0^1 2x\\,dx = [x^2]_0^1 = 1$",
+    ],
+    [
+      "Physics", "Modern Physics", "Photoelectric Effect",
+      "All correct statements about photoelectric effect are:",
+      "Stopping potential depends on frequency",
+      "Photoelectric current depends on intensity",
+      "Work function depends on metal",
+      "KE depends on intensity",
+      "1,2,3", "multiple_correct", 3, 1, "medium", 75,
+      "KE_max depends on frequency, not intensity. Hence 1,2,3 are correct.",
+    ],
+  ];
+  const wsE = XLSX.utils.aoa_to_sheet(exampleRows);
+  wsE["!cols"] = exampleHeader.map((c) => ({
+    wch: c === "question_text" || c === "solution_text" ? 50 : c.startsWith("option_") ? 22 : 16,
+  }));
+  XLSX.utils.book_append_sheet(wb, wsE, "Examples");
+
+  // ─── Sheet 3: Questions (the sheet users fill) ───────────────────────
+  const questionsSheet: (string | number)[][] = [
+    EXPECTED_COLUMNS,
+    [
+      "Physics", "", "",
+      "Replace this with your question text",
+      "Option A", "Option B", "Option C", "Option D",
+      "1", "single_correct", 4, 1, "medium", 60, "",
+    ],
+  ];
+  const wsQ = XLSX.utils.aoa_to_sheet(questionsSheet);
+  wsQ["!cols"] = EXPECTED_COLUMNS.map((c) => ({
+    wch: c === "question_text" || c === "solution_text" ? 45 : c.startsWith("option_") ? 22 : 16,
+  }));
+  XLSX.utils.book_append_sheet(wb, wsQ, "Questions");
+
+  return wb;
 }
 
+function downloadTemplate() {
+  const wb = buildTemplateWorkbook();
+  XLSX.writeFile(wb, "phynetix_question_import_template.xlsx");
+}
 export default function BulkQuestionImport() {
   const { user } = useAuth();
   const [rows, setRows] = useState<ParsedRow[]>([]);
