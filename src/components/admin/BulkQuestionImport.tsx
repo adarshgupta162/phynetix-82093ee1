@@ -222,11 +222,16 @@ export default function BulkQuestionImport() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const wb = XLSX.read(e.target?.result, { type: "array" });
-        const ws = wb.Sheets[wb.SheetNames[0]];
+        // Prefer "Questions" sheet, otherwise the first non-instructional sheet, else the first sheet.
+        const sheetName =
+          wb.SheetNames.find((n) => n.toLowerCase() === "questions") ||
+          wb.SheetNames.find((n) => !["instructions", "examples"].includes(n.toLowerCase())) ||
+          wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { defval: "" });
         const parsed = data.map((r, i) => validateRow(r, i + 1));
         setRows(parsed);
-        toast.success(`Parsed ${parsed.length} rows from Excel`);
+        toast.success(`Parsed ${parsed.length} rows from "${sheetName}"`);
       };
       reader.readAsArrayBuffer(file);
     } else {
@@ -242,13 +247,8 @@ export default function BulkQuestionImport() {
   }, [parseFile]);
 
   const handleDownloadTemplate = () => {
-    const blob = new Blob([generateSampleCSV()], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "question_import_template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadTemplate();
+    toast.success("Excel template downloaded");
   };
 
   const handleImport = async () => {
