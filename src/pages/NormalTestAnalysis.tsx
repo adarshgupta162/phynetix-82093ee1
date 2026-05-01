@@ -100,10 +100,13 @@ export default function NormalTestAnalysis() {
 
     const passedResults = location.state?.results as Results | undefined;
     if (passedResults) {
-      setResults(passedResults);
-
       const qr = passedResults.question_results;
       if (qr && Object.keys(qr).length > 0) {
+        // Recompute every question with the shared evaluator so totals match
+        // the SolutionsPage exactly (single source of truth for scoring).
+        let totalScore = 0, totalMaxMarks = 0, totalCorrect = 0, totalIncorrect = 0, totalSkipped = 0;
+        const subjectScores: Record<string, SubjectScore> = {};
+
         const questionList: Question[] = Object.entries(qr).map(([id, r]) => {
           const rawOptions = r.options;
           const options = Array.isArray(rawOptions)
@@ -112,17 +115,46 @@ export default function NormalTestAnalysis() {
               ? Object.values(rawOptions as any).map(String)
               : [];
 
+          const subject = r.subject || "General";
+          const marks = r.marks ?? 4;
+          const negativeMarks = r.negative_marks ?? 1;
+
+          const evaluation = evaluateQuestionScore({
+            sectionType: r.section_type,
+            correctAnswer: r.correct_answer,
+            userAnswer: r.user_answer,
+            marks,
+            negativeMarks,
+            isBonus: r.is_bonus,
+          });
+
+          totalMaxMarks += marks;
+          totalScore += evaluation.marksObtained;
+          if (evaluation.status === "skipped") totalSkipped++;
+          else if (evaluation.status === "correct") totalCorrect++;
+          else totalIncorrect++;
+
+          if (!subjectScores[subject]) {
+            subjectScores[subject] = { correct: 0, incorrect: 0, skipped: 0, total: 0, marks: 0, totalMarks: 0 };
+          }
+          subjectScores[subject].total++;
+          subjectScores[subject].totalMarks = (subjectScores[subject].totalMarks || 0) + marks;
+          subjectScores[subject].marks = (subjectScores[subject].marks || 0) + evaluation.marksObtained;
+          if (evaluation.status === "skipped") subjectScores[subject].skipped++;
+          else if (evaluation.status === "correct") subjectScores[subject].correct++;
+          else subjectScores[subject].incorrect++;
+
           return {
             id,
             question_text: String(r.question_text ?? ""),
             options,
             correct_answer: r.correct_answer,
-            marks: r.marks ?? 4,
-            negative_marks: r.negative_marks ?? 1,
-            subject: r.subject || "General",
+            marks,
+            negative_marks: negativeMarks,
+            subject,
             user_answer: r.user_answer,
-            is_correct: r.is_correct,
-            marks_obtained: r.marks_obtained,
+            is_correct: evaluation.status === "correct",
+            marks_obtained: evaluation.marksObtained,
             section_type: r.section_type,
             question_number: r.question_number,
             image_url: r.image_url ?? null,
@@ -131,6 +163,18 @@ export default function NormalTestAnalysis() {
 
         questionList.sort((a, b) => (a.question_number || 0) - (b.question_number || 0));
         setQuestions(questionList);
+
+        setResults({
+          ...passedResults,
+          score: totalScore,
+          total_marks: totalMaxMarks,
+          correct: totalCorrect,
+          incorrect: totalIncorrect,
+          skipped: totalSkipped,
+          subject_scores: subjectScores,
+        });
+      } else {
+        setResults(passedResults);
       }
 
       fetchTestType();
