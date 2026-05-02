@@ -70,25 +70,25 @@ export default {
           foreground: "hsl(222, 47%, 6%)",
         },
         physics: {
-          DEFAULT: "hsl(217, 91%, 60%)",
-          foreground: "hsl(210, 40%, 98%)",
+          DEFAULT: "hsl(142, 70%, 50%)",
+          foreground: "hsl(0, 0%, 100%)",
         },
         chemistry: {
-          DEFAULT: "hsl(142, 76%, 45%)",
-          foreground: "hsl(210, 40%, 98%)",
+          DEFAULT: "hsl(280, 70%, 60%)",
+          foreground: "hsl(0, 0%, 100%)",
         },
         maths: {
-          DEFAULT: "hsl(45, 93%, 50%)",
-          foreground: "hsl(222, 47%, 6%)",
+          DEFAULT: "hsl(45, 93%, 55%)",
+          foreground: "hsl(0, 0%, 0%)",
         },
         navy: {
-          DEFAULT: "hsl(222, 47%, 6%)",
-          light: "hsl(222, 40%, 9%)",
-          border: "hsl(222, 30%, 16%)",
+          DEFAULT: "hsl(0, 0%, 0%)",
+          light: "hsl(0, 0%, 4%)",
+          border: "hsl(142, 20%, 14%)",
         },
         teal: {
-          DEFAULT: "hsl(217, 91%, 55%)",
-          glow: "hsla(217, 91%, 55%, 0.3)",
+          DEFAULT: "hsl(142, 70%, 35%)",
+          glow: "hsla(142, 70%, 40%, 0.3)",
         },
       },
       borderRadius: {

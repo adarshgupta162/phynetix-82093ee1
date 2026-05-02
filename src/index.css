@@ -6,114 +6,118 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 30% 10%;
+    /* Solid black + dark green system */
+    --background: 0 0% 0%;
+    --foreground: 140 25% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 30% 10%;
+    --card: 0 0% 4%;
+    --card-foreground: 140 25% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 10%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 140 25% 95%;
 
-    --primary: 217 91% 55%;
+    --primary: 142 70% 35%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 93%;
-    --secondary-foreground: 220 30% 10%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 140 25% 95%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 140 10% 65%;
 
-    --accent: 217 91% 55%;
+    --accent: 142 70% 35%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 217 91% 55%;
+    --border: 142 20% 14%;
+    --input: 0 0% 10%;
+    --ring: 142 70% 40%;
 
     --radius: 0.75rem;
 
-    /* Custom design tokens - Light mode */
-    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 50%) 0%, hsl(230, 80%, 55%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(217, 91%, 55%) 0%, hsl(240, 70%, 60%) 100%);
-    --gradient-glass: linear-gradient(135deg, hsla(217, 91%, 60%, 0.05) 0%, hsla(230, 80%, 55%, 0.02) 100%);
-    --gradient-radial: radial-gradient(ellipse at top, hsla(217, 91%, 55%, 0.06) 0%, transparent 50%);
-    
-    --glass-bg: hsla(0, 0%, 100%, 0.85);
-    --glass-border: hsla(217, 91%, 55%, 0.15);
-    --glass-shadow: 0 8px 32px hsla(220, 30%, 10%, 0.08);
-    
-    --glow-primary: 0 0 40px hsla(217, 91%, 55%, 0.15);
-    --glow-accent: 0 0 40px hsla(217, 91%, 55%, 0.1);
+    /* Custom design tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(142, 70%, 28%) 0%, hsl(142, 70%, 40%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(142, 70%, 35%) 0%, hsl(160, 70%, 40%) 100%);
+    --gradient-glass: linear-gradient(135deg, hsla(142, 70%, 40%, 0.05) 0%, hsla(142, 70%, 40%, 0.02) 100%);
+    --gradient-radial: radial-gradient(ellipse at top, hsla(142, 70%, 40%, 0.08) 0%, transparent 60%);
 
-    --sidebar-background: 220 20% 97%;
-    --sidebar-foreground: 220 30% 10%;
-    --sidebar-primary: 217 91% 55%;
+    --glass-bg: hsla(0, 0%, 4%, 0.85);
+    --glass-border: hsla(142, 70%, 40%, 0.18);
+    --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.6);
+
+    --glow-primary: 0 0 40px hsla(142, 70%, 40%, 0.20);
+    --glow-accent: 0 0 40px hsla(142, 70%, 40%, 0.15);
+
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 140 25% 95%;
+    --sidebar-primary: 142 70% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 92%;
-    --sidebar-accent-foreground: 220 30% 10%;
-    --sidebar-border: 220 15% 88%;
-    --sidebar-ring: 217 91% 55%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 140 25% 95%;
+    --sidebar-border: 142 20% 14%;
+    --sidebar-ring: 142 70% 40%;
+
+    /* Subject colors (kept distinct so analysis charts stay readable) */
+    --physics: 142 70% 50%;
+    --chemistry: 280 70% 60%;
+    --maths: 45 93% 55%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 95%;
+    --background: 0 0% 0%;
+    --foreground: 140 25% 95%;
 
-    --card: 222 40% 9%;
-    --card-foreground: 210 40% 95%;
+    --card: 0 0% 4%;
+    --card-foreground: 140 25% 95%;
 
-    --popover: 222 40% 9%;
-    --popover-foreground: 210 40% 95%;
+    --popover: 0 0% 4%;
+    --popover-foreground: 140 25% 95%;
 
-    --primary: 217 91% 55%;
+    --primary: 142 70% 35%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 35% 13%;
-    --secondary-foreground: 210 40% 95%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 140 25% 95%;
 
-    --muted: 222 30% 16%;
-    --muted-foreground: 215 20% 60%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 140 10% 65%;
 
-    --accent: 217 91% 55%;
+    --accent: 142 70% 35%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 30% 16%;
-    --input: 222 30% 14%;
-    --ring: 217 91% 55%;
+    --border: 142 20% 14%;
+    --input: 0 0% 10%;
+    --ring: 142 70% 40%;
 
-    /* Custom design tokens - Dark mode */
-    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 50%) 0%, hsl(230, 80%, 55%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(217, 91%, 55%) 0%, hsl(240, 70%, 60%) 100%);
-    --gradient-glass: linear-gradient(135deg, hsla(217, 91%, 55%, 0.08) 0%, hsla(230, 80%, 55%, 0.03) 100%);
-    --gradient-radial: radial-gradient(ellipse at top, hsla(217, 91%, 55%, 0.06) 0%, transparent 50%);
-    
-    --glass-bg: hsla(222, 40%, 9%, 0.85);
-    --glass-border: hsla(217, 91%, 55%, 0.15);
-    --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.4);
-    
-    --glow-primary: 0 0 40px hsla(217, 91%, 55%, 0.25);
-    --glow-accent: 0 0 40px hsla(217, 91%, 55%, 0.15);
+    --gradient-primary: linear-gradient(135deg, hsl(142, 70%, 28%) 0%, hsl(142, 70%, 40%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(142, 70%, 35%) 0%, hsl(160, 70%, 40%) 100%);
+    --gradient-glass: linear-gradient(135deg, hsla(142, 70%, 40%, 0.08) 0%, hsla(142, 70%, 40%, 0.03) 100%);
+    --gradient-radial: radial-gradient(ellipse at top, hsla(142, 70%, 40%, 0.08) 0%, transparent 60%);
 
-    --sidebar-background: 222 47% 7%;
-    --sidebar-foreground: 210 40% 95%;
-    --sidebar-primary: 217 91% 55%;
+    --glass-bg: hsla(0, 0%, 4%, 0.85);
+    --glass-border: hsla(142, 70%, 40%, 0.18);
+    --glass-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.6);
+
+    --glow-primary: 0 0 40px hsla(142, 70%, 40%, 0.25);
+    --glow-accent: 0 0 40px hsla(142, 70%, 40%, 0.18);
+
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 140 25% 95%;
+    --sidebar-primary: 142 70% 35%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 35% 13%;
-    --sidebar-accent-foreground: 210 40% 95%;
-    --sidebar-border: 222 30% 16%;
-    --sidebar-ring: 217 91% 55%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 140 25% 95%;
+    --sidebar-border: 142 20% 14%;
+    --sidebar-ring: 142 70% 40%;
 
-    /* Subject colors */
-    --physics: 217 91% 60%;
-    --chemistry: 142 76% 45%;
-    --maths: 45 93% 50%;
+    --physics: 142 70% 50%;
+    --chemistry: 280 70% 60%;
+    --maths: 45 93% 55%;
   }
 }
 
@@ -125,6 +129,7 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
+    background-color: #000;
     background-image: var(--gradient-radial);
     background-attachment: fixed;
     -webkit-user-select: none;
@@ -160,7 +165,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, hsla(217, 91%, 55%, 0.3), transparent);
+    background: linear-gradient(90deg, transparent, hsla(142, 70%, 40%, 0.35), transparent);
   }
 
   .gradient-text {
@@ -197,7 +202,7 @@
 
   .btn-gradient:hover {
     transform: translateY(-2px);
-    box-shadow: var(--glow-primary), 0 8px 24px hsla(0, 0%, 0%, 0.15);
+    box-shadow: var(--glow-primary), 0 8px 24px hsla(0, 0%, 0%, 0.6);
     filter: brightness(1.1);
   }
 
@@ -228,7 +233,7 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  
+
   .gradient-icon svg {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
@@ -264,22 +269,22 @@
   }
 
   .question-option:hover {
-    background: hsla(217, 91%, 55%, 0.1);
-    border-color: hsla(217, 91%, 55%, 0.4);
+    background: hsla(142, 70%, 40%, 0.10);
+    border-color: hsla(142, 70%, 40%, 0.4);
   }
 
   .question-option.selected {
-    background: hsla(217, 91%, 55%, 0.2);
-    border-color: hsl(217, 91%, 55%);
+    background: hsla(142, 70%, 40%, 0.20);
+    border-color: hsl(142, 70%, 40%);
   }
 
   .question-option.correct {
-    background: hsla(142, 76%, 36%, 0.2);
-    border-color: hsl(142, 76%, 36%);
+    background: hsla(142, 76%, 36%, 0.25);
+    border-color: hsl(142, 76%, 40%);
   }
 
   .question-option.incorrect {
-    background: hsla(0, 84%, 60%, 0.2);
+    background: hsla(0, 84%, 60%, 0.20);
     border-color: hsl(0, 84%, 60%);
   }
 
@@ -289,25 +294,25 @@
   }
 
   .palette-btn.answered {
-    background: hsla(142, 76%, 36%, 0.3);
-    border-color: hsl(142, 76%, 36%);
+    background: hsla(142, 76%, 36%, 0.35);
+    border-color: hsl(142, 76%, 40%);
   }
 
   .palette-btn.marked {
-    background: hsla(45, 93%, 47%, 0.3);
+    background: hsla(45, 93%, 47%, 0.30);
     border-color: hsl(45, 93%, 47%);
   }
 
   .palette-btn.current {
-    background: hsla(217, 91%, 55%, 0.3);
-    border-color: hsl(217, 91%, 55%);
+    background: hsla(142, 70%, 40%, 0.35);
+    border-color: hsl(142, 70%, 40%);
   }
 
   .floating-orb {
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: 0.5;
+    opacity: 0.4;
     animation: float 8s ease-in-out infinite;
   }
 
@@ -355,13 +360,14 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-background;
+  background: #000;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted rounded;
+  background: hsl(142, 30%, 18%);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/30;
+  background: hsl(142, 50%, 28%);
 }
