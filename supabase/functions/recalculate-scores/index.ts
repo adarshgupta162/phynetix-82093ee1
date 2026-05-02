@@ -107,8 +107,8 @@ serve(async (req) => {
       let incorrect = 0;
 
       for (const [questionId, question] of questionMap) {
-        const marks = question.marks || 4;
-        const negativeMarks = question.negative_marks || 1;
+        const marks = question.marks ?? 4;
+        const negativeMarks = question.negative_marks ?? 1;
         const correctAnswer = question.correct_answer;
         const sectionType = (question.section as any)?.section_type || "single_choice";
         const isBonus = question.is_bonus || false;

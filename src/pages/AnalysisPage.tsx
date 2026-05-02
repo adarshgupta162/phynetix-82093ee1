@@ -196,7 +196,7 @@ export default function AnalysisPage() {
         return {
           id: q.id, question_number: q.question_number,
           correct_answer: q.correct_answer,
-          marks: q.marks || 4, negative_marks: q.negative_marks || 1,
+          marks: q.marks ?? 4, negative_marks: q.negative_marks ?? 1,
           subject: q.test_sections?.test_subjects?.name || "General",
           sectionType: q.test_sections?.section_type || "single_choice",
           difficulty: q.difficulty || "medium",
