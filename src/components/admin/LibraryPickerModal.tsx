@@ -465,6 +465,14 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
                                   {q.difficulty}
                                 </span>
                                 <span>+{q.marks}/-{q.negative_marks}</span>
+                                {(q.tags && q.tags.length > 0) && (
+                                  <span className="flex gap-1 flex-wrap ml-1">
+                                    {q.tags.slice(0, 3).map(t => (
+                                      <span key={t} className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[10px]">#{t}</span>
+                                    ))}
+                                    {q.tags.length > 3 && <span className="text-[10px]">+{q.tags.length - 3}</span>}
+                                  </span>
+                                )}
                               </div>
                             </motion.div>
                           );
