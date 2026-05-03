@@ -146,6 +146,7 @@ function buildTemplateWorkbook(): XLSX.WorkBook {
       "20 m", "10 m", "15 m", "5 m",
       "1", "single_correct", 4, 1, "medium", 60,
       "Using v²=u²-2gh ⇒ h = u²/(2g) = 400/20 = 20 m",
+      "kinematics,projectile,jee_main",
     ],
     [
       "Chemistry", "Atomic Structure", "Quantum Numbers",
@@ -153,6 +154,7 @@ function buildTemplateWorkbook(): XLSX.WorkBook {
       "n=3, l=2, m=-2", "n=3, l=0, m=0", "n=3, l=2, m=+1", "n=3, l=1, m=0",
       "1,3", "multiple_correct", 4, 2, "hard", 90,
       "For 3d orbital n=3 and l=2; m can range from -l to +l.",
+      "quantum,jee_adv,conceptual",
     ],
     [
       "Mathematics", "Calculus", "Definite Integrals",
@@ -160,6 +162,7 @@ function buildTemplateWorkbook(): XLSX.WorkBook {
       "", "", "", "",
       "1", "integer", 4, 0, "easy", 45,
       "$\\int_0^1 2x\\,dx = [x^2]_0^1 = 1$",
+      "integral,formula,easy",
     ],
     [
       "Physics", "Modern Physics", "Photoelectric Effect",
@@ -170,6 +173,7 @@ function buildTemplateWorkbook(): XLSX.WorkBook {
       "KE depends on intensity",
       "1,2,3", "multiple_correct", 3, 1, "medium", 75,
       "KE_max depends on frequency, not intensity. Hence 1,2,3 are correct.",
+      "photoelectric,modern,jee_adv",
     ],
   ];
   const wsE = XLSX.utils.aoa_to_sheet(exampleRows);
@@ -185,7 +189,7 @@ function buildTemplateWorkbook(): XLSX.WorkBook {
       "Physics", "", "",
       "Replace this with your question text",
       "Option A", "Option B", "Option C", "Option D",
-      "1", "single_correct", 4, 1, "medium", 60, "",
+      "1", "single_correct", 4, 1, "medium", 60, "", "",
     ],
   ];
   const wsQ = XLSX.utils.aoa_to_sheet(questionsSheet);
