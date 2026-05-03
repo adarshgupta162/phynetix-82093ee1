@@ -18,7 +18,7 @@ const EXPECTED_COLUMNS = [
   "subject", "chapter", "topic", "question_text",
   "option_1", "option_2", "option_3", "option_4",
   "correct_answer", "question_type", "marks", "negative_marks",
-  "difficulty", "time_seconds", "solution_text",
+  "difficulty", "time_seconds", "solution_text", "tags",
 ];
 
 const REQUIRED_COLUMNS = ["subject", "question_text", "correct_answer", "question_type"];
