@@ -38,6 +38,7 @@ interface LibraryQuestion {
   time_seconds: number;
   solution_text: string | null;
   solution_image_url: string | null;
+  tags?: string[] | null;
 }
 
 interface LibraryPickerModalProps {
