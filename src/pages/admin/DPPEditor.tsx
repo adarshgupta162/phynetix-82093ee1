@@ -383,6 +383,10 @@ export default function DPPEditor() {
                     <Plus className="w-4 h-4" />
                     Add Question
                   </Button>
+                  <Button onClick={() => setShowLibraryPicker(true)} variant="outline" className="w-full gap-2" size="sm">
+                    <Library className="w-4 h-4" />
+                    Add from Library
+                  </Button>
                   <div className="grid grid-cols-5 gap-1.5 mt-3">
                     {questions.map((q, i) => (
                       <button
