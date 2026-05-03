@@ -117,6 +117,7 @@ function buildTemplateWorkbook(): XLSX.WorkBook {
     ["difficulty", "No", "easy | medium | hard. Default medium."],
     ["time_seconds", "No", "Suggested time per question. Default 60."],
     ["solution_text", "No", "Plain text or LaTeX. Shown to students after submission."],
+    ["tags", "No", "Comma-separated tags for searching/filtering, e.g. 'jee2023,formula,trick'"],
     [""],
     ["MARKING SCHEMES (auto-applied at submission)"],
     ["single_correct", "+marks for correct, -negative_marks for wrong, 0 if skipped"],
