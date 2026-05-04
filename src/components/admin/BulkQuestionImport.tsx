@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { unzipSync, zipSync, strToU8, strFromU8 } from "fflate";
+import { JEE_SYLLABUS } from "@/lib/jeeData";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
