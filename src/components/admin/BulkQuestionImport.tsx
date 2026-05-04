@@ -325,7 +325,7 @@ function downloadTemplate() {
   const wb = buildTemplateWorkbook();
   const arrayBuf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
   const finalBytes = injectDataValidations(arrayBuf);
-  const blob = new Blob([finalBytes], {
+  const blob = new Blob([finalBytes.buffer.slice(finalBytes.byteOffset, finalBytes.byteOffset + finalBytes.byteLength) as ArrayBuffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   const url = URL.createObjectURL(blob);
