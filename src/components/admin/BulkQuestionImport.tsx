@@ -557,6 +557,14 @@ export default function BulkQuestionImport() {
 
   const removeRow = (idx: number) => setRows((prev) => prev.filter((_, i) => i !== idx));
 
+  const updateRowField = (idx: number, field: string, value: string) => {
+    setRows((prev) =>
+      prev.map((r, i) =>
+        i === idx ? validateRow({ ...r.data, [field]: value }, r.rowIndex) : r
+      )
+    );
+  };
+
   const validCount = rows.filter((r) => r.valid).length;
   const invalidCount = rows.length - validCount;
 
@@ -657,6 +665,8 @@ export default function BulkQuestionImport() {
                   <TableHead>Subject</TableHead>
                   <TableHead>Chapter</TableHead>
                   <TableHead className="min-w-[200px]">Question</TableHead>
+                  <TableHead className="w-[160px]">Question Image</TableHead>
+                  <TableHead className="w-[160px]">Solution Image</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Answer</TableHead>
                   <TableHead>Marks</TableHead>
@@ -682,6 +692,20 @@ export default function BulkQuestionImport() {
                     <TableCell className="font-medium">{row.data.subject}</TableCell>
                     <TableCell>{row.data.chapter}</TableCell>
                     <TableCell className="max-w-[250px] truncate">{row.data.question_text}</TableCell>
+                    <TableCell>
+                      <RowImageCell
+                        label="question image"
+                        value={row.data.question_image_url || ""}
+                        onChange={(v) => updateRowField(i, "question_image_url", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <RowImageCell
+                        label="solution image"
+                        value={row.data.solution_image_url || ""}
+                        onChange={(v) => updateRowField(i, "solution_image_url", v)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="text-xs">
                         {row.data.question_type}
