@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Search, BookOpen, Plus, Loader2, Check, CheckSquare, Square, X, Filter
@@ -54,6 +54,7 @@ interface LibraryPickerModalProps {
 }
 
 const SUBJECTS = getSubjects();
+const PAGE_SIZE = 30;
 
 interface MultiPickerProps {
   label: string;
@@ -117,6 +118,12 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
 
   const [questions, setQuestions] = useState<LibraryQuestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const [searchInput, setSearchInput] = useState('');
+  const [tagInput, setTagInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('');
 
@@ -126,90 +133,136 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
   const [difficulty, setDifficulty] = useState<Set<string>>(new Set());
 
   const [selectedQuestion, setSelectedQuestion] = useState<LibraryQuestion | null>(null);
-  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set());
+  const [selectedQuestions, setSelectedQuestions] = useState<Map<string, LibraryQuestion>>(new Map());
 
-  const fetchQuestions = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('phynetix_library')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+  const [topicOptions, setTopicOptions] = useState<string[]>([]);
 
-      if (error) throw error;
-      setQuestions(data || []);
-    } catch (error: any) {
-      toast({ title: "Error loading questions", description: error.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const reqIdRef = useRef(0);
 
+  // Debounce text inputs
   useEffect(() => {
-    if (open) {
-      fetchQuestions();
-      setSelectedQuestion(null);
-      setSelectedQuestions(new Set());
-      setSearchQuery('');
-      setTagFilter('');
-      setSubjects(new Set());
-      setChapters(new Set());
-      setTopics(new Set());
-      setDifficulty(new Set());
-    }
-  }, [open, fetchQuestions]);
+    const t = setTimeout(() => setSearchQuery(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+  useEffect(() => {
+    const t = setTimeout(() => setTagFilter(tagInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [tagInput]);
 
-  // Build chapter/topic options driven by current subject filter
   const chapterOptions = useMemo(() => {
     const set = new Set<string>();
     const subjList = subjects.size > 0 ? Array.from(subjects) : SUBJECTS;
     subjList.forEach(s => getChaptersForSubject(s).forEach(c => set.add(c)));
-    questions.forEach(q => {
-      if (q.chapter && (subjects.size === 0 || subjects.has(q.subject))) set.add(q.chapter);
-    });
     return Array.from(set).sort();
-  }, [subjects, questions]);
+  }, [subjects]);
 
-  const topicOptions = useMemo(() => {
-    const set = new Set<string>();
-    questions.forEach(q => {
-      if (!q.topic) return;
-      if (subjects.size > 0 && !subjects.has(q.subject)) return;
-      if (chapters.size > 0 && (!q.chapter || !chapters.has(q.chapter))) return;
-      set.add(q.topic);
-    });
-    return Array.from(set).sort();
-  }, [questions, subjects, chapters]);
+  const buildQuery = useCallback((from: number, to: number, withCount = false) => {
+    let q = supabase
+      .from('phynetix_library')
+      .select('*', withCount ? { count: 'exact' } : undefined)
+      .eq('is_active', true);
 
-  const filteredQuestions = useMemo(() => {
-    let filtered = questions;
+    if (subjects.size > 0) q = q.in('subject', Array.from(subjects));
+    if (chapters.size > 0) q = q.in('chapter', Array.from(chapters));
+    if (topics.size > 0) q = q.in('topic', Array.from(topics));
+    if (difficulty.size > 0) q = q.in('difficulty', Array.from(difficulty));
 
-    if (subjects.size > 0) filtered = filtered.filter(q => subjects.has(q.subject));
-    if (chapters.size > 0) filtered = filtered.filter(q => q.chapter && chapters.has(q.chapter));
-    if (topics.size > 0) filtered = filtered.filter(q => q.topic && topics.has(q.topic));
-    if (difficulty.size > 0) filtered = filtered.filter(q => difficulty.has(q.difficulty));
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(q =>
-        q.library_id.toLowerCase().includes(query) ||
-        q.question_text?.toLowerCase().includes(query) ||
-        q.topic?.toLowerCase().includes(query) ||
-        q.chapter?.toLowerCase().includes(query) ||
-        (q.tags || []).some(t => t.toLowerCase().includes(query))
+    if (searchQuery) {
+      const s = searchQuery.replace(/[%,]/g, ' ');
+      q = q.or(
+        `library_id.ilike.%${s}%,question_text.ilike.%${s}%,chapter.ilike.%${s}%,topic.ilike.%${s}%`
       );
     }
-
-    if (tagFilter.trim()) {
-      const tags = tagFilter.toLowerCase().split(',').map(t => t.trim()).filter(Boolean);
-      filtered = filtered.filter(q =>
-        tags.every(t => (q.tags || []).some(qt => qt.toLowerCase().includes(t)))
-      );
+    if (tagFilter) {
+      const tags = tagFilter.split(',').map(t => t.trim()).filter(Boolean);
+      if (tags.length > 0) q = q.contains('tags', tags);
     }
 
-    return filtered;
-  }, [questions, subjects, chapters, topics, difficulty, searchQuery, tagFilter]);
+    return q.order('created_at', { ascending: false }).range(from, to);
+  }, [subjects, chapters, topics, difficulty, searchQuery, tagFilter]);
+
+  // Initial / filter-change fetch
+  useEffect(() => {
+    if (!open) return;
+    const reqId = ++reqIdRef.current;
+    setLoading(true);
+    setQuestions([]);
+    setHasMore(true);
+
+    (async () => {
+      const { data, error, count } = await buildQuery(0, PAGE_SIZE - 1, true);
+      if (reqId !== reqIdRef.current) return;
+      if (error) {
+        toast({ title: "Error loading questions", description: error.message, variant: "destructive" });
+      } else {
+        setQuestions(data || []);
+        setTotalCount(count || 0);
+        setHasMore((data?.length || 0) === PAGE_SIZE);
+      }
+      setLoading(false);
+    })();
+  }, [open, buildQuery, toast]);
+
+  // Topic options: derived once per filter change from server (distinct via small fetch)
+  useEffect(() => {
+    if (!open) return;
+    const reqId = ++reqIdRef.current;
+    (async () => {
+      let q = supabase
+        .from('phynetix_library')
+        .select('topic')
+        .eq('is_active', true)
+        .not('topic', 'is', null)
+        .limit(500);
+      if (subjects.size > 0) q = q.in('subject', Array.from(subjects));
+      if (chapters.size > 0) q = q.in('chapter', Array.from(chapters));
+      const { data } = await q;
+      if (reqId !== reqIdRef.current) return;
+      const set = new Set<string>();
+      (data || []).forEach((r: any) => r.topic && set.add(r.topic));
+      setTopicOptions(Array.from(set).sort());
+    })();
+  }, [open, subjects, chapters]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || loading) return;
+    setLoadingMore(true);
+    const from = questions.length;
+    const to = from + PAGE_SIZE - 1;
+    const reqId = reqIdRef.current;
+    const { data, error } = await buildQuery(from, to);
+    if (reqId !== reqIdRef.current) { setLoadingMore(false); return; }
+    if (!error && data) {
+      setQuestions(prev => [...prev, ...data]);
+      setHasMore(data.length === PAGE_SIZE);
+    } else if (error) {
+      setHasMore(false);
+    }
+    setLoadingMore(false);
+  }, [loadingMore, hasMore, loading, questions.length, buildQuery]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!open) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) loadMore();
+    }, { root: el.closest('[data-radix-scroll-area-viewport]') as Element | null, rootMargin: '200px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [open, loadMore]);
+
+  useEffect(() => {
+    if (open) {
+      setSelectedQuestion(null);
+      setSelectedQuestions(new Map());
+      setSearchInput(''); setTagInput('');
+      setSearchQuery(''); setTagFilter('');
+      setSubjects(new Set()); setChapters(new Set()); setTopics(new Set()); setDifficulty(new Set());
+    }
+  }, [open]);
 
   const toggleSet = (set: Set<string>, val: string, setter: (s: Set<string>) => void) => {
     const next = new Set(set);
@@ -220,8 +273,8 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
   const toggleQuestionSelection = (question: LibraryQuestion) => {
     if (multiSelect) {
       setSelectedQuestions(prev => {
-        const next = new Set(prev);
-        next.has(question.id) ? next.delete(question.id) : next.add(question.id);
+        const next = new Map(prev);
+        next.has(question.id) ? next.delete(question.id) : next.set(question.id, question);
         return next;
       });
     } else {
@@ -229,19 +282,19 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
     }
   };
 
-  const toggleSelectAll = () => {
-    const allSelected = filteredQuestions.length > 0 && filteredQuestions.every(q => selectedQuestions.has(q.id));
+  const toggleSelectAllLoaded = () => {
+    const allSelected = questions.length > 0 && questions.every(q => selectedQuestions.has(q.id));
     setSelectedQuestions(prev => {
-      const next = new Set(prev);
-      if (allSelected) filteredQuestions.forEach(q => next.delete(q.id));
-      else filteredQuestions.forEach(q => next.add(q.id));
+      const next = new Map(prev);
+      if (allSelected) questions.forEach(q => next.delete(q.id));
+      else questions.forEach(q => next.set(q.id, q));
       return next;
     });
   };
 
   const handleConfirmSelect = () => {
     if (multiSelect) {
-      const selected = questions.filter(q => selectedQuestions.has(q.id));
+      const selected = Array.from(selectedQuestions.values());
       if (selected.length > 0 && onMultiSelect) {
         onMultiSelect(selected);
         onClose();
@@ -257,12 +310,11 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
     setChapters(new Set());
     setTopics(new Set());
     setDifficulty(new Set());
-    setSearchQuery('');
-    setTagFilter('');
+    setSearchInput(''); setTagInput('');
   };
 
-  const activeFilterCount = subjects.size + chapters.size + topics.size + difficulty.size + (searchQuery ? 1 : 0) + (tagFilter ? 1 : 0);
-  const allFilteredSelected = filteredQuestions.length > 0 && filteredQuestions.every(q => selectedQuestions.has(q.id));
+  const activeFilterCount = subjects.size + chapters.size + topics.size + difficulty.size + (searchInput ? 1 : 0) + (tagInput ? 1 : 0);
+  const allLoadedSelected = questions.length > 0 && questions.every(q => selectedQuestions.has(q.id));
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -272,8 +324,11 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
             <BookOpen className="w-5 h-5 text-primary" />
             <span>Import from PhyNetix Library</span>
             <Badge variant="outline" className="ml-2">
-              {filteredQuestions.length} of {questions.length}
+              {questions.length} loaded · {totalCount} total
             </Badge>
+            {multiSelect && selectedQuestions.size > 0 && (
+              <Badge className="ml-1">{selectedQuestions.size} selected</Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -284,23 +339,23 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
               <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search question text, ID, chapter, topic, tags..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search question text, ID, chapter, topic..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-10 h-9"
                 />
               </div>
               <Input
                 placeholder="Tags (comma-separated)"
-                value={tagFilter}
-                onChange={(e) => setTagFilter(e.target.value)}
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
                 className="h-9 w-56"
               />
               <MultiPicker
                 label="Subject"
                 options={SUBJECTS}
                 selected={subjects}
-                onToggle={(v) => { toggleSet(subjects, v, setSubjects); }}
+                onToggle={(v) => toggleSet(subjects, v, setSubjects)}
                 onClear={() => setSubjects(new Set())}
               />
               <MultiPicker
@@ -330,42 +385,12 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
                 </Button>
               )}
               {multiSelect && (
-                <Button variant="outline" size="sm" onClick={toggleSelectAll} className="h-9 gap-1 ml-auto">
-                  {allFilteredSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                  {allFilteredSelected ? 'Deselect All' : 'Select All'}
+                <Button variant="outline" size="sm" onClick={toggleSelectAllLoaded} className="h-9 gap-1 ml-auto">
+                  {allLoadedSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                  {allLoadedSelected ? 'Deselect Loaded' : 'Select Loaded'}
                 </Button>
               )}
             </div>
-
-            {/* Active filter chips */}
-            {(subjects.size + chapters.size + topics.size + difficulty.size) > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {[...subjects].map(s => (
-                  <Badge key={`s-${s}`} variant="secondary" className="gap-1">
-                    {s}
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => toggleSet(subjects, s, setSubjects)} />
-                  </Badge>
-                ))}
-                {[...chapters].map(c => (
-                  <Badge key={`c-${c}`} variant="secondary" className="gap-1">
-                    {c}
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => toggleSet(chapters, c, setChapters)} />
-                  </Badge>
-                ))}
-                {[...topics].map(t => (
-                  <Badge key={`t-${t}`} variant="secondary" className="gap-1">
-                    {t}
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => toggleSet(topics, t, setTopics)} />
-                  </Badge>
-                ))}
-                {[...difficulty].map(d => (
-                  <Badge key={`d-${d}`} variant="secondary" className="gap-1 capitalize">
-                    {d}
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => toggleSet(difficulty, d, setDifficulty)} />
-                  </Badge>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* Questions Grid */}
@@ -374,7 +399,7 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ) : filteredQuestions.length === 0 ? (
+            ) : questions.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No questions match your filters</p>
@@ -383,83 +408,94 @@ export function LibraryPickerModal({ open, onClose, onSelect, multiSelect = fals
                 )}
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {filteredQuestions.map((q) => {
-                  const isSelected = multiSelect ? selectedQuestions.has(q.id) : selectedQuestion?.id === q.id;
-                  return (
-                    <motion.div
-                      key={q.id}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      onClick={() => toggleQuestionSelection(q)}
-                      className={cn(
-                        "bg-card border rounded-lg p-3 cursor-pointer transition-all",
-                        isSelected
-                          ? "border-primary ring-2 ring-primary/30"
-                          : "border-border hover:border-primary/50"
-                      )}
-                    >
-                      <div className="flex items-start justify-between mb-2 gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {multiSelect && (
-                            <Checkbox checked={isSelected} className="pointer-events-none" />
+              <>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {questions.map((q) => {
+                    const isSelected = multiSelect ? selectedQuestions.has(q.id) : selectedQuestion?.id === q.id;
+                    return (
+                      <motion.div
+                        key={q.id}
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={() => toggleQuestionSelection(q)}
+                        className={cn(
+                          "bg-card border rounded-lg p-3 cursor-pointer transition-all",
+                          isSelected
+                            ? "border-primary ring-2 ring-primary/30"
+                            : "border-border hover:border-primary/50"
+                        )}
+                      >
+                        <div className="flex items-start justify-between mb-2 gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {multiSelect && (
+                              <Checkbox checked={isSelected} className="pointer-events-none" />
+                            )}
+                            <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
+                              {q.library_id}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              {q.question_type.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          {isSelected && !multiSelect && (
+                            <Check className="w-5 h-5 text-primary shrink-0" />
                           )}
-                          <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
-                            {q.library_id}
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {q.question_type.replace('_', ' ')}
-                          </Badge>
                         </div>
-                        {isSelected && !multiSelect && (
-                          <Check className="w-5 h-5 text-primary shrink-0" />
-                        )}
-                      </div>
 
-                      <div className="mb-2">
-                        {q.question_image_url && (
-                          <img
-                            src={q.question_image_url}
-                            alt="Question"
-                            className="w-full h-16 object-cover rounded mb-1 bg-muted"
-                            onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                          />
-                        )}
-                        <p className="text-sm line-clamp-3">
-                          {q.question_text ? (
-                            <LatexRenderer content={q.question_text} />
-                          ) : (
-                            <span className="text-muted-foreground italic">Image only</span>
+                        <div className="mb-2">
+                          {q.question_image_url && (
+                            <img
+                              src={q.question_image_url}
+                              alt="Question"
+                              loading="lazy"
+                              className="w-full h-16 object-cover rounded mb-1 bg-muted"
+                              onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                            />
                           )}
-                        </p>
-                      </div>
+                          <p className="text-sm line-clamp-3">
+                            {q.question_text ? (
+                              <LatexRenderer content={q.question_text} />
+                            ) : (
+                              <span className="text-muted-foreground italic">Image only</span>
+                            )}
+                          </p>
+                        </div>
 
-                      <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-                        <span className="px-1.5 py-0.5 rounded bg-muted">{q.subject}</span>
-                        {q.chapter && <span className="px-1.5 py-0.5 rounded bg-muted truncate max-w-[120px]">{q.chapter}</span>}
-                        {q.topic && <span className="px-1.5 py-0.5 rounded bg-muted/60 truncate max-w-[100px]">{q.topic}</span>}
-                        <span className={cn(
-                          "px-1.5 py-0.5 rounded capitalize",
-                          q.difficulty === 'easy' && "bg-green-500/20 text-green-600",
-                          q.difficulty === 'medium' && "bg-yellow-500/20 text-yellow-600",
-                          q.difficulty === 'hard' && "bg-red-500/20 text-red-600"
-                        )}>
-                          {q.difficulty}
-                        </span>
-                        <span>+{q.marks}/-{q.negative_marks}</span>
-                        {(q.tags && q.tags.length > 0) && (
-                          <span className="flex gap-1 flex-wrap w-full mt-1">
-                            {q.tags.slice(0, 4).map(t => (
-                              <span key={t} className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[10px]">#{t}</span>
-                            ))}
-                            {q.tags.length > 4 && <span className="text-[10px]">+{q.tags.length - 4}</span>}
+                        <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                          <span className="px-1.5 py-0.5 rounded bg-muted">{q.subject}</span>
+                          {q.chapter && <span className="px-1.5 py-0.5 rounded bg-muted truncate max-w-[120px]">{q.chapter}</span>}
+                          {q.topic && <span className="px-1.5 py-0.5 rounded bg-muted/60 truncate max-w-[100px]">{q.topic}</span>}
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded capitalize",
+                            q.difficulty === 'easy' && "bg-green-500/20 text-green-600",
+                            q.difficulty === 'medium' && "bg-yellow-500/20 text-yellow-600",
+                            q.difficulty === 'hard' && "bg-red-500/20 text-red-600"
+                          )}>
+                            {q.difficulty}
                           </span>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
+                          <span>+{q.marks}/-{q.negative_marks}</span>
+                          {(q.tags && q.tags.length > 0) && (
+                            <span className="flex gap-1 flex-wrap w-full mt-1">
+                              {q.tags.slice(0, 4).map(t => (
+                                <span key={t} className="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[10px]">#{t}</span>
+                              ))}
+                              {q.tags.length > 4 && <span className="text-[10px]">+{q.tags.length - 4}</span>}
+                            </span>
+                          )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                {/* Sentinel + loading state */}
+                <div ref={sentinelRef} className="h-16 flex items-center justify-center">
+                  {loadingMore && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                  {!hasMore && questions.length > 0 && (
+                    <span className="text-xs text-muted-foreground">— End of results —</span>
+                  )}
+                </div>
+              </>
             )}
           </ScrollArea>
         </div>
