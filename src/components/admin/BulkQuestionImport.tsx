@@ -12,8 +12,10 @@ import { toast } from "sonner";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import {
   Upload, FileSpreadsheet, Download, CheckCircle2, XCircle, AlertTriangle, Trash2, Loader2,
+  ImageIcon, Link as LinkIcon,
 } from "lucide-react";
 
 const EXPECTED_COLUMNS = [
@@ -21,6 +23,7 @@ const EXPECTED_COLUMNS = [
   "option_1", "option_2", "option_3", "option_4",
   "correct_answer", "question_type", "marks", "negative_marks",
   "difficulty", "time_seconds", "solution_text", "tags",
+  "question_image_url", "solution_image_url",
 ];
 
 const REQUIRED_COLUMNS = ["subject", "question_text", "correct_answer", "question_type"];
@@ -89,6 +92,8 @@ function mapRowToQuestion(row: Record<string, string>, userId: string) {
     chapter: row.chapter?.trim() || null,
     topic: row.topic?.trim() || null,
     question_text: row.question_text?.trim() || null,
+    question_image_url: row.question_image_url?.trim() || null,
+    solution_image_url: row.solution_image_url?.trim() || null,
     question_type: typeMap[qType] || "single_choice",
     options: options.length > 0 ? options : null,
     correct_answer: correctAnswer,
@@ -142,6 +147,8 @@ function buildTemplateWorkbook(): XLSX.WorkBook {
     ["time_seconds", "No", "Default 60."],
     ["solution_text", "No", "Plain text or LaTeX."],
     ["tags", "No", "Comma-separated tags, e.g. 'jee2023,formula,trick'"],
+    ["question_image_url", "No", "Direct URL to question image (https://...). Or upload after import via the preview table."],
+    ["solution_image_url", "No", "Direct URL to solution image."],
     [""],
     ["IMPORTANT — chapter mapping"],
     ["Use the dropdown chapter values exactly. Free-typed chapters that don't match the syllabus"],
@@ -188,7 +195,7 @@ function buildTemplateWorkbook(): XLSX.WorkBook {
   XLSX.utils.book_append_sheet(wb, wsE, "Examples");
 
   // ─── Sheet 3: Questions (the sheet users fill) ───────────────────────
-  const blankRow = ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
+  const blankRow = EXPECTED_COLUMNS.map(() => "");
   const questionsSheet: (string | number)[][] = [EXPECTED_COLUMNS];
   // Pre-add 200 empty rows so dropdowns are present without users having to extend them.
   for (let i = 0; i < 200; i++) questionsSheet.push([...blankRow]);
@@ -335,6 +342,101 @@ function downloadTemplate() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// ─── Inline image cell for preview rows ───────────────────────────────
+function RowImageCell({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [showUrl, setShowUrl] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const upload = async (file: File) => {
+    if (!file.type.startsWith("image/")) return toast.error("Not an image");
+    if (file.size > 5 * 1024 * 1024) return toast.error("Max 5 MB");
+    setUploading(true);
+    const path = `question-images/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    const { data, error } = await supabase.storage.from("test-pdfs").upload(path, file, { upsert: false });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      const { data: pub } = supabase.storage.from("test-pdfs").getPublicUrl(data.path);
+      onChange(pub.publicUrl);
+      toast.success(`${label} uploaded`);
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-1 min-w-[140px]">
+      {value ? (
+        <div className="flex items-center gap-1">
+          <img src={value} alt={label} className="w-10 h-10 object-cover rounded border" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
+          <button type="button" onClick={() => onChange("")} className="text-muted-foreground hover:text-destructive">
+            <XCircle className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-1.5 text-xs"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            title={`Upload ${label}`}
+          >
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-1.5 text-xs"
+            onClick={() => setShowUrl((s) => !s)}
+            title={`Paste ${label} URL`}
+          >
+            <LinkIcon className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+      {showUrl && !value && (
+        <Input
+          autoFocus
+          placeholder="https://image.url"
+          className="h-7 text-xs"
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            if (v) onChange(v);
+            setShowUrl(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const v = (e.target as HTMLInputElement).value.trim();
+              if (v) onChange(v);
+              setShowUrl(false);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function BulkQuestionImport() {
   const { user } = useAuth();
   const [rows, setRows] = useState<ParsedRow[]>([]);
@@ -455,6 +557,14 @@ export default function BulkQuestionImport() {
 
   const removeRow = (idx: number) => setRows((prev) => prev.filter((_, i) => i !== idx));
 
+  const updateRowField = (idx: number, field: string, value: string) => {
+    setRows((prev) =>
+      prev.map((r, i) =>
+        i === idx ? validateRow({ ...r.data, [field]: value }, r.rowIndex) : r
+      )
+    );
+  };
+
   const validCount = rows.filter((r) => r.valid).length;
   const invalidCount = rows.length - validCount;
 
@@ -555,6 +665,8 @@ export default function BulkQuestionImport() {
                   <TableHead>Subject</TableHead>
                   <TableHead>Chapter</TableHead>
                   <TableHead className="min-w-[200px]">Question</TableHead>
+                  <TableHead className="w-[160px]">Question Image</TableHead>
+                  <TableHead className="w-[160px]">Solution Image</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Answer</TableHead>
                   <TableHead>Marks</TableHead>
@@ -580,6 +692,20 @@ export default function BulkQuestionImport() {
                     <TableCell className="font-medium">{row.data.subject}</TableCell>
                     <TableCell>{row.data.chapter}</TableCell>
                     <TableCell className="max-w-[250px] truncate">{row.data.question_text}</TableCell>
+                    <TableCell>
+                      <RowImageCell
+                        label="question image"
+                        value={row.data.question_image_url || ""}
+                        onChange={(v) => updateRowField(i, "question_image_url", v)}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <RowImageCell
+                        label="solution image"
+                        value={row.data.solution_image_url || ""}
+                        onChange={(v) => updateRowField(i, "solution_image_url", v)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="text-xs">
                         {row.data.question_type}
