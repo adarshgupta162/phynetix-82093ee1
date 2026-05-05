@@ -12,8 +12,10 @@ import { toast } from "sonner";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
 import {
   Upload, FileSpreadsheet, Download, CheckCircle2, XCircle, AlertTriangle, Trash2, Loader2,
+  ImageIcon, Link as LinkIcon,
 } from "lucide-react";
 
 const EXPECTED_COLUMNS = [
