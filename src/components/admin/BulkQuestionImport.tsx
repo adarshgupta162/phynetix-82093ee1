@@ -342,7 +342,101 @@ function downloadTemplate() {
   a.click();
   URL.revokeObjectURL(url);
 }
-export default function BulkQuestionImport() {
+
+// ─── Inline image cell for preview rows ───────────────────────────────
+function RowImageCell({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  label: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [showUrl, setShowUrl] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const upload = async (file: File) => {
+    if (!file.type.startsWith("image/")) return toast.error("Not an image");
+    if (file.size > 5 * 1024 * 1024) return toast.error("Max 5 MB");
+    setUploading(true);
+    const path = `question-images/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    const { data, error } = await supabase.storage.from("test-pdfs").upload(path, file, { upsert: false });
+    if (error) {
+      toast.error(error.message);
+    } else {
+      const { data: pub } = supabase.storage.from("test-pdfs").getPublicUrl(data.path);
+      onChange(pub.publicUrl);
+      toast.success(`${label} uploaded`);
+    }
+    setUploading(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-1 min-w-[140px]">
+      {value ? (
+        <div className="flex items-center gap-1">
+          <img src={value} alt={label} className="w-10 h-10 object-cover rounded border" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
+          <button type="button" onClick={() => onChange("")} className="text-muted-foreground hover:text-destructive">
+            <XCircle className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-1.5 text-xs"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            title={`Upload ${label}`}
+          >
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImageIcon className="h-3 w-3" />}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-1.5 text-xs"
+            onClick={() => setShowUrl((s) => !s)}
+            title={`Paste ${label} URL`}
+          >
+            <LinkIcon className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+      {showUrl && !value && (
+        <Input
+          autoFocus
+          placeholder="https://image.url"
+          className="h-7 text-xs"
+          onBlur={(e) => {
+            const v = e.target.value.trim();
+            if (v) onChange(v);
+            setShowUrl(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              const v = (e.target as HTMLInputElement).value.trim();
+              if (v) onChange(v);
+              setShowUrl(false);
+            }
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
   const { user } = useAuth();
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [isDragging, setIsDragging] = useState(false);
