@@ -21,6 +21,7 @@ const EXPECTED_COLUMNS = [
   "option_1", "option_2", "option_3", "option_4",
   "correct_answer", "question_type", "marks", "negative_marks",
   "difficulty", "time_seconds", "solution_text", "tags",
+  "question_image_url", "solution_image_url",
 ];
 
 const REQUIRED_COLUMNS = ["subject", "question_text", "correct_answer", "question_type"];
