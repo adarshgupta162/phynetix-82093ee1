@@ -53,6 +53,8 @@ export function BatchCatalog({ showEnrollButtons = true }: BatchCatalogProps) {
 
   return (
     <div className="space-y-6">
+      <JoinBatchByCode />
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
