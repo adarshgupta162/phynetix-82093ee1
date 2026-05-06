@@ -149,6 +149,7 @@ const App = () => (
                 <Route path="/admin/dpp-editor/:dppId" element={<AdminRoute><DPPEditor /></AdminRoute>} />
                 <Route path="/admin/fullscreen-editor/:testId" element={<AdminRoute><FullscreenTestEditor /></AdminRoute>} />
                 <Route path="/admin/bulk-import" element={<AdminRoute><BulkImportPage /></AdminRoute>} />
+                <Route path="/admin/institutions" element={<AdminRoute><InstitutionsManager /></AdminRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ProfileGuard>
