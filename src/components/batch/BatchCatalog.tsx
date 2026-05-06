@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Filter } from "lucide-react";
+import { JoinBatchByCode } from "./JoinBatchByCode";
 
 const categories = [
   { value: "all", label: "All Categories" },
@@ -52,6 +53,8 @@ export function BatchCatalog({ showEnrollButtons = true }: BatchCatalogProps) {
 
   return (
     <div className="space-y-6">
+      <JoinBatchByCode />
+
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">

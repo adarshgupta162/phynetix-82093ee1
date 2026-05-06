@@ -25,6 +25,7 @@ import {
   X,
   Search,
   Command as CmdIcon,
+  Building2,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,7 @@ const allNavSections = {
       title: "Management",
       items: [
         { icon: Users, label: "Users", path: "/admin/users" },
+        { icon: Building2, label: "Institutions", path: "/admin/institutions" },
         { icon: MessageSquare, label: "Community", path: "/admin/community" },
         { icon: Send, label: "Requests", path: "/admin/requests" },
         { icon: History, label: "Audit Logs", path: "/admin/audit-logs" },

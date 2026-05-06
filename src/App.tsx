@@ -67,6 +67,7 @@ import OperationsDashboard from "./pages/admin/OperationsDashboard";
 import BatchManagement from "./pages/admin/BatchManagement";
 import RoleSelectorPage from "./pages/admin/RoleSelectorPage";
 import BulkImportPage from "./pages/admin/BulkImportPage";
+import InstitutionsManager from "./pages/admin/InstitutionsManager";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -148,6 +149,7 @@ const App = () => (
                 <Route path="/admin/dpp-editor/:dppId" element={<AdminRoute><DPPEditor /></AdminRoute>} />
                 <Route path="/admin/fullscreen-editor/:testId" element={<AdminRoute><FullscreenTestEditor /></AdminRoute>} />
                 <Route path="/admin/bulk-import" element={<AdminRoute><BulkImportPage /></AdminRoute>} />
+                <Route path="/admin/institutions" element={<AdminRoute><InstitutionsManager /></AdminRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </ProfileGuard>
