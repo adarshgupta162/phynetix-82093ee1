@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Accessibility, Search, Moon, X, ZoomIn, ZoomOut, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const SUPPORTS_CSS_ZOOM = typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("zoom", "1.1");
+
 interface AccessibilityToolbarProps {
   className?: string;
   inline?: boolean;
@@ -22,10 +24,9 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
   // Magnifier — CSS zoom on test content area
   useEffect(() => {
     const contentArea = document.querySelector('[data-test-content]') as HTMLElement;
-    const supportsZoom = typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("zoom", "1.1");
     if (contentArea) {
       if (magnifierOn) {
-        if (supportsZoom) {
+        if (SUPPORTS_CSS_ZOOM) {
           contentArea.style.zoom = String(zoomLevel);
           contentArea.style.transform = "";
           contentArea.style.transformOrigin = "";
