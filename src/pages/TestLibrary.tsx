@@ -25,6 +25,7 @@ interface Test {
   attempt_count: number;
   user_attempted: boolean;
   user_completed: boolean;
+  unlock_date: string | null;
 }
 
 const difficultyColors: Record<string, string> = {
@@ -67,10 +68,23 @@ export default function TestLibrary() {
     // Get test IDs from enrolled batches
     const { data: batchTests } = await supabase
       .from("batch_tests")
-      .select("test_id")
+      .select("test_id, unlock_date")
       .in("batch_id", batchIds.length > 0 ? batchIds : ['00000000-0000-0000-0000-000000000000']);
 
     const enrolledTestIds = batchTests?.map(bt => bt.test_id) || [];
+
+    const effectiveUnlockByTestId = new Map<string, string | null>();
+    (batchTests || []).forEach((batchTest) => {
+      const current = effectiveUnlockByTestId.get(batchTest.test_id);
+      if (!batchTest.unlock_date) {
+        effectiveUnlockByTestId.set(batchTest.test_id, null);
+        return;
+      }
+      if (current === null) return;
+      if (!current || new Date(batchTest.unlock_date) < new Date(current)) {
+        effectiveUnlockByTestId.set(batchTest.test_id, batchTest.unlock_date);
+      }
+    });
 
     // Fetch only tests from enrolled batches
     let testsQuery = supabase
@@ -128,6 +142,7 @@ export default function TestLibrary() {
             attempt_count: attemptCount || 0,
             user_attempted: !!userAttempt,
             user_completed: !!userAttempt?.completed_at,
+            unlock_date: effectiveUnlockByTestId.get(test.id) ?? null,
           };
         })
       );
@@ -143,7 +158,7 @@ export default function TestLibrary() {
       navigate(`/test/${test.id}/analysis`);
     } else {
       // Go to test interface
-      navigate(`/test/${test.id}`);
+      navigate(`/test/${test.id}`, { state: { unlockDate: test.unlock_date } });
     }
   };
 
@@ -166,6 +181,16 @@ export default function TestLibrary() {
     if (questionCount <= 20) return "easy";
     if (questionCount <= 50) return "medium";
     return "hard";
+  };
+
+  const isReleased = (unlockDate: string | null) => {
+    if (!unlockDate) return true;
+    return new Date(unlockDate) <= new Date();
+  };
+
+  const formatReleaseDateTime = (unlockDate: string | null) => {
+    if (!unlockDate) return "Available now";
+    return `Releases on ${new Date(unlockDate).toLocaleString()}`;
   };
 
   if (loading) {
@@ -257,6 +282,7 @@ export default function TestLibrary() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredTests.map((test, index) => {
               const difficulty = getDifficulty(test.question_count);
+              const released = isReleased(test.unlock_date);
               return (
                 <motion.div
                   key={test.id}
@@ -271,6 +297,11 @@ export default function TestLibrary() {
                       <span className="px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium">
                         {getTestTypeLabel(test.test_type)}
                       </span>
+                      {!released && !test.user_completed && (
+                        <span className="px-2 py-1 rounded-md bg-secondary text-muted-foreground text-xs font-medium">
+                          Locked
+                        </span>
+                      )}
                       {test.user_completed && (
                         <span className="px-2 py-1 rounded-md bg-success/10 text-success text-xs font-medium flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" />
@@ -304,6 +335,12 @@ export default function TestLibrary() {
                       {test.duration_minutes} min
                     </span>
                   </div>
+
+                  {!test.user_completed && (
+                    <p className="text-xs text-muted-foreground mb-4">
+                      {formatReleaseDateTime(test.unlock_date)}
+                    </p>
+                  )}
 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">

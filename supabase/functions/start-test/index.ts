@@ -98,6 +98,38 @@ serve(async (req) => {
       throw new Error("Test not found or not published");
     }
 
+    const { data: enrollments } = await supabaseClient
+      .from("batch_enrollments")
+      .select("batch_id")
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+
+    const batchIds = enrollments?.map((enrollment) => enrollment.batch_id) || [];
+    if (batchIds.length > 0) {
+      const { data: batchTests, error: batchTestsError } = await supabaseClient
+        .from("batch_tests")
+        .select("unlock_date")
+        .eq("test_id", test_id)
+        .in("batch_id", batchIds);
+
+      if (batchTestsError) {
+        console.error("Failed to fetch batch test unlock details:", batchTestsError);
+        throw new Error("Failed to validate test release time");
+      }
+
+      if (batchTests && batchTests.length > 0 && !batchTests.some((batchTest) => !batchTest.unlock_date)) {
+        const unlockDates = batchTests
+          .map((batchTest) => batchTest.unlock_date)
+          .filter((date): date is string => !!date)
+          .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+
+        const unlockAt = unlockDates[0];
+        if (unlockAt && new Date(unlockAt).getTime() > Date.now()) {
+          throw new Error(`Test will be available on ${new Date(unlockAt).toISOString()}`);
+        }
+      }
+    }
+
     const { data: attempt, error: attemptError } = await supabaseClient
       .from("test_attempts")
       .insert({

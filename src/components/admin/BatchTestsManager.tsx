@@ -25,7 +25,6 @@ import {
   Clock,
   Loader2,
 } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface BatchTestsManagerProps {
@@ -210,6 +209,14 @@ export function BatchTestsManager({
     addTestsMutation.mutate(Array.from(selectedTests));
   };
 
+  const toDateTimeLocalValue = (isoString: string | null) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return "";
+    const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh]">
@@ -288,13 +295,13 @@ export function BatchTestsManager({
                             <div className="flex items-center gap-2">
                               <Calendar className="w-3 h-3 text-muted-foreground" />
                               <Input
-                                type="date"
-                                className="h-7 w-32 text-xs"
-                                value={bt.unlock_date ? bt.unlock_date.split('T')[0] : ''}
+                                type="datetime-local"
+                                className="h-7 w-44 text-xs"
+                                value={toDateTimeLocalValue(bt.unlock_date)}
                                 onChange={(e) => 
                                   updateUnlockDateMutation.mutate({
                                     batchTestId: bt.id,
-                                    unlockDate: e.target.value || null
+                                    unlockDate: e.target.value ? new Date(e.target.value).toISOString() : null
                                   })
                                 }
                               />
