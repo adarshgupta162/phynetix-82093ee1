@@ -4,7 +4,7 @@ import {
   Clock, Flag, ChevronLeft, ChevronRight, AlertCircle,
   CheckCircle2, XCircle, Loader2, WifiOff
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import FullscreenGuard from "@/components/test/FullscreenGuard";
@@ -137,6 +137,7 @@ function StatusTooltip({ counts, visible }: { counts: { answered: number; notAns
 export default function NormalTestInterface() {
   const { testId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   /* ── ALL STATE (100% identical to original) ── */
   const [attemptId, setAttemptId]               = useState<string | null>(null);
@@ -179,6 +180,8 @@ export default function NormalTestInterface() {
 
   // tooltip hover state
   const [hoveredSectionTooltip, setHoveredSectionTooltip] = useState<string | null>(null);
+  const [unlockDate, setUnlockDate]             = useState<string | null>((location.state as { unlockDate?: string | null } | null)?.unlockDate || null);
+  const [showUnlockPopup, setShowUnlockPopup]   = useState(false);
 
   /* ════ ALL API/BACKEND LOGIC — 100% IDENTICAL TO ORIGINAL ════ */
 
@@ -230,14 +233,57 @@ export default function NormalTestInterface() {
           setFullscreenExitCount(ea.fullscreen_exit_count || 0);
           initializeTest(); return;
         }
+        const releaseDate = await getEffectiveUnlockDate(user.id);
+        setUnlockDate(releaseDate);
       }
       setLoading(false);
     } catch (e) { console.error(e); setLoading(false); }
   };
 
+  const getEffectiveUnlockDate = async (userId: string) => {
+    if (!testId) return null;
+    const { data: enrollments, error: enrollmentError } = await supabase
+      .from("batch_enrollments")
+      .select("batch_id")
+      .eq("user_id", userId)
+      .eq("is_active", true);
+    if (enrollmentError || !enrollments?.length) return null;
+
+    const batchIds = enrollments.map((enrollment) => enrollment.batch_id);
+    const { data: batchTests, error: batchTestsError } = await supabase
+      .from("batch_tests")
+      .select("unlock_date")
+      .eq("test_id", testId)
+      .in("batch_id", batchIds);
+    if (batchTestsError || !batchTests?.length) return null;
+
+    const unlockDates = batchTests
+      .map((batchTest) => batchTest.unlock_date)
+      .filter((date): date is string => !!date)
+      .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
+    return unlockDates[0] || null;
+  };
+
+  const getTimeUntilRelease = (releaseDate: string) => {
+    const diff = new Date(releaseDate).getTime() - Date.now();
+    if (diff <= 0) return "0m 0s";
+    const totalSeconds = Math.floor(diff / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (days > 0) return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    return `${minutes}m ${seconds}s`;
+  };
+
   const startTest = () => {
     if (!agreedToTerms) {
       toast({ title: "Please agree to the terms", description: "You must agree to the test rules before starting.", variant: "destructive" }); return;
+    }
+    if (unlockDate && new Date(unlockDate) > new Date()) {
+      setShowUnlockPopup(true);
+      return;
     }
     if (fullscreenEnabled) {
       const el = document.documentElement;
@@ -821,6 +867,43 @@ export default function NormalTestInterface() {
             <p style={{ fontSize: 13, fontWeight: "bold", color: "#1a1a1a", textAlign: "center", padding: "0 8px" }}>{studentName}</p>
           </div>
         </div>
+        <AnimatePresence>
+          {showUnlockPopup && unlockDate && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}
+              onClick={() => setShowUnlockPopup(false)}
+            >
+              <motion.div
+                initial={{ scale: .95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: .95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                style={{ background: "#fff", border: "1px solid #bbb", borderRadius: 4, padding: 20, width: 420, maxWidth: "90vw", fontFamily: "Arial,sans-serif", boxShadow: "0 8px 32px rgba(0,0,0,.25)" }}
+              >
+                <div style={{ borderBottom: "2px solid #2979c5", paddingBottom: 8, marginBottom: 12, fontSize: 15, fontWeight: "bold", color: "#1a3a5c" }}>
+                  Test not released yet
+                </div>
+                <p style={{ fontSize: 13, color: "#333", lineHeight: 1.6 }}>
+                  This test will start in <strong>{getTimeUntilRelease(unlockDate)}</strong>.
+                </p>
+                <p style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
+                  Release time: {new Date(unlockDate).toLocaleString()}
+                </p>
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                  <button
+                    onClick={() => setShowUnlockPopup(false)}
+                    style={{ padding: "8px 20px", background: "#fff", border: "1px solid #aaa", fontSize: 13, cursor: "pointer", borderRadius: 2, color: "#333" }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
