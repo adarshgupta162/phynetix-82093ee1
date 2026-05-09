@@ -117,7 +117,7 @@ serve(async (req) => {
         throw new Error("Failed to validate test release time");
       }
 
-      if (batchTests && batchTests.length > 0 && !batchTests.some((batchTest) => !batchTest.unlock_date)) {
+      if (batchTests && batchTests.length > 0) {
         const unlockDates = batchTests
           .map((batchTest) => batchTest.unlock_date)
           .filter((date): date is string => !!date)
@@ -125,7 +125,7 @@ serve(async (req) => {
 
         const unlockAt = unlockDates[0];
         if (unlockAt && new Date(unlockAt).getTime() > Date.now()) {
-          throw new Error(`Test will be available on ${new Date(unlockAt).toISOString()}`);
+          throw new Error(`Test will be available on ${new Date(unlockAt).toLocaleString()}`);
         }
       }
     }

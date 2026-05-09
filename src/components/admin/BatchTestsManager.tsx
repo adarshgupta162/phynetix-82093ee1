@@ -213,8 +213,8 @@ export function BatchTestsManager({
     if (!isoString) return "";
     const date = new Date(isoString);
     if (Number.isNaN(date.getTime())) return "";
-    const offsetMs = date.getTimezoneOffset() * 60 * 1000;
-    return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+    const pad = (value: number) => String(value).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
   return (
@@ -294,17 +294,20 @@ export function BatchTestsManager({
                             </label>
                             <div className="flex items-center gap-2">
                               <Calendar className="w-3 h-3 text-muted-foreground" />
-                              <Input
-                                type="datetime-local"
-                                className="h-7 w-44 text-xs"
-                                value={toDateTimeLocalValue(bt.unlock_date)}
-                                onChange={(e) => 
-                                  updateUnlockDateMutation.mutate({
-                                    batchTestId: bt.id,
-                                    unlockDate: e.target.value ? new Date(e.target.value).toISOString() : null
-                                  })
-                                }
-                              />
+                              <div>
+                                <Input
+                                  type="datetime-local"
+                                  className="h-7 w-44 text-xs"
+                                  value={toDateTimeLocalValue(bt.unlock_date)}
+                                  onChange={(e) => 
+                                    updateUnlockDateMutation.mutate({
+                                      batchTestId: bt.id,
+                                      unlockDate: e.target.value ? new Date(e.target.value).toISOString() : null
+                                    })
+                                  }
+                                />
+                                <p className="mt-1 text-[10px] text-muted-foreground">Local time</p>
+                              </div>
                             </div>
                           </div>
                         </div>

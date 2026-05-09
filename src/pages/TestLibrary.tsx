@@ -77,10 +77,11 @@ export default function TestLibrary() {
     (batchTests || []).forEach((batchTest) => {
       const current = effectiveUnlockByTestId.get(batchTest.test_id);
       if (!batchTest.unlock_date) {
-        effectiveUnlockByTestId.set(batchTest.test_id, null);
+        if (current === undefined) {
+          effectiveUnlockByTestId.set(batchTest.test_id, null);
+        }
         return;
       }
-      if (current === null) return;
       if (!current || new Date(batchTest.unlock_date) < new Date(current)) {
         effectiveUnlockByTestId.set(batchTest.test_id, batchTest.unlock_date);
       }
@@ -190,7 +191,7 @@ export default function TestLibrary() {
 
   const formatReleaseDateTime = (unlockDate: string | null) => {
     if (!unlockDate) return "Available now";
-    return `Releases on ${new Date(unlockDate).toLocaleString()}`;
+    return `Available on ${new Date(unlockDate).toLocaleString()}`;
   };
 
   if (loading) {

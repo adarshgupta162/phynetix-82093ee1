@@ -256,7 +256,6 @@ export default function NormalTestInterface() {
       .eq("test_id", testId)
       .in("batch_id", batchIds);
     if (batchTestsError || !batchTests?.length) return null;
-    if (batchTests.some((batchTest) => !batchTest.unlock_date)) return null;
 
     const unlockDates = batchTests
       .map((batchTest) => batchTest.unlock_date)
