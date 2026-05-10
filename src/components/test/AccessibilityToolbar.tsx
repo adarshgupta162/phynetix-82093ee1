@@ -15,7 +15,7 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
   const [darkMode, setDarkMode] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
-  // Dark mode — invert entire page; images stay inverted (user wants negative filter on images)
+  // Dark mode — invert entire page; selected images can be re-inverted to preserve natural colors.
   useEffect(() => {
     document.documentElement.classList.toggle("a11y-dark-mode", darkMode);
     return () => document.documentElement.classList.remove("a11y-dark-mode");
@@ -146,7 +146,7 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
             </div>
             {darkMode && (
               <p style={{ fontSize: 10, color: "#888", marginTop: 4 }}>
-                Dark interface with inverted image colors.
+                Dark interface with preserved profile photo colors.
               </p>
             )}
           </div>
@@ -155,12 +155,15 @@ export default function AccessibilityToolbar({ className, inline }: Accessibilit
 
       {/* 
         Dark mode: invert entire page (white→black, black text→white).
-        Images, video, canvas — do NOT re-invert, so they appear as negatives (user wants inverted images).
+        Marked images (data-a11y-preserve-img) are re-inverted so they keep natural colors.
         Only re-invert SVG icons (lucide) so they remain readable.
         The accessibility popup itself is re-inverted to stay white.
       */}
       <style>{`
         .a11y-dark-mode {
+          filter: invert(1) hue-rotate(180deg) !important;
+        }
+        .a11y-dark-mode [data-a11y-preserve-img] {
           filter: invert(1) hue-rotate(180deg) !important;
         }
         .a11y-dark-mode .lucide {
