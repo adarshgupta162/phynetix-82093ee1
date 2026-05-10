@@ -56,6 +56,19 @@ export type EffectiveProctoringSettings = {
   allow_specific_users_only: boolean;
 };
 
+const DEFAULT_EFFECTIVE_PROCTORING_SETTINGS: EffectiveProctoringSettings = {
+  enabled: false,
+  allowed: true,
+  require_camera: true,
+  require_microphone: true,
+  require_screen: true,
+  allow_optional_device_fallback: false,
+  recording_enabled: false,
+  retention_days: 30,
+  instructions: null,
+  allow_specific_users_only: false,
+};
+
 export const resolveSettings = async (
   supabaseAdmin: ReturnType<typeof getAdminClient>,
   testId: string,
@@ -68,18 +81,7 @@ export const resolveSettings = async (
     .maybeSingle();
 
   if (settingsError && isMissingSupabaseTableError(settingsError)) {
-    return {
-      enabled: false,
-      allowed: true,
-      require_camera: true,
-      require_microphone: true,
-      require_screen: true,
-      allow_optional_device_fallback: false,
-      recording_enabled: false,
-      retention_days: 30,
-      instructions: null,
-      allow_specific_users_only: false,
-    };
+    return DEFAULT_EFFECTIVE_PROCTORING_SETTINGS;
   }
 
   const base: EffectiveProctoringSettings = {
@@ -103,18 +105,7 @@ export const resolveSettings = async (
     .maybeSingle();
 
   if (overrideError && isMissingSupabaseTableError(overrideError)) {
-    return {
-      enabled: false,
-      allowed: true,
-      require_camera: true,
-      require_microphone: true,
-      require_screen: true,
-      allow_optional_device_fallback: false,
-      recording_enabled: false,
-      retention_days: 30,
-      instructions: null,
-      allow_specific_users_only: false,
-    };
+    return { ...base, enabled: false, allow_specific_users_only: false, allowed: true };
   }
 
   if (base.allow_specific_users_only && !override) base.allowed = false;
