@@ -16,8 +16,10 @@ export function useProctoring(testId?: string | null, userId?: string | null) {
   const screenStreamRef = useRef<MediaStream | null>(null);
   const connectionRef = useRef<LiveKitConnection | null>(null);
   const sessionRef = useRef<ProctoringSession | null>(null);
+  const devicesRef = useRef<ProctoringDeviceState>({ camera: false, microphone: false, screen: false });
 
   useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { devicesRef.current = devices; }, [devices]);
 
   const loadSettings = useCallback(async () => {
     if (!testId) return null;
@@ -125,6 +127,7 @@ export function useProctoring(testId?: string | null, userId?: string | null) {
     }
 
     setDevices(nextDevices);
+    devicesRef.current = nextDevices;
     setIsPreparing(false);
     return { settings: effective, devices: nextDevices, failures };
   }, [loadSettings, logEvent, settings, testId]);
@@ -134,11 +137,12 @@ export function useProctoring(testId?: string | null, userId?: string | null) {
     const effective = settings ?? await loadSettings();
     if (!effective?.enabled) return null;
 
+    const deviceState = devicesRef.current;
     const { data, error } = await supabase.functions.invoke('start-proctoring-session', {
       body: {
         attempt_id: attemptId,
         consent_accepted: true,
-        devices,
+        devices: deviceState,
         metadata,
       },
     });
@@ -164,7 +168,7 @@ export function useProctoring(testId?: string | null, userId?: string | null) {
 
     setIsStreaming(true);
     return data.session as ProctoringSession;
-  }, [devices, loadSettings, logEvent, settings]);
+  }, [loadSettings, logEvent, settings]);
 
   const stop = useCallback(async (reason = 'student_stop') => {
     const activeSession = sessionRef.current;
@@ -174,6 +178,8 @@ export function useProctoring(testId?: string | null, userId?: string | null) {
     stopStream(screenStreamRef.current);
     cameraStreamRef.current = null;
     screenStreamRef.current = null;
+    devicesRef.current = { camera: false, microphone: false, screen: false };
+    setDevices(devicesRef.current);
     setIsStreaming(false);
     if (activeSession?.id) {
       await supabase.functions.invoke('stop-proctoring-session', { body: { session_id: activeSession.id, reason } });
