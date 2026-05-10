@@ -105,7 +105,7 @@ export const resolveSettings = async (
     .maybeSingle();
 
   if (overrideError && isMissingSupabaseTableError(overrideError)) {
-    return { ...base, enabled: false, allow_specific_users_only: false, allowed: true };
+    return { ...base, enabled: false, allowed: true };
   }
 
   if (base.allow_specific_users_only && !override) base.allowed = false;

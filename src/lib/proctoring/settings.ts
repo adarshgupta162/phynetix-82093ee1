@@ -46,7 +46,7 @@ export async function loadEffectiveProctoringSettings(testId: string, userId?: s
       .eq('user_id', userId)
       .maybeSingle();
 
-    if (overrideError && isMissingSupabaseTableError(overrideError)) return DEFAULT_PROCTORING_SETTINGS;
+    if (overrideError && isMissingSupabaseTableError(overrideError)) return effective;
     if (effective.allow_specific_users_only && !override) effective.allowed = false;
     if (override) {
       effective = {
