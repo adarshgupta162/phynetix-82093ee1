@@ -31,12 +31,22 @@ type ProctoringEvent = {
   created_at: string;
 };
 
+type AttemptDetails = {
+  answersCount: number;
+  fullscreenExitCount: number;
+  timePerQuestion: Record<string, number>;
+  visitedQuestions: string[];
+};
+
+const VISITED_QUESTIONS_META_KEY = "__visited_questions__";
+
 export default function LiveMonitoring() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<SessionRow | null>(null);
   const [events, setEvents] = useState<ProctoringEvent[]>([]);
   const [viewerReady, setViewerReady] = useState(false);
+  const [attemptDetails, setAttemptDetails] = useState<AttemptDetails | null>(null);
 
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
@@ -46,6 +56,7 @@ export default function LiveMonitoring() {
   const screenRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const peerRef = useRef<RTCPeerConnection | null>(null);
+  const sessionParam = useMemo(() => new URLSearchParams(window.location.search).get("sessionId"), []);
 
   const sessionLabel = (session: SessionRow) => {
     const name = session.profiles?.full_name || session.profiles?.roll_number || session.user_id;
@@ -77,6 +88,14 @@ export default function LiveMonitoring() {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    if (!sessionParam || selectedSession) return;
+    const match = sessions.find((session) => session.id === sessionParam);
+    if (match) {
+      setSelectedSession(match);
+    }
+  }, [sessionParam, selectedSession, sessions]);
 
   useEffect(() => {
     if (cameraRef.current) {
@@ -176,6 +195,7 @@ export default function LiveMonitoring() {
   useEffect(() => {
     if (!selectedSession) return;
     void startViewer(selectedSession);
+    void loadAttemptDetails(selectedSession.attempt_id);
 
     const signalChannel = supabase
       .channel(`proctoring-signals-${selectedSession.id}`)
@@ -191,8 +211,20 @@ export default function LiveMonitoring() {
       )
       .subscribe();
 
+    const attemptChannel = supabase
+      .channel(`proctoring-attempt-${selectedSession.attempt_id}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "test_attempts", filter: `id=eq.${selectedSession.attempt_id}` },
+        () => {
+          void loadAttemptDetails(selectedSession.attempt_id);
+        },
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(signalChannel);
+      supabase.removeChannel(attemptChannel);
     };
   }, [selectedSession]);
 
@@ -204,6 +236,38 @@ export default function LiveMonitoring() {
       .order("created_at", { ascending: false })
       .limit(50);
     setEvents(data || []);
+  };
+
+  const loadAttemptDetails = async (attemptId: string) => {
+    const { data } = await supabase
+      .from("test_attempts")
+      .select("answers, time_per_question, fullscreen_exit_count")
+      .eq("id", attemptId)
+      .maybeSingle();
+    if (!data) {
+      setAttemptDetails(null);
+      return;
+    }
+    const answers = (data.answers as Record<string, any>) || {};
+    const answersCount = Object.values(answers).filter((value) => {
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== null && value !== undefined && value !== "";
+    }).length;
+    const timePerQuestion = Object.entries((data.time_per_question as Record<string, number>) || {}).reduce<Record<string, number>>((acc, [key, value]) => {
+      if (key === VISITED_QUESTIONS_META_KEY) return acc;
+      const numericValue = Number(value);
+      if (Number.isFinite(numericValue)) acc[key] = numericValue;
+      return acc;
+    }, {});
+    const visitedQuestions = Array.isArray((data.time_per_question as any)?.[VISITED_QUESTIONS_META_KEY])
+      ? ((data.time_per_question as any)[VISITED_QUESTIONS_META_KEY] as string[])
+      : [];
+    setAttemptDetails({
+      answersCount,
+      fullscreenExitCount: data.fullscreen_exit_count ?? 0,
+      timePerQuestion,
+      visitedQuestions,
+    });
   };
 
   useEffect(() => {
@@ -244,6 +308,20 @@ export default function LiveMonitoring() {
     };
   }, [selectedSession]);
 
+  const eventSummary = useMemo(() => {
+    return events.reduce<Record<string, number>>((acc, event) => {
+      acc[event.event_type] = (acc[event.event_type] || 0) + 1;
+      return acc;
+    }, {});
+  }, [events]);
+
+  const topTimeEntries = useMemo(() => {
+    if (!attemptDetails) return [];
+    return Object.entries(attemptDetails.timePerQuestion)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5);
+  }, [attemptDetails]);
+
   return (
     <AdminLayout>
       <div className="p-6 lg:p-8 space-y-6">
@@ -268,30 +346,44 @@ export default function LiveMonitoring() {
             ) : (
               <div className="space-y-3">
                 {sessions.map((session) => (
-                  <button
+                  <div
                     key={session.id}
-                    onClick={() => setSelectedSession(session)}
                     className={cn(
-                      "w-full text-left border border-border rounded-lg p-3 transition-colors",
+                      "border border-border rounded-lg p-3 transition-colors",
                       selectedSession?.id === session.id ? "bg-primary/10 border-primary" : "hover:bg-secondary/30",
                     )}
                   >
-                    <div className="font-semibold text-sm">{sessionLabel(session)}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Started {formatDistanceToNow(new Date(session.started_at))} ago
+                    <button
+                      onClick={() => setSelectedSession(session)}
+                      className="w-full text-left"
+                    >
+                      <div className="font-semibold text-sm">{sessionLabel(session)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Started {formatDistanceToNow(new Date(session.started_at))} ago
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 text-xs">
+                        <span className={cn("inline-flex items-center gap-1", session.camera_enabled ? "text-emerald-600" : "text-muted-foreground")}>
+                          <Camera className="w-3 h-3" /> Cam
+                        </span>
+                        <span className={cn("inline-flex items-center gap-1", session.mic_enabled ? "text-emerald-600" : "text-muted-foreground")}>
+                          <Mic className="w-3 h-3" /> Mic
+                        </span>
+                        <span className={cn("inline-flex items-center gap-1", session.screen_enabled ? "text-emerald-600" : "text-muted-foreground")}>
+                          <MonitorPlay className="w-3 h-3" /> Screen
+                        </span>
+                      </div>
+                    </button>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      <a
+                        href={`/admin/live-monitoring?sessionId=${session.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline"
+                      >
+                        Open in new tab
+                      </a>
                     </div>
-                    <div className="flex items-center gap-2 mt-2 text-xs">
-                      <span className={cn("inline-flex items-center gap-1", session.camera_enabled ? "text-emerald-600" : "text-muted-foreground")}>
-                        <Camera className="w-3 h-3" /> Cam
-                      </span>
-                      <span className={cn("inline-flex items-center gap-1", session.mic_enabled ? "text-emerald-600" : "text-muted-foreground")}>
-                        <Mic className="w-3 h-3" /> Mic
-                      </span>
-                      <span className={cn("inline-flex items-center gap-1", session.screen_enabled ? "text-emerald-600" : "text-muted-foreground")}>
-                        <MonitorPlay className="w-3 h-3" /> Screen
-                      </span>
-                    </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -322,6 +414,28 @@ export default function LiveMonitoring() {
                   </div>
                 </div>
 
+                <div className="glass-card p-4">
+                  <div className="text-sm font-semibold mb-3">Attempt Overview</div>
+                  {attemptDetails ? (
+                    <div className="grid md:grid-cols-3 gap-4 text-sm">
+                      <div className="rounded-md border border-border p-3">
+                        <div className="text-xs text-muted-foreground">Answers Submitted</div>
+                        <div className="text-xl font-semibold">{attemptDetails.answersCount}</div>
+                      </div>
+                      <div className="rounded-md border border-border p-3">
+                        <div className="text-xs text-muted-foreground">Visited Questions</div>
+                        <div className="text-xl font-semibold">{attemptDetails.visitedQuestions.length}</div>
+                      </div>
+                      <div className="rounded-md border border-border p-3">
+                        <div className="text-xs text-muted-foreground">Fullscreen Exits</div>
+                        <div className="text-xl font-semibold">{attemptDetails.fullscreenExitCount}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">Attempt data unavailable.</div>
+                  )}
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="glass-card p-4 space-y-2">
                     <div className="text-sm font-semibold flex items-center gap-2">
@@ -343,6 +457,28 @@ export default function LiveMonitoring() {
                   <div className="flex items-center gap-2 mb-3 text-sm font-semibold">
                     <AlertTriangle className="w-4 h-4 text-muted-foreground" /> Latest Events
                   </div>
+                  {Object.keys(eventSummary).length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                      {Object.entries(eventSummary).map(([type, count]) => (
+                        <span key={type} className="rounded-full border border-border px-2 py-1">
+                          {type}: {count}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {topTimeEntries.length > 0 && (
+                    <div className="mb-3 text-xs text-muted-foreground">
+                      <div className="font-semibold text-foreground mb-1">Top Time Spent</div>
+                      <div className="space-y-1">
+                        {topTimeEntries.map(([questionId, seconds]) => (
+                          <div key={questionId} className="flex items-center justify-between">
+                            <span className="truncate">{questionId}</span>
+                            <span>{Math.round(seconds)}s</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {events.length === 0 ? (
                     <div className="text-sm text-muted-foreground">No events yet.</div>
                   ) : (

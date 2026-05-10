@@ -455,6 +455,12 @@ export default function NormalTestInterface() {
   }, [logEvent, proctoringProvider, proctoringState.status]);
 
   useEffect(() => {
+    if (!proctoringBlocked) return;
+    toast({ title: "Monitoring required", description: "Required permissions were not granted.", variant: "destructive" });
+    setProctoringBlocked(false);
+  }, [proctoringBlocked, toast]);
+
+  useEffect(() => {
     if (proctoringState.status !== "active") return;
     const handleBlur = () => void logEvent("window_blur", {});
     const handleFocus = () => void logEvent("window_focus", {});
@@ -470,6 +476,12 @@ export default function NormalTestInterface() {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [logEvent, proctoringState.status]);
+
+  useEffect(() => {
+    return () => {
+      void endSession();
+    };
+  }, [endSession]);
 
   useEffect(() => {
     if (timeLeft <= 0 || loading || currentScreen !== 4) return;
