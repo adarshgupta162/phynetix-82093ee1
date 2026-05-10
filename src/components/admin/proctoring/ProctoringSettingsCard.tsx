@@ -28,6 +28,15 @@ interface Props {
   compact?: boolean;
 }
 
+ codex/add-live-monitoring-system-for-tests-pvghou
+const monitoringTableErrorMessage = (message?: string) => {
+  if (message?.includes('proctoring_test_settings') || message?.includes('protecting_test_settings') || message?.includes('schema cache')) {
+    return `${message} Apply the latest Supabase migrations so public.proctoring_test_settings exists, then refresh the app.`;
+  }
+  return message || 'Unknown database error';
+};
+
+ main
 export function ProctoringSettingsCard({ testId, compact = false }: Props) {
   const { toast } = useToast();
   const [settings, setSettings] = useState<ProctoringSettings>(DEFAULT_PROCTORING_SETTINGS);
@@ -36,7 +45,15 @@ export function ProctoringSettingsCard({ testId, compact = false }: Props) {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
+codex/add-live-monitoring-system-for-tests-pvghou
+    const { data, error: settingsError } = await supabase.from('proctoring_test_settings').select('*').eq('test_id', testId).maybeSingle();
+    if (settingsError) {
+      toast({ title: 'Monitoring settings table is not ready', description: monitoringTableErrorMessage(settingsError.message), variant: 'destructive' });
+      return;
+    }
+
     const { data } = await supabase.from('proctoring_test_settings').select('*').eq('test_id', testId).maybeSingle();
+main
     if (data) {
       setSettings({
         enabled: data.enabled ?? false,
@@ -52,11 +69,21 @@ export function ProctoringSettingsCard({ testId, compact = false }: Props) {
       });
     }
 
+codex/add-live-monitoring-system-for-tests-pvghou
+    const { data: overrideData, error: overridesError } = await supabase
+
     const { data: overrideData } = await supabase
+ main
       .from('proctoring_user_overrides')
       .select('*')
       .eq('test_id', testId)
       .order('created_at', { ascending: false });
+ codex/add-live-monitoring-system-for-tests-pvghou
+    if (overridesError) {
+      toast({ title: 'Monitoring override table is not ready', description: monitoringTableErrorMessage(overridesError.message), variant: 'destructive' });
+      return;
+    }
+ main
     const userIds = (overrideData || []).map((item) => item.user_id);
     const { data: profiles } = userIds.length
       ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
@@ -85,7 +112,11 @@ export function ProctoringSettingsCard({ testId, compact = false }: Props) {
       created_by: userData.user?.id,
     }, { onConflict: 'test_id' });
     setSaving(false);
+ codex/add-live-monitoring-system-for-tests-pvghou
+    if (error) toast({ title: 'Failed to save monitoring settings', description: monitoringTableErrorMessage(error.message), variant: 'destructive' });
+
     if (error) toast({ title: 'Failed to save monitoring settings', description: error.message, variant: 'destructive' });
+ main
     else toast({ title: 'Live monitoring settings saved' });
   };
 
@@ -100,7 +131,11 @@ export function ProctoringSettingsCard({ testId, compact = false }: Props) {
       created_by: userData.user?.id,
       updated_by: userData.user?.id,
     }, { onConflict: 'test_id,user_id' });
+ codex/add-live-monitoring-system-for-tests-pvghou
+    if (error) toast({ title: 'Failed to add user override', description: monitoringTableErrorMessage(error.message), variant: 'destructive' });
+
     if (error) toast({ title: 'Failed to add user override', description: error.message, variant: 'destructive' });
+main
     else {
       setNewUserId('');
       await load();

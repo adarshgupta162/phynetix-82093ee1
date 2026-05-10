@@ -2008,7 +2008,34 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      protecting_test_settings: {
+        Row: {
+          allow_optional_device_fallback: boolean
+          allow_specific_users_only: boolean
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          instructions: string | null
+          recording_enabled: boolean
+          require_camera: boolean
+          require_microphone: boolean
+          require_screen: boolean
+          retention_days: number
+          test_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proctoring_test_settings_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: true
+            referencedRelation: "tests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_user_institution_id: { Args: { _user_id: string }; Returns: string }
