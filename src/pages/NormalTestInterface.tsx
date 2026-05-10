@@ -745,7 +745,7 @@ export default function NormalTestInterface() {
             <div style={{ fontSize: 13, color: "#ccc" }}>Subject : <span style={{ color: C.yellow }}>{testName}</span></div>
           </div>
           <div style={{ width: 76, height: 88, border: "3px solid #ccc", background: "#d8d8d8", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            {studentAvatar ? <img src={studentAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 46 }}>👤</span>}
+            {studentAvatar ? <img data-a11y-preserve-img src={studentAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 46 }}>👤</span>}
           </div>
         </div>
       </div>
@@ -832,7 +832,7 @@ export default function NormalTestInterface() {
           </div>
           <div style={{ width: 190, borderLeft: "2px solid #000", background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 26 }}>
             <div style={{ width: 100, height: 112, background: "#e0e0e0", border: "2px solid #aaa", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-              {studentAvatar ? <img src={studentAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 54 }}>👤</span>}
+              {studentAvatar ? <img data-a11y-preserve-img src={studentAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 54 }}>👤</span>}
             </div>
             <p style={{ fontSize: 13, fontWeight: "bold", color: "#1a1a1a", textAlign: "center", padding: "0 8px" }}>{studentName}</p>
           </div>
@@ -890,7 +890,7 @@ export default function NormalTestInterface() {
           </div>
           <div style={{ width: 190, borderLeft: "2px solid #000", background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 26 }}>
             <div style={{ width: 100, height: 112, background: "#e0e0e0", border: "2px solid #aaa", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-              {studentAvatar ? <img src={studentAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 54 }}>👤</span>}
+              {studentAvatar ? <img data-a11y-preserve-img src={studentAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 54 }}>👤</span>}
             </div>
             <p style={{ fontSize: 13, fontWeight: "bold", color: "#1a1a1a", textAlign: "center", padding: "0 8px" }}>{studentName}</p>
           </div>
@@ -1190,7 +1190,7 @@ export default function NormalTestInterface() {
           <div style={{ background: "#fff", borderBottom: "1px solid #ccc", padding: "10px 8px", display: "flex", flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <div style={{ fontSize: 13, fontWeight: "bold", color: "#111", textAlign: "left", flex: 1 }}>{studentName}</div>
             <div style={{ width: 82, height: 92, background: "#ccc", border: "1px solid #aaa", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, flexShrink: 0 }}>
-              {studentAvatar ? <img src={studentAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 34 }}>👤</span>}
+              {studentAvatar ? <img data-a11y-preserve-img src={studentAvatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 34 }}>👤</span>}
             </div>
           </div>
 
