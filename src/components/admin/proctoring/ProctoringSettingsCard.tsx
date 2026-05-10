@@ -34,9 +34,16 @@ export function ProctoringSettingsCard({ testId, compact = false }: Props) {
   const [overrides, setOverrides] = useState<UserOverride[]>([]);
   const [newUserId, setNewUserId] = useState('');
   const [saving, setSaving] = useState(false);
+  const missingSchemaMessage = 'Live monitoring schema is missing. Run latest Supabase migrations and reload.';
 
   const load = async () => {
-    const { data } = await supabase.from('proctoring_test_settings').select('*').eq('test_id', testId).maybeSingle();
+    const { data, error } = await supabase.from('proctoring_test_settings').select('*').eq('test_id', testId).maybeSingle();
+    if (error) {
+      if ((error as any).code === '42P01') {
+        toast({ title: 'Monitoring setup required', description: missingSchemaMessage, variant: 'destructive' });
+      }
+      return;
+    }
     if (data) {
       setSettings({
         enabled: data.enabled ?? false,
@@ -52,11 +59,17 @@ export function ProctoringSettingsCard({ testId, compact = false }: Props) {
       });
     }
 
-    const { data: overrideData } = await supabase
+    const { data: overrideData, error: overrideError } = await supabase
       .from('proctoring_user_overrides')
       .select('*')
       .eq('test_id', testId)
       .order('created_at', { ascending: false });
+    if (overrideError) {
+      if ((overrideError as any).code === '42P01') {
+        toast({ title: 'Monitoring setup required', description: missingSchemaMessage, variant: 'destructive' });
+      }
+      return;
+    }
     const userIds = (overrideData || []).map((item) => item.user_id);
     const { data: profiles } = userIds.length
       ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
@@ -85,7 +98,10 @@ export function ProctoringSettingsCard({ testId, compact = false }: Props) {
       created_by: userData.user?.id,
     }, { onConflict: 'test_id' });
     setSaving(false);
-    if (error) toast({ title: 'Failed to save monitoring settings', description: error.message, variant: 'destructive' });
+    if (error) {
+      const description = (error as any).code === '42P01' ? missingSchemaMessage : error.message;
+      toast({ title: 'Failed to save monitoring settings', description, variant: 'destructive' });
+    }
     else toast({ title: 'Live monitoring settings saved' });
   };
 
