@@ -178,7 +178,7 @@ export default function AnalysisPage() {
 
       const { data: sectionQuestions } = await supabase
         .from("test_section_questions")
-        .select(`id, question_number, correct_answer, marks, negative_marks, section_id, question_text, image_url, image_urls, difficulty, solution_text, solution_image_url, solution_image_urls, test_sections!inner(name, section_type, test_subjects!inner(name))`)
+        .select(`id, question_number, correct_answer, marks, negative_marks, is_bonus, section_id, question_text, image_url, image_urls, difficulty, solution_text, solution_image_url, solution_image_urls, test_sections!inner(name, section_type, test_subjects!inner(name))`)
         .eq("test_id", testId).order("question_number");
 
       const questionsData = (sectionQuestions || []).map((q: any) => {
@@ -197,6 +197,7 @@ export default function AnalysisPage() {
           id: q.id, question_number: q.question_number,
           correct_answer: q.correct_answer,
           marks: q.marks ?? 4, negative_marks: q.negative_marks ?? 1,
+          isBonus: q.is_bonus ?? false,
           subject: q.test_sections?.test_subjects?.name || "General",
           sectionType: q.test_sections?.section_type || "single_choice",
           difficulty: q.difficulty || "medium",
@@ -233,6 +234,7 @@ export default function AnalysisPage() {
           userAnswer: rawUserAnswer,
           marks: q.marks,
           negativeMarks: q.negative_marks,
+          isBonus: q.isBonus,
         });
 
         if (evaluation.status === "skipped") {

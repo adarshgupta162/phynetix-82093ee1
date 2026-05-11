@@ -156,6 +156,7 @@ export default function SolutionsPage() {
           correct_answer,
           marks,
           negative_marks,
+          is_bonus,
           options,
           image_url,
           solution_text,
@@ -184,6 +185,7 @@ export default function SolutionsPage() {
             userAnswer: rawUserAnswer,
             marks: q.marks,
             negativeMarks: q.negative_marks,
+            isBonus: q.is_bonus ?? false,
           });
 
           const correctAnswer = evaluation.correctAnswerLabel;

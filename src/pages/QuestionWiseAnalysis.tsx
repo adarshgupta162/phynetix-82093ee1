@@ -24,6 +24,7 @@ interface Question {
   correct_answer: any;
   marks: number;
   negative_marks: number;
+  is_bonus?: boolean;
   section_type: string;
   subject_name: string;
   question_text?: string;
@@ -103,6 +104,7 @@ export default function QuestionWiseAnalysis() {
           correct_answer,
           marks,
           negative_marks,
+          is_bonus,
           question_text,
           options,
           image_url,
@@ -121,6 +123,7 @@ export default function QuestionWiseAnalysis() {
           correct_answer: q.correct_answer,
           marks: q.marks ?? 4,
           negative_marks: q.negative_marks ?? 1,
+          is_bonus: q.is_bonus ?? false,
           section_type: q.section?.section_type || "single_choice",
           subject_name: q.section?.subject?.name || "Unknown",
           question_text: q.question_text,
@@ -177,6 +180,7 @@ export default function QuestionWiseAnalysis() {
             correct_answer,
             marks,
             negative_marks,
+            is_bonus,
             question_text,
             options,
             image_url,
@@ -195,6 +199,7 @@ export default function QuestionWiseAnalysis() {
             correct_answer: q.correct_answer,
             marks: q.marks ?? 4,
             negative_marks: q.negative_marks ?? 1,
+            is_bonus: q.is_bonus ?? false,
             section_type: q.test_sections?.section_type || "single_choice",
             subject_name: q.test_sections?.test_subjects?.name || "General",
             question_text: q.question_text,
@@ -229,6 +234,7 @@ export default function QuestionWiseAnalysis() {
       userAnswer: attempt.answers[questionId],
       marks: question.marks,
       negativeMarks: question.negative_marks,
+      isBonus: question.is_bonus,
     }).status;
   };
 
@@ -250,6 +256,7 @@ export default function QuestionWiseAnalysis() {
       userAnswer: attempt.answers[questionId],
       marks: question.marks,
       negativeMarks: question.negative_marks,
+      isBonus: question.is_bonus,
     }).marksObtained;
   };
 
