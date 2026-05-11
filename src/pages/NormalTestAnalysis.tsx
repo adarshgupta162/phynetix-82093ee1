@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { LatexRenderer } from "@/components/ui/latex-renderer";
-import { evaluateQuestionScore, formatAnswerDisplay, isAnswerEmpty } from "@/lib/testScoring";
+import { evaluateQuestionScore, formatAnswerDisplay } from "@/lib/testScoring";
 
 interface SubjectScore {
   correct: number;
@@ -77,6 +77,8 @@ interface Question {
   section_type?: string;
   question_number?: number;
   image_url?: string | null;
+  is_bonus?: boolean;
+  question_status?: "correct" | "incorrect" | "skipped";
 }
 
 export default function NormalTestAnalysis() {
@@ -158,6 +160,8 @@ export default function NormalTestAnalysis() {
             section_type: r.section_type,
             question_number: r.question_number,
             image_url: r.image_url ?? null,
+            is_bonus: r.is_bonus,
+            question_status: evaluation.status,
           };
         });
 
@@ -249,6 +253,7 @@ export default function NormalTestAnalysis() {
       .select(`
         id,
         question_number,
+        is_bonus,
         correct_answer,
         marks,
         negative_marks,
@@ -284,6 +289,7 @@ export default function NormalTestAnalysis() {
       const correctAnswer = sq.correct_answer;
       const marks = sq.marks || 4;
       const negativeMarks = sq.negative_marks ?? 1;
+      const isBonus = sq.is_bonus ?? false;
 
       totalMaxMarks += marks;
 
@@ -299,6 +305,7 @@ export default function NormalTestAnalysis() {
           userAnswer,
           marks,
           negativeMarks,
+          isBonus,
         });
 
         if (evaluation.status === "skipped") {
@@ -330,6 +337,8 @@ export default function NormalTestAnalysis() {
         marks_obtained: marksObtained,
         section_type: sectionType,
         question_number: sq.question_number,
+        is_bonus: isBonus,
+        question_status: evaluation.status,
       });
     }
 
@@ -435,6 +444,7 @@ export default function NormalTestAnalysis() {
           section_type: q.question_type,
           question_number: tq.order_index ?? undefined,
           image_url: q.image_url ?? null,
+          question_status: evaluation.status,
         });
       }
 
@@ -460,6 +470,7 @@ export default function NormalTestAnalysis() {
       .select(`
         id,
         question_number,
+        is_bonus,
         correct_answer,
         marks,
         negative_marks,
@@ -493,6 +504,7 @@ export default function NormalTestAnalysis() {
       const correctAnswer = sq.correct_answer;
       const marks = sq.marks || 4;
       const negativeMarks = sq.negative_marks ?? 1;
+      const isBonus = sq.is_bonus ?? false;
 
       totalMaxMarks += marks;
 
@@ -508,6 +520,7 @@ export default function NormalTestAnalysis() {
         userAnswer,
         marks,
         negativeMarks,
+        isBonus,
       });
 
       if (evaluation.status === "skipped") {
@@ -540,6 +553,8 @@ export default function NormalTestAnalysis() {
         section_type: sectionType,
         question_number: sq.question_number,
         image_url: (sq as any).image_url ?? null,
+        is_bonus: isBonus,
+        question_status: evaluation.status,
       });
     }
 
@@ -567,9 +582,9 @@ export default function NormalTestAnalysis() {
     
     if (questionFilter !== "all") {
       filtered = filtered.filter(q => {
-        if (questionFilter === "correct") return q.is_correct;
-        if (questionFilter === "incorrect") return !isAnswerEmpty(q.user_answer) && !q.is_correct;
-        if (questionFilter === "unattempted") return isAnswerEmpty(q.user_answer);
+        if (questionFilter === "correct") return q.question_status === "correct";
+        if (questionFilter === "incorrect") return q.question_status === "incorrect";
+        if (questionFilter === "unattempted") return q.question_status === "skipped";
         return true;
       });
     }
@@ -901,9 +916,9 @@ export default function NormalTestAnalysis() {
               <div className="flex items-center gap-2 mb-6">
                 {[
                   { key: "all", label: "All", count: questions.filter(q => activeSubject === "all" || q.subject === activeSubject).length },
-                  { key: "correct", label: "Correct", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.is_correct).length },
-                   { key: "incorrect", label: "Incorrect", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && !isAnswerEmpty(q.user_answer) && !q.is_correct).length },
-                   { key: "unattempted", label: "Unattempted", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && isAnswerEmpty(q.user_answer)).length },
+                  { key: "correct", label: "Correct", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.question_status === "correct").length },
+                  { key: "incorrect", label: "Incorrect", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.question_status === "incorrect").length },
+                  { key: "unattempted", label: "Unattempted", count: questions.filter(q => (activeSubject === "all" || q.subject === activeSubject) && q.question_status === "skipped").length },
                 ].map((filter) => (
                   <button
                     key={filter.key}
@@ -938,9 +953,9 @@ export default function NormalTestAnalysis() {
                       </span>
                       <span className={cn(
                         "px-2 py-1 rounded text-xs",
-                        currentQuestion.is_correct 
+                        currentQuestion.question_status === "correct"
                           ? "bg-green-500/20 text-green-400" 
-                          : isAnswerEmpty(currentQuestion.user_answer)
+                          : currentQuestion.question_status === "skipped"
                             ? "bg-gray-500/20 text-muted-foreground"
                             : "bg-red-500/20 text-red-400"
                       )}>
@@ -1092,9 +1107,9 @@ export default function NormalTestAnalysis() {
                     className={cn(
                       "w-9 h-9 rounded flex items-center justify-center text-sm font-medium transition-all",
                       currentQuestionIndex === index && "ring-2 ring-white",
-                      q.is_correct && "bg-green-500 text-foreground",
-                      !isAnswerEmpty(q.user_answer) && !q.is_correct && "bg-red-500 text-foreground",
-                      isAnswerEmpty(q.user_answer) && "bg-gray-600 text-foreground/80"
+                      q.question_status === "correct" && "bg-green-500 text-foreground",
+                      q.question_status === "incorrect" && "bg-red-500 text-foreground",
+                      q.question_status === "skipped" && "bg-gray-600 text-foreground/80"
                     )}
                   >
                     {q.question_number || index + 1}

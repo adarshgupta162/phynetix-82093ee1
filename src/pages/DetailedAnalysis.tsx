@@ -32,6 +32,7 @@ interface Question {
   correct_answer: any;
   marks: number;
   negative_marks: number;
+  is_bonus?: boolean;
   section_type: string;
   subject_name: string;
   section_id: string;
@@ -132,6 +133,7 @@ export default function DetailedAnalysis() {
         correct_answer,
         marks,
         negative_marks,
+        is_bonus,
         pdf_page,
         section_id,
         section:test_sections(
@@ -167,6 +169,7 @@ export default function DetailedAnalysis() {
           correct_answer: q.correct_answer,
           marks: q.marks ?? 4,
           negative_marks: q.negative_marks ?? 1,
+          is_bonus: q.is_bonus ?? false,
           section_type: sectionType,
           subject_name: subjectName,
           section_id: sectionId,
@@ -195,6 +198,7 @@ export default function DetailedAnalysis() {
       userAnswer: attempt.answers[questionId],
       marks: question.marks,
       negativeMarks: question.negative_marks,
+      isBonus: question.is_bonus,
     }).status;
   };
 
@@ -208,6 +212,7 @@ export default function DetailedAnalysis() {
       userAnswer: attempt.answers[questionId],
       marks: question.marks,
       negativeMarks: question.negative_marks,
+      isBonus: question.is_bonus,
     }).marksObtained;
   };
 
