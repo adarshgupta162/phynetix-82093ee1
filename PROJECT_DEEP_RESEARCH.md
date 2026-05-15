@@ -51,7 +51,7 @@ Core implementation is in a React + TypeScript single-page app with Supabase as 
 - `npm run lint` currently fails with an ESLint ENOENT related to generated `vite.config.ts.timestamp-*.mjs` resolution.
 
 ### Vite configuration highlights
-- Host: `::`, port `8080`
+- Host: `::` (all IPv6 interfaces), port `8080`
 - Path alias: `@` → `./src`
 - React SWC plugin + lovable component tagger in development mode
 - Dependency dedupe for React packages
@@ -75,7 +75,7 @@ Core implementation is in a React + TypeScript single-page app with Supabase as 
 
 ## 5) Application Architecture
 
-## App composition (`src/main.tsx`, `src/App.tsx`)
+### App composition (`src/main.tsx`, `src/App.tsx`)
 - `ThemeProvider` at root
 - `QueryClientProvider` for React Query
 - `AuthProvider` for user/session/admin state
@@ -92,19 +92,19 @@ Core implementation is in a React + TypeScript single-page app with Supabase as 
 
 ## 6) Feature Map
 
-## A) Public / Pre-login Experience
+### A) Public / Pre-login Experience
 - Landing page
 - About, Contact, Courses, Course detail
 - Pricing, FAQ
 - Legal pages: Privacy, Terms, Refund
 - Test-series enrollment landing route
 
-## B) Authentication
+### B) Authentication
 - Unified auth route (`/auth`, `/login`, `/signup`)
 - Dedicated staff login route (`/staff-login`)
 - Supabase Auth with PKCE flow in client config
 
-## C) Student Experience
+### C) Student Experience
 - Dashboard
 - Test library (`/tests`)
 - PDF test library (`/pdf-tests`)
@@ -115,7 +115,7 @@ Core implementation is in a React + TypeScript single-page app with Supabase as 
 - DPP module (listing + practice)
 - Batch discovery, batch detail, my batches, checkout
 
-## D) Staff / Admin Experience
+### D) Staff / Admin Experience
 - Central admin dashboard and department dashboards:
   - finance, academic, operations
 - Test management:
@@ -273,4 +273,3 @@ Deployment metadata:
 3. Add a dedicated API contracts doc for each edge function.
 4. Add role-permission matrix table for non-technical admins.
 5. Add operational runbooks (proctoring incidents, payment issues, bulk import troubleshooting).
-
